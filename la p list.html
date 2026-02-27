@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Playlist Idéale - Universal DJ</title>
+    
+    <!-- Tailwind CSS pour le design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Configuration des couleurs sur-mesure -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            light: '#8cb6de',   
+                            DEFAULT: '#6597c8', 
+                            dark: '#4a759e'     
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Phosphor Icons pour les icônes -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans selection:bg-brand/30 min-h-screen">
+
+    <div id="root"></div>
+
+    <script>
+        // ==========================================
+        // 🎨 LOGO
+        // ==========================================
+        const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
+
+        // --- PARAMÈTRES DES VOTES ---
+        const MAX_TOTAL_VOTES = 30;
+        const MAX_VOTES_PER_SONG = 2;
+        const PASS_ADMIN = "DJ";
+
+        // ==========================================
+        // 🎵 LA LISTE COMPLÈTE FUSIONNÉE (688 Titres)
+        // ==========================================
+        const initialSongs = [
+            // --- HITS DU MOMENT ---
+            { id: 1, title: "Djadja", artist: "Aya Nakamura", theme: "Hits du Moment", votes: 0 },
+            { id: 2, title: "Bande organisée", artist: "13 Organisé", theme: "Hits du Moment", votes: 0 },
+            { id: 3, title: "Ne reviens pas", artist: "Gradur ft. Heuss L'enfoiré", theme: "Hits du Moment", votes: 0 },
+            { id: 4, title: "La boulette (Génération nan nan)", artist: "Diam's", theme: "Hits du Moment", votes: 0 },
+            { id: 5, title: "Jeune demoiselle", artist: "Diam's", theme: "Hits du Moment", votes: 0 },
+            { id: 6, title: "Dj", artist: "Diam's", theme: "Hits du Moment", votes: 0 },
+            { id: 7, title: "Anissa", artist: "Wejdene", theme: "Hits du Moment", votes: 0 },
+            { id: 8, title: "La kiffance", artist: "Naps", theme: "Hits du Moment", votes: 0 },
+            { id: 9, title: "Petit génie", artist: "Jul", theme: "Hits du Moment", votes: 0 },
+            { id: 10, title: "T’étais où", artist: "Jul ft Vegedream, Alonzo, Zaho", theme: "Hits du Moment", votes: 0 },
+            { id: 11, title: "Best life", artist: "Naps feat Gims", theme: "Hits du Moment", votes: 0 },
+            { id: 12, title: "Mafiosa", artist: "Lartiste ft. Caroliina", theme: "Hits du Moment", votes: 0 },
+            { id: 13, title: "Andalouse", artist: "Kendji Girac", theme: "Hits du Moment", votes: 0 },
+            { id: 14, title: "Color Gitano", artist: "Kendji Girac", theme: "Hits du Moment", votes: 0 },
+            { id: 15, title: "Réseaux", artist: "Niska", theme: "Hits du Moment", votes: 0 },
+            { id: 16, title: "Pookie", artist: "Aya Nakamura", theme: "Hits du Moment", votes: 0 },
+            { id: 17, title: "Zumba Cafew", artist: "Soolking ft. Dhurata Dora", theme: "Hits du Moment", votes: 0 },
+            { id: 18, title: "Comportement", artist: "Aya Nakamura", theme: "Hits du Moment", votes: 0 },
+            { id: 19, title: "Ça va aller", artist: "Naza", theme: "Hits du Moment", votes: 0 },
+            { id: 20, title: "Suavemente", artist: "Soolking", theme: "Hits du Moment", votes: 0 },
+            { id: 21, title: "Otra", artist: "Soolking", theme: "Hits du Moment", votes: 0 },
+            { id: 22, title: "Ça fait des années", artist: "Soolking (feat. Cheb Mami)", theme: "Hits du Moment", votes: 0 },
+            { id: 23, title: "Casanova", artist: "Soolking & Gazo", theme: "Hits du Moment", votes: 0 },
+            { id: 24, title: "1er Gaou", artist: "Magic System", theme: "Hits du Moment", votes: 0 },
+            { id: 25, title: "Bouger bouger", artist: "Magic System", theme: "Hits du Moment", votes: 0 },
+            { id: 26, title: "C'est chô, ça brûle", artist: "Magic System", theme: "Hits du Moment", votes: 0 },
+            { id: 27, title: "Magic in the Air", artist: "Magic System", theme: "Hits du Moment", votes: 0 },
+            { id: 28, title: "Chérie Coco", artist: "Magic System", theme: "Hits du Moment", votes: 0 },
+            { id: 29, title: "Ma chérie", artist: "DJ Kayz ft. Wassila", theme: "Hits du Moment", votes: 0 },
+            { id: 30, title: "Doudou", artist: "Aya Nakamura", theme: "Hits du Moment", votes: 0 },
+            { id: 31, title: "La dot", artist: "Aya Nakamura", theme: "Hits du Moment", votes: 0 },
+            { id: 32, title: "Laisse tomber", artist: "Gambi", theme: "Hits du Moment", votes: 0 },
+            { id: 33, title: "Ak kele nta", artist: "MHD", theme: "Hits du Moment", votes: 0 },
+            { id: 34, title: "Laissez-les kouma", artist: "Zaho (feat. MHD)", theme: "Hits du Moment", votes: 0 },
+            { id: 35, title: "Bobo", artist: "Aya Nakamura", theme: "Hits du Moment", votes: 0 },
+            { id: 36, title: "Heuss L'enfoiré", artist: "Sayan Ft Gazo", theme: "Hits du Moment", votes: 0 },
+            { id: 37, title: "Goutte d'eau", artist: "Dadju", theme: "Hits du Moment", votes: 0 },
+            { id: 38, title: "Dubaï", artist: "Soolking", theme: "Hits du Moment", votes: 0 },
+            { id: 39, title: "Ma belle", artist: "PLK", theme: "Hits du Moment", votes: 0 },
+            { id: 40, title: "T nous va bien", artist: "Alonzo Ninho & Naps", theme: "Hits du Moment", votes: 0 },
+            { id: 41, title: "Jolie nana", artist: "Aya Nakamura", theme: "Hits du Moment", votes: 0 },
+            { id: 42, title: "Minimum Ca", artist: "Dr.Yaro", theme: "Hits du Moment", votes: 0 },
+            { id: 43, title: "Imagine", artist: "Carbone", theme: "Hits du Moment", votes: 0 },
+            { id: 44, title: "Alors on danse", artist: "Stromae", theme: "Hits du Moment", votes: 0 },
+            { id: 45, title: "Tchikita", artist: "Jul", theme: "Hits du Moment", votes: 0 },
+            { id: 46, title: "Wesh Alors", artist: "Jul", theme: "Hits du Moment", votes: 0 },
+            { id: 47, title: "On m'appelle l'Ovni", artist: "Jul", theme: "Hits du Moment", votes: 0 },
+            { id: 48, title: "Ma Jolie", artist: "Jul", theme: "Hits du Moment", votes: 0 },
+            { id: 49, title: "J'fais que danser", artist: "Jul", theme: "Hits du Moment", votes: 0 },
+            { id: 50, title: "Elle me dit", artist: "Mika", theme: "Hits du Moment", votes: 0 },
+            { id: 51, title: "Dernière danse", artist: "Indila", theme: "Hits du Moment", votes: 0 },
+            { id: 52, title: "Cosmo", artist: "Soprano", theme: "Hits du Moment", votes: 0 },
+            { id: 53, title: "Avenir", artist: "Louane", theme: "Hits du Moment", votes: 0 },
+            { id: 54, title: "Reine", artist: "Dadju", theme: "Hits du Moment", votes: 0 },
+            { id: 55, title: "Balance ton Quoi", artist: "Angèle", theme: "Hits du Moment", votes: 0 },
+            { id: 56, title: "Wati By Night", artist: "Sexion D’Assaut", theme: "Hits du Moment", votes: 0 },
+            { id: 57, title: "J’ai cherché", artist: "Amir", theme: "Hits du Moment", votes: 0 },
+            { id: 58, title: "Sur ma route", artist: "Black M", theme: "Hits du Moment", votes: 0 },
+            { id: 59, title: "Un peu de rêve", artist: "Vitaa & Claudio Capéo", theme: "Hits du Moment", votes: 0 },
+            { id: 60, title: "Bella Ciao", artist: "Gims, Naestro, Dadju, Slimane", theme: "Hits du Moment", votes: 0 },
+            { id: 61, title: "Chocolat", artist: "Lartiste", theme: "Hits du Moment", votes: 0 },
+            { id: 62, title: "Dommage", artist: "Bigflo & Oli", theme: "Hits du Moment", votes: 0 },
+            { id: 63, title: "Sapés comme jamais", artist: "Gims ft. Niska", theme: "Hits du Moment", votes: 0 },
+            { id: 64, title: "La Même", artist: "Gims & Vianney", theme: "Hits du Moment", votes: 0 },
+            { id: 65, title: "Bella", artist: "Gims", theme: "Hits du Moment", votes: 0 },
+            { id: 66, title: "J'me tire", artist: "Gims", theme: "Hits du Moment", votes: 0 },
+            { id: 67, title: "Zombie", artist: "Gims", theme: "Hits du Moment", votes: 0 },
+            { id: 68, title: "Laissez passer", artist: "Gims", theme: "Hits du Moment", votes: 0 },
+            { id: 69, title: "Papaoutai", artist: "Stromae", theme: "Hits du Moment", votes: 0 },
+            { id: 70, title: "Formidable", artist: "Stromae", theme: "Hits du Moment", votes: 0 },
+            { id: 71, title: "Tous les mêmes", artist: "Stromae", theme: "Hits du Moment", votes: 0 },
+            { id: 72, title: "Je te promets", artist: "Slimane", theme: "Hits du Moment", votes: 0 },
+            { id: 73, title: "Le coach", artist: "Soprano ft. Vincenzo", theme: "Hits du Moment", votes: 0 },
+            { id: 74, title: "En feu", artist: "Soprano", theme: "Hits du Moment", votes: 0 },
+            { id: 75, title: "Clown", artist: "Soprano", theme: "Hits du Moment", votes: 0 },
+            { id: 76, title: "Le sens de la vie", artist: "Tal", theme: "Hits du Moment", votes: 0 },
+            { id: 77, title: "Le temps qu'il faut", artist: "Tal", theme: "Hits du Moment", votes: 0 },
+            { id: 78, title: "Ma philosophie", artist: "Amel Bent", theme: "Hits du Moment", votes: 0 },
+            { id: 79, title: "Je danse", artist: "Jenifer", theme: "Hits du Moment", votes: 0 },
+            { id: 80, title: "Tourner dans le vide", artist: "Indila", theme: "Hits du Moment", votes: 0 },
+            { id: 81, title: "Love Story", artist: "Indila", theme: "Hits du Moment", votes: 0 },
+            { id: 82, title: "La fête", artist: "Amir", theme: "Hits du Moment", votes: 0 },
+            { id: 83, title: "On dirait", artist: "Amir", theme: "Hits du Moment", votes: 0 },
+            { id: 84, title: "Désolé", artist: "Sexion D’Assaut", theme: "Hits du Moment", votes: 0 },
+            { id: 85, title: "Avant qu'elle parte", artist: "Sexion D’Assaut", theme: "Hits du Moment", votes: 0 },
+            { id: 86, title: "Ma direction", artist: "Sexion D’Assaut", theme: "Hits du Moment", votes: 0 },
+            { id: 619, title: "PARISIENNE", artist: "GIMS", theme: "Hits du Moment", votes: 0 },
+            { id: 620, title: "SPA", artist: "GIMS", theme: "Hits du Moment", votes: 0 },
+            { id: 621, title: "CIEL", artist: "GIMS", theme: "Hits du Moment", votes: 0 },
+            { id: 622, title: "NINAO", artist: "GIMS", theme: "Hits du Moment", votes: 0 },
+            { id: 623, title: "SPIDER", artist: "GIMS", theme: "Hits du Moment", votes: 0 },
+            { id: 624, title: "melodrama", artist: "disiz theodora", theme: "Hits du Moment", votes: 0 },
+            { id: 625, title: "Tic", artist: "Maureen", theme: "Hits du Moment", votes: 0 },
+            { id: 626, title: "Laptop", artist: "Kalash & Maureen", theme: "Hits du Moment", votes: 0 },
+            { id: 627, title: "Money Pull Up", artist: "Blaiz Fayah & Maureen", theme: "Hits du Moment", votes: 0 },
+            { id: 628, title: "Mode Avion", artist: "DJ Kawest & Attachingboy", theme: "Hits du Moment", votes: 0 },
+            { id: 629, title: "Chambre 04", artist: "DJ Kawest & Attachingboy", theme: "Hits du Moment", votes: 0 },
+            { id: 630, title: "A la Mode", artist: "PLL", theme: "Hits du Moment", votes: 0 },
+            { id: 631, title: "Pas Jalouse", artist: "Bamby & Kerchak", theme: "Hits du Moment", votes: 0 },
+            { id: 632, title: "Balthazar Mode Vs Gal A Bubble", artist: "LeKid & Konshens", theme: "Hits du Moment", votes: 0 },
+            { id: 633, title: "Shatta Confessions", artist: "Meryl", theme: "Hits du Moment", votes: 0 },
+            { id: 634, title: "Vite Fait", artist: "Meryl", theme: "Hits du Moment", votes: 0 },
+            { id: 635, title: "Coco Chanel", artist: "Meryl & Eva", theme: "Hits du Moment", votes: 0 },
+            { id: 636, title: "Fecat’ji", artist: "Fecat’ji", theme: "Hits du Moment", votes: 0 },
+            { id: 637, title: "La Piraterie", artist: "K-Rosif, Bigda & Loeil", theme: "Hits du Moment", votes: 0 },
+            { id: 638, title: "Whine (Chelero Punchy Remix)", artist: "TKS 2G", theme: "Hits du Moment", votes: 0 },
+
+            // --- HITS FRANÇAIS ---
+            { id: 87, title: "Toute première fois", artist: "Jeanne Mas", theme: "Hits Français", votes: 0 },
+            { id: 88, title: "Johnny, Johnny", artist: "Jeanne Mas", theme: "Hits Français", votes: 0 },
+            { id: 89, title: "En Rouge Et Noir", artist: "Jeanne Mas", theme: "Hits Français", votes: 0 },
+            { id: 90, title: "J't'emmène au vent", artist: "Louise Attaque", theme: "Hits Français", votes: 0 },
+            { id: 91, title: "Ton invitation", artist: "Louise Attaque", theme: "Hits Français", votes: 0 },
+            { id: 92, title: "Femmes Que J'aime !!!", artist: "Jean Luc Lahaye", theme: "Hits Français", votes: 0 },
+            { id: 93, title: "J'irai où tu iras", artist: "Céline Dion", theme: "Hits Français", votes: 0 },
+            { id: 94, title: "Sans contrefaçon", artist: "Mylène Farmer", theme: "Hits Français", votes: 0 },
+            { id: 95, title: "Désenchantée", artist: "Mylène Farmer", theme: "Hits Français", votes: 0 },
+            { id: 96, title: "Le Jerk", artist: "Thierry Hazard", theme: "Hits Français", votes: 0 },
+            { id: 97, title: "Tomber La Chemise", artist: "Zebda", theme: "Hits Français", votes: 0 },
+            { id: 98, title: "Il jouait du piano debout", artist: "France Gall", theme: "Hits Français", votes: 0 },
+            { id: 99, title: "Besoin De Rien Envie De Toi", artist: "Peter Sloane", theme: "Hits Français", votes: 0 },
+            { id: 100, title: "Les Démons de minuit", artist: "Images", theme: "Hits Français", votes: 0 },
+            { id: 101, title: "Nuit de folie", artist: "Début de soirée", theme: "Hits Français", votes: 0 },
+            { id: 102, title: "La Tribu De Dana", artist: "Manau", theme: "Hits Français", votes: 0 },
+            { id: 103, title: "Confidences pour confidences", artist: "Jean Schultheis", theme: "Hits Français", votes: 0 },
+            { id: 104, title: "Pourvu qu'elles soient douces", artist: "Mylène Farmer", theme: "Hits Français", votes: 0 },
+            { id: 105, title: "Je te donne", artist: "Jean-Jacques Goldman", theme: "Hits Français", votes: 0 },
+            { id: 106, title: "Il suffira d'un signe", artist: "Jean-Jacques Goldman", theme: "Hits Français", votes: 0 },
+            { id: 107, title: "Au bout de mes rêves", artist: "Jean-Jacques Goldman", theme: "Hits Français", votes: 0 },
+            { id: 108, title: "Quand la musique est bonne", artist: "Jean-Jacques Goldman", theme: "Hits Français", votes: 0 },
+            { id: 109, title: "La Groupie du pianiste", artist: "Michel Berger", theme: "Hits Français", votes: 0 },
+            { id: 110, title: "Les lacs du Connemara", artist: "Michel Sardou", theme: "Hits Français", votes: 0 },
+            { id: 111, title: "Laissez-moi danser", artist: "Dalida", theme: "Hits Français", votes: 0 },
+            { id: 112, title: "On va s'aimer", artist: "Gilbert Montagné", theme: "Hits Français", votes: 0 },
+            { id: 113, title: "Voyage Voyage", artist: "Desireless", theme: "Hits Français", votes: 0 },
+            { id: 114, title: "Lambé An Dro", artist: "Matmatah", theme: "Hits Français", votes: 0 },
+            { id: 115, title: "L'apologie", artist: "Matmatah", theme: "Hits Français", votes: 0 },
+            { id: 116, title: "Résiste", artist: "France Gall", theme: "Hits Français", votes: 0 },
+            { id: 117, title: "J'ai Vu", artist: "Niagara", theme: "Hits Français", votes: 0 },
+            { id: 118, title: "Femme Like U", artist: "K.Maro", theme: "Hits Français", votes: 0 },
+            { id: 119, title: "Ca m'énerve", artist: "Helmut Fritz", theme: "Hits Français", votes: 0 },
+            { id: 120, title: "Joue pas", artist: "Francois Feldman", theme: "Hits Français", votes: 0 },
+            { id: 121, title: "Aimons‐nous vivants", artist: "François Valéry", theme: "Hits Français", votes: 0 },
+            { id: 122, title: "Elle danse marie", artist: "François Valéry", theme: "Hits Français", votes: 0 },
+            { id: 123, title: "Capitaine abandonné", artist: "Gold", theme: "Hits Français", votes: 0 },
+            { id: 124, title: "Cendrillon", artist: "Téléphone", theme: "Hits Français", votes: 0 },
+            { id: 125, title: "Un autre monde", artist: "Téléphone", theme: "Hits Français", votes: 0 },
+            { id: 126, title: "La grenade", artist: "Clara Luciani", theme: "Hits Français", votes: 0 },
+            { id: 127, title: "SOS d'un terrien en détresse", artist: "Daniel Balavoine", theme: "Hits Français", votes: 0 },
+            { id: 128, title: "D.I.S.C.O.", artist: "Ottawan", theme: "Hits Français", votes: 0 },
+            { id: 129, title: "Tahiti", artist: "Keen'V", theme: "Hits Français", votes: 0 },
+            { id: 130, title: "Partenaire particulier", artist: "Partenaire particulier", theme: "Hits Français", votes: 0 },
+            { id: 131, title: "À nos souvenirs", artist: "Trois Cafés Gourmands", theme: "Hits Français", votes: 0 },
+            { id: 132, title: "Marcia Baïla", artist: "Rita Mitsouko", theme: "Hits Français", votes: 0 },
+            { id: 133, title: "L'amour à la plage", artist: "Niagara", theme: "Hits Français", votes: 0 },
+            { id: 134, title: "Tout Oublier", artist: "Angèle feat. Roméo Elvis", theme: "Hits Français", votes: 0 },
+            { id: 135, title: "Week-end à Rome", artist: "Étienne Daho", theme: "Hits Français", votes: 0 },
+            { id: 136, title: "Tombé du ciel", artist: "Jacques Higelin", theme: "Hits Français", votes: 0 },
+            { id: 137, title: "Étienne", artist: "Guesch Patti", theme: "Hits Français", votes: 0 },
+            { id: 138, title: "Vacances j'oublie tout", artist: "Élégance", theme: "Hits Français", votes: 0 },
+            { id: 139, title: "Femme libérée", artist: "Cookie Dingler", theme: "Hits Français", votes: 0 },
+            { id: 140, title: "Chante", artist: "Les Forbans", theme: "Hits Français", votes: 0 },
+            { id: 141, title: "Je suis bien", artist: "Gazoline", theme: "Hits Français", votes: 0 },
+            { id: 142, title: "Chacun fait (c'qui lui plaît)", artist: "Chagrin d'amour", theme: "Hits Français", votes: 0 },
+            { id: 143, title: "Andy", artist: "Les Rita Mitsouko", theme: "Hits Français", votes: 0 },
+            { id: 144, title: "Elle a les yeux revolver", artist: "Marc Lavoine", theme: "Hits Français", votes: 0 },
+            { id: 145, title: "Sensualité", artist: "Axelle Red", theme: "Hits Français", votes: 0 },
+            { id: 146, title: "Il tape sur des bambous", artist: "Philippe Lavil", theme: "Hits Français", votes: 0 },
+            { id: 147, title: "La Boîte de jazz", artist: "Michel Jonasz", theme: "Hits Français", votes: 0 },
+            { id: 148, title: "Où sont les femmes ?", artist: "Patrick Juvet", theme: "Hits Français", votes: 0 },
+            { id: 149, title: "Du côté de chez Swann", artist: "Dave", theme: "Hits Français", votes: 0 },
+            { id: 150, title: "Mélissa", artist: "Julien Clerc", theme: "Hits Français", votes: 0 },
+            { id: 151, title: "Canary Bay", artist: "Indochine", theme: "Hits Français", votes: 0 },
+            { id: 152, title: "Le chant des cygnes", artist: "Indochine", theme: "Hits Français", votes: 0 },
+            { id: 153, title: "L'aventurier", artist: "Indochine", theme: "Hits Français", votes: 0 },
+            { id: 154, title: "3e sexe", artist: "Indochine", theme: "Hits Français", votes: 0 },
+            { id: 155, title: "Antisocial", artist: "Trust", theme: "Hits Français", votes: 0 },
+            { id: 156, title: "Joe Le Taxi", artist: "Vanessa Paradis", theme: "Hits Français", votes: 0 },
+            { id: 157, title: "Le bal masqué", artist: "La Compagnie Créole", theme: "Hits Français", votes: 0 },
+            { id: 158, title: "Africa", artist: "Rose Laurens", theme: "Hits Français", votes: 0 },
+            { id: 159, title: "T'es ok", artist: "Ottawan", theme: "Hits Français", votes: 0 },
+            { id: 160, title: "Banana Split", artist: "Lio", theme: "Hits Français", votes: 0 },
+            { id: 161, title: "C'est bon pour le moral", artist: "La Compagnie Créole", theme: "Hits Français", votes: 0 },
+            { id: 162, title: "Vive le Douanier Rousseau", artist: "La Compagnie Créole", theme: "Hits Français", votes: 0 },
+            { id: 163, title: "Alexandrie Alexandra", artist: "Claude Francois", theme: "Hits Français", votes: 0 },
+            { id: 164, title: "Magnolias for ever", artist: "Claude Francois", theme: "Hits Français", votes: 0 },
+            { id: 165, title: "Rock Amadour", artist: "Gerard Blanchard", theme: "Hits Français", votes: 0 },
+            { id: 166, title: "Ça Plane Pour Moi", artist: "Plastic Bertrand", theme: "Hits Français", votes: 0 },
+            { id: 167, title: "Tropique", artist: "Muriel Dacq", theme: "Hits Français", votes: 0 },
+            { id: 168, title: "C'est toi qui m'a fait", artist: "Francois Feldman", theme: "Hits Français", votes: 0 },
+            { id: 169, title: "Eve Lève Toi", artist: "JULIE PIETRI", theme: "Hits Français", votes: 0 },
+            { id: 170, title: "C'est la ouate", artist: "Caroline Loeb", theme: "Hits Français", votes: 0 },
+
+            // --- CLASSIC 80s ---
+            { id: 171, title: "Lambada", artist: "Kaoma", theme: "Classic 80s", votes: 0 },
+            { id: 172, title: "Fotonovela", artist: "Ivan", theme: "Classic 80s", votes: 0 },
+            { id: 173, title: "Ghostbusters", artist: "Ray Parker Jr.", theme: "Classic 80s", votes: 0 },
+            { id: 174, title: "Like a Virgin", artist: "Madonna", theme: "Classic 80s", votes: 0 },
+            { id: 175, title: "Smalltown Boy", artist: "Bronski Beat", theme: "Classic 80s", votes: 0 },
+            { id: 176, title: "You Spin Me Round", artist: "Dead or Alive", theme: "Classic 80s", votes: 0 },
+            { id: 177, title: "Relax", artist: "Frankie Goes to Hollywood", theme: "Classic 80s", votes: 0 },
+            { id: 178, title: "Wake Me Up Before You Go-Go", artist: "Wham!", theme: "Classic 80s", votes: 0 },
+            { id: 179, title: "Billie Jean", artist: "Michael Jackson", theme: "Classic 80s", votes: 0 },
+            { id: 180, title: "Purple Rain", artist: "Prince", theme: "Classic 80s", votes: 0 },
+            { id: 181, title: "Tarzan Boy", artist: "Baltimora", theme: "Classic 80s", votes: 0 },
+            { id: 182, title: "Self Control", artist: "Laura Branigan", theme: "Classic 80s", votes: 0 },
+            { id: 183, title: "Just Can't Get Enough", artist: "Depeche Mode", theme: "Classic 80s", votes: 0 },
+            { id: 184, title: "Blue Monday", artist: "New Order", theme: "Classic 80s", votes: 0 },
+            { id: 185, title: "Shout", artist: "Tears for Fears", theme: "Classic 80s", votes: 0 },
+            { id: 186, title: "Take On Me", artist: "A-ha", theme: "Classic 80s", votes: 0 },
+            { id: 187, title: "West End Girls", artist: "Pet Shop Boys", theme: "Classic 80s", votes: 0 },
+            { id: 188, title: "I Will Survive", artist: "Gloria Gaynor", theme: "Classic 80s", votes: 0 },
+            { id: 189, title: "Hot Stuff", artist: "Donna Summer", theme: "Classic 80s", votes: 0 },
+            { id: 190, title: "I Feel for You", artist: "Chaka Khan", theme: "Classic 80s", votes: 0 },
+            { id: 191, title: "Celebration", artist: "Kool & The Gang", theme: "Classic 80s", votes: 0 },
+            { id: 192, title: "How Will I Know", artist: "Whitney Houston", theme: "Classic 80s", votes: 0 },
+            { id: 193, title: "Girls Just Want to Have Fun", artist: "Cyndi Lauper", theme: "Classic 80s", votes: 0 },
+            { id: 194, title: "Kiss", artist: "Prince & The Revolution", theme: "Classic 80s", votes: 0 },
+            { id: 195, title: "Livin' on a Prayer", artist: "Bon Jovi", theme: "Classic 80s", votes: 0 },
+            { id: 196, title: "Sweet Dreams", artist: "Eurythmics", theme: "Classic 80s", votes: 0 },
+            { id: 197, title: "Never Gonna Give You Up", artist: "Rick Astley", theme: "Classic 80s", votes: 0 },
+            { id: 198, title: "Careless Whisper", artist: "George Michael", theme: "Classic 80s", votes: 0 },
+            { id: 199, title: "Another One Bites the Dust", artist: "Queen", theme: "Classic 80s", votes: 0 },
+            { id: 200, title: "Rio", artist: "Duran Duran", theme: "Classic 80s", votes: 0 },
+            { id: 201, title: "Just Like Heaven", artist: "The Cure", theme: "Classic 80s", votes: 0 },
+            { id: 202, title: "Enjoy the Silence", artist: "Depeche Mode", theme: "Classic 80s", votes: 0 },
+            { id: 203, title: "Everybody Wants to Rule the World", artist: "Tears for Fears", theme: "Classic 80s", votes: 0 },
+            { id: 204, title: "Don't You (Forget About Me)", artist: "Simple Minds", theme: "Classic 80s", votes: 0 },
+            { id: 205, title: "Jump", artist: "Van Halen", theme: "Classic 80s", votes: 0 },
+            { id: 206, title: "Cruel Summer", artist: "Bananarama", theme: "Classic 80s", votes: 0 },
+            { id: 207, title: "Karma Chameleon", artist: "Culture Club", theme: "Classic 80s", votes: 0 },
+            { id: 208, title: "Gloria", artist: "Laura Branigan", theme: "Classic 80s", votes: 0 },
+            { id: 209, title: "Conga", artist: "Gloria Estefan", theme: "Classic 80s", votes: 0 },
+            { id: 210, title: "Thriller", artist: "Michael Jackson", theme: "Classic 80s", votes: 0 },
+            { id: 211, title: "Dancing Queen", artist: "ABBA", theme: "Classic 80s", votes: 0 },
+            { id: 212, title: "Give Me the Night", artist: "George Benson", theme: "Classic 80s", votes: 0 },
+            { id: 213, title: "Into the Groove", artist: "Madonna", theme: "Classic 80s", votes: 0 },
+            { id: 214, title: "The Final Countdown", artist: "Europe", theme: "Classic 80s", votes: 0 },
+
+            // --- HITS 90s ---
+            { id: 215, title: "Freed from desire", artist: "GALA", theme: "Hits 90s", votes: 0 },
+            { id: 216, title: "The Rhythm of the Night", artist: "Corona", theme: "Hits 90s", votes: 0 },
+            { id: 217, title: "Rhythm Is a Dancer", artist: "Snap!", theme: "Hits 90s", votes: 0 },
+            { id: 218, title: "The Power", artist: "Snap!", theme: "Hits 90s", votes: 0 },
+            { id: 219, title: "Vogue", artist: "Madonna", theme: "Hits 90s", votes: 0 },
+            { id: 220, title: "What Is Love", artist: "Haddaway", theme: "Hits 90s", votes: 0 },
+            { id: 221, title: "No Limit", artist: "2 Unlimited", theme: "Hits 90s", votes: 0 },
+            { id: 222, title: "Be My Lover", artist: "La Bouche", theme: "Hits 90s", votes: 0 },
+            { id: 223, title: "Show Me Love", artist: "Robin S", theme: "Hits 90s", votes: 0 },
+            { id: 224, title: "Around the World", artist: "Daft Punk", theme: "Hits 90s", votes: 0 },
+            { id: 225, title: "Firestarter", artist: "The Prodigy", theme: "Hits 90s", votes: 0 },
+            { id: 226, title: "Insomnia", artist: "Faithless", theme: "Hits 90s", votes: 0 },
+            { id: 227, title: "Boom, Boom, Boom, Boom!!", artist: "Vengaboys", theme: "Hits 90s", votes: 0 },
+            { id: 228, title: "Blue (Da Ba Dee)", artist: "Eiffel 65", theme: "Hits 90s", votes: 0 },
+            { id: 229, title: "Believe", artist: "Cher", theme: "Hits 90s", votes: 0 },
+            { id: 230, title: "Wannabe", artist: "Spice Girls", theme: "Hits 90s", votes: 0 },
+            { id: 231, title: "Baby One More Time", artist: "Britney Spears", theme: "Hits 90s", votes: 0 },
+            { id: 232, title: "The Sign", artist: "Ace of Base", theme: "Hits 90s", votes: 0 },
+            { id: 233, title: "Another Night", artist: "Real McCoy", theme: "Hits 90s", votes: 0 },
+            { id: 234, title: "Mr. Vain", artist: "Culture Beat", theme: "Hits 90s", votes: 0 },
+            { id: 235, title: "It's My Life", artist: "Dr. Alban", theme: "Hits 90s", votes: 0 },
+            { id: 236, title: "Pump Up the Jam", artist: "Technotronic", theme: "Hits 90s", votes: 0 },
+            { id: 237, title: "Music Sounds Better with You", artist: "Stardust", theme: "Hits 90s", votes: 0 },
+            { id: 238, title: "Saturday Night", artist: "Whigfield", theme: "Hits 90s", votes: 0 },
+            { id: 239, title: "Finally", artist: "CeCe Peniston", theme: "Hits 90s", votes: 0 },
+            { id: 240, title: "Scatman", artist: "Scatman John", theme: "Hits 90s", votes: 0 },
+            { id: 241, title: "Barbie Girl", artist: "Aqua", theme: "Hits 90s", votes: 0 },
+            { id: 242, title: "Cotton Eye Joe", artist: "Rednex", theme: "Hits 90s", votes: 0 },
+            { id: 243, title: "Ooh Aah... Just a Little Bit", artist: "Gina G", theme: "Hits 90s", votes: 0 },
+            { id: 244, title: "Ride on Time", artist: "Black Box", theme: "Hits 90s", votes: 0 },
+            { id: 245, title: "Push It", artist: "Salt-N-Pepa", theme: "Hits 90s", votes: 0 },
+            { id: 246, title: "No Scrubs", artist: "TLC", theme: "Hits 90s", votes: 0 },
+            { id: 247, title: "Bills, Bills, Bills", artist: "Destiny's Child", theme: "Hits 90s", votes: 0 },
+            { id: 248, title: "Together Again", artist: "Janet Jackson", theme: "Hits 90s", votes: 0 },
+            { id: 249, title: "Freedom! '90", artist: "George Michael", theme: "Hits 90s", votes: 0 },
+            { id: 250, title: "Black or White", artist: "Michael Jackson", theme: "Hits 90s", votes: 0 },
+            { id: 251, title: "Praise You", artist: "Fatboy Slim", theme: "Hits 90s", votes: 0 },
+            { id: 252, title: "Sing It Back", artist: "Moloko", theme: "Hits 90s", votes: 0 },
+            { id: 253, title: "Groove Is in the Heart", artist: "Deee-Lite", theme: "Hits 90s", votes: 0 },
+            { id: 254, title: "Children", artist: "Robert Miles", theme: "Hits 90s", votes: 0 },
+            { id: 255, title: "Dreamer", artist: "Livin' Joy", theme: "Hits 90s", votes: 0 },
+            { id: 256, title: "Feel the Heat of the Night", artist: "Masterboy", theme: "Hits 90s", votes: 0 },
+            { id: 257, title: "Captain Jack", artist: "Captain Jack", theme: "Hits 90s", votes: 0 },
+            { id: 258, title: "Think About the Way", artist: "Ice MC", theme: "Hits 90s", votes: 0 },
+            { id: 259, title: "Ecuador", artist: "Sash!", theme: "Hits 90s", votes: 0 },
+            { id: 260, title: "Better Off Alone", artist: "Alice Deejay", theme: "Hits 90s", votes: 0 },
+            { id: 261, title: "9 PM (Till I Come)", artist: "ATB", theme: "Hits 90s", votes: 0 },
+            { id: 262, title: "L'Amour Toujours", artist: "Gigi D'Agostino", theme: "Hits 90s", votes: 0 },
+            { id: 263, title: "Hey Boy Hey Girl", artist: "The Chemical Brothers", theme: "Hits 90s", votes: 0 },
+            { id: 264, title: "Born Slippy", artist: "Underworld", theme: "Hits 90s", votes: 0 },
+            { id: 265, title: "Lovefool", artist: "The Cardigans", theme: "Hits 90s", votes: 0 },
+            { id: 266, title: "Torn", artist: "Natalie Imbruglia", theme: "Hits 90s", votes: 0 },
+            { id: 267, title: "Don't Speak", artist: "No Doubt", theme: "Hits 90s", votes: 0 },
+            { id: 268, title: "Bitter Sweet Symphony", artist: "The Verve", theme: "Hits 90s", votes: 0 },
+            { id: 269, title: "Wonderwall", artist: "Oasis", theme: "Hits 90s", votes: 0 },
+            { id: 270, title: "Song 2", artist: "Blur", theme: "Hits 90s", votes: 0 },
+
+            // --- HITS 2000s ---
+            { id: 271, title: "I'm Outta Love", artist: "Anastacia", theme: "Hits 2000s", votes: 0 },
+            { id: 272, title: "When Love Takes Over", artist: "David Guetta", theme: "Hits 2000s", votes: 0 },
+            { id: 273, title: "Hips Don't Lie", artist: "Shakira", theme: "Hits 2000s", votes: 0 },
+            { id: 274, title: "Umbrella", artist: "Rihanna", theme: "Hits 2000s", votes: 0 },
+            { id: 275, title: "Just Dance", artist: "Lady Gaga", theme: "Hits 2000s", votes: 0 },
+            { id: 276, title: "I Gotta Feeling", artist: "Black Eyed Peas", theme: "Hits 2000s", votes: 0 },
+            { id: 277, title: "Single Ladies", artist: "Beyoncé", theme: "Hits 2000s", votes: 0 },
+            { id: 278, title: "Crazy in Love", artist: "Beyoncé", theme: "Hits 2000s", votes: 0 },
+            { id: 279, title: "We Found Love", artist: "Rihanna", theme: "Hits 2000s", votes: 0 },
+            { id: 280, title: "Can't Get You Out of My Head", artist: "Kylie Minogue", theme: "Hits 2000s", votes: 0 },
+            { id: 281, title: "One More Time", artist: "Daft Punk", theme: "Hits 2000s", votes: 0 },
+            { id: 282, title: "Call on Me", artist: "Eric Prydz", theme: "Hits 2000s", votes: 0 },
+            { id: 283, title: "Love Generation", artist: "Bob Sinclar", theme: "Hits 2000s", votes: 0 },
+            { id: 284, title: "Everytime We Touch", artist: "Cascada", theme: "Hits 2000s", votes: 0 },
+            { id: 285, title: "From Paris to Berlin", artist: "Infernal", theme: "Hits 2000s", votes: 0 },
+            { id: 286, title: "Put Your Hands Up for Detroit", artist: "Fedde Le Grand", theme: "Hits 2000s", votes: 0 },
+            { id: 287, title: "Sun Is Shining", artist: "Axwell /\\ Ingrosso", theme: "Hits 2000s", votes: 0 },
+            { id: 288, title: "Don't You Worry Child", artist: "Swedish House Mafia", theme: "Hits 2000s", votes: 0 },
+            { id: 289, title: "Summer", artist: "Calvin Harris", theme: "Hits 2000s", votes: 0 },
+            { id: 290, title: "Levels", artist: "Avicii", theme: "Hits 2000s", votes: 0 },
+            { id: 291, title: "Party Rock Anthem", artist: "LMFAO", theme: "Hits 2000s", votes: 0 },
+            { id: 292, title: "Give Me Everything", artist: "Pitbull", theme: "Hits 2000s", votes: 0 },
+            { id: 293, title: "Get Busy", artist: "Sean Paul", theme: "Hits 2000s", votes: 0 },
+            { id: 294, title: "It Wasn't Me", artist: "Shaggy", theme: "Hits 2000s", votes: 0 },
+            { id: 295, title: "Harder, Better, Faster, Stronger", artist: "Daft Punk", theme: "Hits 2000s", votes: 0 },
+            { id: 296, title: "Toxic", artist: "Britney Spears", theme: "Hits 2000s", votes: 0 },
+            { id: 297, title: "Hung Up", artist: "Madonna", theme: "Hits 2000s", votes: 0 },
+            { id: 298, title: "Hey Ya!", artist: "OutKast", theme: "Hits 2000s", votes: 0 },
+            { id: 299, title: "Beggin", artist: "Madcon", theme: "Hits 2000s", votes: 0 },
+            { id: 300, title: "In da Club", artist: "50 Cent", theme: "Hits 2000s", votes: 0 },
+            { id: 301, title: "Yeah!", artist: "Usher", theme: "Hits 2000s", votes: 0 },
+            { id: 302, title: "Dilemma", artist: "Nelly", theme: "Hits 2000s", votes: 0 },
+            { id: 303, title: "Rock Your Body", artist: "Justin Timberlake", theme: "Hits 2000s", votes: 0 },
+            { id: 304, title: "I'm Real", artist: "Jennifer Lopez", theme: "Hits 2000s", votes: 0 },
+            { id: 305, title: "Without Me", artist: "Eminem", theme: "Hits 2000s", votes: 0 },
+            { id: 306, title: "Pon de Replay", artist: "Rihanna", theme: "Hits 2000s", votes: 0 },
+            { id: 307, title: "Viva La Vida", artist: "Coldplay", theme: "Hits 2000s", votes: 0 },
+            { id: 308, title: "This Love", artist: "Maroon 5", theme: "Hits 2000s", votes: 0 },
+            { id: 309, title: "Low", artist: "Flo Rida", theme: "Hits 2000s", votes: 0 },
+            { id: 310, title: "Dynamite", artist: "Taio Cruz", theme: "Hits 2000s", votes: 0 },
+            { id: 311, title: "In My Head", artist: "Jason Derulo", theme: "Hits 2000s", votes: 0 },
+            { id: 312, title: "I Like It", artist: "Enrique Iglesias", theme: "Hits 2000s", votes: 0 },
+            { id: 313, title: "Wild Ones", artist: "Flo Rida ft. Sia", theme: "Hits 2000s", votes: 0 },
+            { id: 314, title: "Tik Tok", artist: "Kesha", theme: "Hits 2000s", votes: 0 },
+            { id: 315, title: "SexyBack", artist: "Justin Timberlake", theme: "Hits 2000s", votes: 0 },
+            { id: 316, title: "Jenny from the Block", artist: "Jennifer Lopez", theme: "Hits 2000s", votes: 0 },
+            { id: 317, title: "Family Affair", artist: "Mary J. Blige", theme: "Hits 2000s", votes: 0 },
+
+            // --- HITS 2010s ---
+            { id: 318, title: "Titanium", artist: "David Guetta", theme: "Hits 2010s", votes: 0 },
+            { id: 319, title: "Poker Face", artist: "Lady Gaga", theme: "Hits 2010s", votes: 0 },
+            { id: 320, title: "Only Girl", artist: "Rihanna", theme: "Hits 2010s", votes: 0 },
+            { id: 321, title: "Shape of You", artist: "Ed Sheeran", theme: "Hits 2010s", votes: 0 },
+            { id: 322, title: "Uptown Funk", artist: "Mark Ronson", theme: "Hits 2010s", votes: 0 },
+            { id: 323, title: "Happy", artist: "Pharrell Williams", theme: "Hits 2010s", votes: 0 },
+            { id: 324, title: "Lean On", artist: "Major Lazer", theme: "Hits 2010s", votes: 0 },
+            { id: 325, title: "Firestone", artist: "Kygo", theme: "Hits 2010s", votes: 0 },
+            { id: 326, title: "Clarity", artist: "Zedd", theme: "Hits 2010s", votes: 0 },
+            { id: 327, title: "Animals", artist: "Martin Garrix", theme: "Hits 2010s", votes: 0 },
+            { id: 328, title: "Ocean Drive", artist: "Duke Dumont", theme: "Hits 2010s", votes: 0 },
+            { id: 329, title: "Rather Be", artist: "Clean Bandit", theme: "Hits 2010s", votes: 0 },
+            { id: 330, title: "Latch", artist: "Disclosure", theme: "Hits 2010s", votes: 0 },
+            { id: 331, title: "Wake Me Up", artist: "Avicii", theme: "Hits 2010s", votes: 0 },
+            { id: 332, title: "This Is What You Came For", artist: "Calvin Harris", theme: "Hits 2010s", votes: 0 },
+            { id: 333, title: "Get Lucky", artist: "Daft Punk", theme: "Hits 2010s", votes: 0 },
+            { id: 334, title: "Prayer in C", artist: "Robin Schulz", theme: "Hits 2010s", votes: 0 },
+            { id: 335, title: "Closer", artist: "The Chainsmokers", theme: "Hits 2010s", votes: 0 },
+            { id: 336, title: "Let Me Love You", artist: "DJ Snake", theme: "Hits 2010s", votes: 0 },
+            { id: 337, title: "Alone", artist: "Marshmello", theme: "Hits 2010s", votes: 0 },
+            { id: 338, title: "Lush Life", artist: "Zara Larsson", theme: "Hits 2010s", votes: 0 },
+            { id: 339, title: "Faded", artist: "Alan Walker", theme: "Hits 2010s", votes: 0 },
+            { id: 340, title: "Fast Car", artist: "Jonas Blue", theme: "Hits 2010s", votes: 0 },
+            { id: 341, title: "Easy Love", artist: "Sigala", theme: "Hits 2010s", votes: 0 },
+            { id: 342, title: "Runaway (U & I)", artist: "Galantis", theme: "Hits 2010s", votes: 0 },
+            { id: 343, title: "This Girl", artist: "Kungs", theme: "Hits 2010s", votes: 0 },
+            { id: 344, title: "Feel So Close", artist: "Calvin Harris", theme: "Hits 2010s", votes: 0 },
+            { id: 345, title: "Stole the Show", artist: "Kygo", theme: "Hits 2010s", votes: 0 },
+            { id: 654, title: "Barbra Streisand", artist: "Duck Sauce", theme: "Hits 2010s", votes: 0 },
+            { id: 655, title: "Club Can’t Handle Me", artist: "Flo Rida", theme: "Hits 2010s", votes: 0 },
+            { id: 656, title: "DJ Got Us Fallin’ In Love", artist: "Usher", theme: "Hits 2010s", votes: 0 },
+            { id: 657, title: "Empire State of Mind", artist: "Jay-Z & Alicia Keys", theme: "Hits 2010s", votes: 0 },
+            { id: 658, title: "On The Floor", artist: "Jennifer Lopez", theme: "Hits 2010s", votes: 0 },
+            { id: 659, title: "Mr. Saxobeat", artist: "Alexandra Stan", theme: "Hits 2010s", votes: 0 },
+            { id: 660, title: "Rolling In The Deep", artist: "Adele", theme: "Hits 2010s", votes: 0 },
+            { id: 661, title: "Sexy And I Know It", artist: "LMFAO", theme: "Hits 2010s", votes: 0 },
+            { id: 662, title: "Call Me Maybe", artist: "Carly Rae Jepsen", theme: "Hits 2010s", votes: 0 },
+            { id: 663, title: "Starships", artist: "Nicki Minaj", theme: "Hits 2010s", votes: 0 },
+            { id: 664, title: "Gangnam Style", artist: "PSY", theme: "Hits 2010s", votes: 0 },
+            { id: 665, title: "Balada", artist: "Gusttavo Lima", theme: "Hits 2010s", votes: 0 },
+            { id: 666, title: "Turn Me On", artist: "David Guetta ft. Nicki Minaj", theme: "Hits 2010s", votes: 0 },
+            { id: 667, title: "Diamonds", artist: "Rihanna", theme: "Hits 2010s", votes: 0 },
+            { id: 668, title: "Blurred Lines", artist: "Robin Thicke", theme: "Hits 2010s", votes: 0 },
+            { id: 669, title: "Can’t Hold Us", artist: "Macklemore & Ryan Lewis", theme: "Hits 2010s", votes: 0 },
+            { id: 670, title: "Timber", artist: "Pitbull ft. Kesha", theme: "Hits 2010s", votes: 0 },
+            { id: 671, title: "Treasure", artist: "Bruno Mars", theme: "Hits 2010s", votes: 0 },
+            { id: 672, title: "Shake It Off", artist: "Taylor Swift", theme: "Hits 2010s", votes: 0 },
+            { id: 673, title: "All About That Bass", artist: "Meghan Trainor", theme: "Hits 2010s", votes: 0 },
+            { id: 674, title: "Cheerleader (Remix)", artist: "OMI", theme: "Hits 2010s", votes: 0 },
+            { id: 675, title: "Sugar", artist: "Maroon 5", theme: "Hits 2010s", votes: 0 },
+            { id: 676, title: "Worth It", artist: "Fifth Harmony", theme: "Hits 2010s", votes: 0 },
+            { id: 677, title: "Rockstar", artist: "Post Malone", theme: "Hits 2010s", votes: 0 },
+            { id: 678, title: "Feels", artist: "Calvin Harris", theme: "Hits 2010s", votes: 0 },
+            { id: 679, title: "It Ain’t Me", artist: "Kygo", theme: "Hits 2010s", votes: 0 },
+            { id: 680, title: "Symphony", artist: "Clean Bandit", theme: "Hits 2010s", votes: 0 },
+            { id: 681, title: "What About Us", artist: "P!nk", theme: "Hits 2010s", votes: 0 },
+            { id: 682, title: "One Kiss", artist: "Calvin Harris & Dua Lipa", theme: "Hits 2010s", votes: 0 },
+            { id: 683, title: "Señorita", artist: "Shawn Mendes & Camila Cabello", theme: "Hits 2010s", votes: 0 },
+            { id: 684, title: "Old Town Road", artist: "Lil Nas X", theme: "Hits 2010s", votes: 0 },
+            { id: 685, title: "Bad Guy", artist: "Billie Eilish", theme: "Hits 2010s", votes: 0 },
+            { id: 686, title: "I Don’t Care", artist: "Ed Sheeran & Justin Bieber", theme: "Hits 2010s", votes: 0 },
+            { id: 687, title: "Memories", artist: "Maroon 5", theme: "Hits 2010s", votes: 0 },
+            { id: 688, title: "Higher Love", artist: "Kygo & Whitney Houston", theme: "Hits 2010s", votes: 0 },
+
+            // --- HITS 2020s ---
+            { id: 639, title: "APT.", artist: "ROSÉ & Bruno Mars", theme: "Hits 2020s", votes: 0 },
+            { id: 640, title: "DtMF", artist: "Bad Bunny", theme: "Hits 2020s", votes: 0 },
+            { id: 641, title: "BAILE INoLVIDABLE", artist: "Bad Bunny", theme: "Hits 2020s", votes: 0 },
+            { id: 642, title: "Cold Heart (Pnau Remix)", artist: "Elton John & Dua Lipa", theme: "Hits 2020s", votes: 0 },
+            { id: 643, title: "Flowers", artist: "Miley Cyrus", theme: "Hits 2020s", votes: 0 },
+            { id: 644, title: "Dance The Night", artist: "Dua Lipa", theme: "Hits 2020s", votes: 0 },
+            { id: 645, title: "Can’t Stop The Feeling", artist: "Justin Timberlake", theme: "Hits 2020s", votes: 0 },
+            { id: 646, title: "Levitating", artist: "Dua Lipa", theme: "Hits 2020s", votes: 0 },
+            { id: 647, title: "Stay", artist: "The Kid LAROI & Justin Bieber", theme: "Hits 2020s", votes: 0 },
+            { id: 648, title: "Pepas", artist: "Farruko", theme: "Hits 2020s", votes: 0 },
+            { id: 649, title: "Beggin’", artist: "Måneskin", theme: "Hits 2020s", votes: 0 },
+            { id: 650, title: "Shivers", artist: "Ed Sheeran", theme: "Hits 2020s", votes: 0 },
+            { id: 651, title: "Don’t Go Yet", artist: "Camila Cabello", theme: "Hits 2020s", votes: 0 },
+            { id: 652, title: "Calm Down", artist: "Rema", theme: "Hits 2020s", votes: 0 },
+            { id: 653, title: "Espresso", artist: "Sabrina Carpenter", theme: "Hits 2020s", votes: 0 },
+            { id: 346, title: "Don't Start Now", artist: "Dua Lipa", theme: "Hits 2020s", votes: 0 },
+            { id: 347, title: "Blinding Lights", artist: "The Weeknd", theme: "Hits 2020s", votes: 0 },
+            { id: 348, title: "Roses (Imanbek Remix)", artist: "SAINt JHN", theme: "Hits 2020s", votes: 0 },
+            { id: 349, title: "Head & Heart", artist: "Joel Corry", theme: "Hits 2020s", votes: 0 },
+            { id: 350, title: "Breaking Me", artist: "Topic", theme: "Hits 2020s", votes: 0 },
+            { id: 351, title: "Ride It", artist: "Regard", theme: "Hits 2020s", votes: 0 },
+            { id: 352, title: "Dynamite", artist: "BTS", theme: "Hits 2020s", votes: 0 },
+            { id: 353, title: "As It Was", artist: "Harry Styles", theme: "Hits 2020s", votes: 0 },
+            { id: 354, title: "Titi Me Preguntó", artist: "Bad Bunny", theme: "Hits 2020s", votes: 0 },
+            { id: 355, title: "Juro Que", artist: "Rosalía", theme: "Hits 2020s", votes: 0 },
+            { id: 356, title: "I'm Good (Blue)", artist: "David Guetta", theme: "Hits 2020s", votes: 0 },
+            { id: 357, title: "The Business", artist: "Tiësto", theme: "Hits 2020s", votes: 0 },
+            { id: 358, title: "Piece of Your Heart", artist: "Meduza", theme: "Hits 2020s", votes: 0 },
+            { id: 359, title: "Montero (Call Me by Your Name)", artist: "Lil Nas X", theme: "Hits 2020s", votes: 0 },
+            { id: 360, title: "Say So", artist: "Doja Cat", theme: "Hits 2020s", votes: 0 },
+            { id: 361, title: "Rain on Me", artist: "Lady Gaga", theme: "Hits 2020s", votes: 0 },
+            { id: 362, title: "I Wanna Be Your Slave", artist: "Måneskin", theme: "Hits 2020s", votes: 0 },
+            { id: 363, title: "Good 4 U", artist: "Olivia Rodrigo", theme: "Hits 2020s", votes: 0 },
+            { id: 364, title: "Therefore I Am", artist: "Billie Eilish", theme: "Hits 2020s", votes: 0 },
+            { id: 365, title: "Franchise", artist: "Travis Scott", theme: "Hits 2020s", votes: 0 },
+
+            // --- REGGAETON & LATIN ---
+            { id: 366, title: "Gasolina", artist: "Daddy Yankee", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 367, title: "Chantaje", artist: "Shakira", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 368, title: "Mi Gente", artist: "J Balvin", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 369, title: "Despacito", artist: "Luis Fonsi", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 370, title: "Dakiti", artist: "Bad Bunny", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 371, title: "Tusa", artist: "Karol G", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 372, title: "Baila Baila Baila", artist: "Ozuna", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 373, title: "Hawái", artist: "Maluma", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 374, title: "Con Altura", artist: "Rosalía", theme: "Reggaeton & Latin", votes: 0 },
+            { id: 375, title: "China", artist: "Anuel AA", theme: "Reggaeton & Latin", votes: 0 },
+
+            // --- HITS SOLEIL ---
+            { id: 376, title: "Jerusalema", artist: "Master KG", theme: "Hits Soleil", votes: 0 },
+            { id: 377, title: "C'est la vie", artist: "Khaled", theme: "Hits Soleil", votes: 0 },
+            { id: 378, title: "Danza Kuduro", artist: "Don Omar", theme: "Hits Soleil", votes: 0 },
+            { id: 379, title: "Waka Waka", artist: "Shakira", theme: "Hits Soleil", votes: 0 },
+            { id: 380, title: "Bailando", artist: "Enrique Iglesias", theme: "Hits Soleil", votes: 0 },
+            { id: 381, title: "El Perdón", artist: "Nicky Jam", theme: "Hits Soleil", votes: 0 },
+            { id: 382, title: "La Gozadera", artist: "Gente de Zona", theme: "Hits Soleil", votes: 0 },
+            { id: 383, title: "Subeme la Radio", artist: "Enrique Iglesias", theme: "Hits Soleil", votes: 0 },
+            { id: 384, title: "Taki Taki", artist: "DJ Snake", theme: "Hits Soleil", votes: 0 },
+            { id: 385, title: "Calma (Remix)", artist: "Pedro Capó", theme: "Hits Soleil", votes: 0 },
+            { id: 386, title: "Con Calma", artist: "Daddy Yankee", theme: "Hits Soleil", votes: 0 },
+            { id: 387, title: "Obsesión", artist: "Aventura", theme: "Hits Soleil", votes: 0 },
+            { id: 388, title: "Maldòn", artist: "Zouk Machine", theme: "Hits Soleil", votes: 0 },
+            { id: 389, title: "Kolé séré", artist: "Philippe Lavil", theme: "Hits Soleil", votes: 0 },
+            { id: 390, title: "Angela", artist: "Saïan Supa Crew", theme: "Hits Soleil", votes: 0 },
+            { id: 391, title: "Les Sunlights des Tropiques", artist: "Gilbert Montagné", theme: "Hits Soleil", votes: 0 },
+            { id: 392, title: "Flamme", artist: "Slaï", theme: "Hits Soleil", votes: 0 },
+            { id: 393, title: "Enamórame", artist: "Papi Sánchez", theme: "Hits Soleil", votes: 0 },
+            { id: 394, title: "Petites îles", artist: "Neg' Marrons", theme: "Hits Soleil", votes: 0 },
+            { id: 395, title: "Temperature", artist: "Sean Paul", theme: "Hits Soleil", votes: 0 },
+            { id: 396, title: "Cheap Thrills", artist: "Sia", theme: "Hits Soleil", votes: 0 },
+            { id: 397, title: "One Dance", artist: "Drake", theme: "Hits Soleil", votes: 0 },
+            { id: 398, title: "Sorry", artist: "Justin Bieber", theme: "Hits Soleil", votes: 0 },
+            { id: 399, title: "Havana", artist: "Camila Cabello", theme: "Hits Soleil", votes: 0 },
+            { id: 400, title: "Bum Bum Tam Tam", artist: "MC Fioti", theme: "Hits Soleil", votes: 0 },
+            { id: 401, title: "Safari", artist: "J Balvin", theme: "Hits Soleil", votes: 0 },
+            { id: 402, title: "Gyal You a Party Animal", artist: "Charly Black", theme: "Hits Soleil", votes: 0 },
+            { id: 403, title: "Te Boté", artist: "Nio García", theme: "Hits Soleil", votes: 0 },
+            { id: 404, title: "X (Equis)", artist: "Nicky Jam", theme: "Hits Soleil", votes: 0 },
+            { id: 405, title: "Felices los 4", artist: "Maluma", theme: "Hits Soleil", votes: 0 },
+            { id: 406, title: "Vivir Mi Vida", artist: "Marc Anthony", theme: "Hits Soleil", votes: 0 },
+            { id: 407, title: "Bailar", artist: "Deorro", theme: "Hits Soleil", votes: 0 },
+            { id: 408, title: "El Taxi", artist: "Osmani Garcia", theme: "Hits Soleil", votes: 0 },
+            { id: 409, title: "Ginza", artist: "J Balvin", theme: "Hits Soleil", votes: 0 },
+            { id: 410, title: "Duele el Corazón", artist: "Enrique Iglesias", theme: "Hits Soleil", votes: 0 },
+            { id: 411, title: "Reggaetón Lento (Bailemos)", artist: "CNCO", theme: "Hits Soleil", votes: 0 },
+            { id: 412, title: "Je vais à Rio", artist: "Claude François", theme: "Hits Soleil", votes: 0 },
+            { id: 413, title: "Could You Be Loved", artist: "Bob Marley", theme: "Hits Soleil", votes: 0 },
+            { id: 414, title: "L'amour à la plage", artist: "Niagara", theme: "Hits Soleil", votes: 0 },
+            { id: 415, title: "Un, Dos, Tres, Maria", artist: "Ricky Martin", theme: "Hits Soleil", votes: 0 },
+            { id: 416, title: "Macumba", artist: "Jean-Pierre Mader", theme: "Hits Soleil", votes: 0 },
+            { id: 417, title: "Macarena", artist: "Los Del Rio", theme: "Hits Soleil", votes: 0 },
+            { id: 418, title: "Mambo No. 5", artist: "Lou Bega", theme: "Hits Soleil", votes: 0 },
+            { id: 419, title: "Paris Latino", artist: "Bandolero", theme: "Hits Soleil", votes: 0 },
+            { id: 420, title: "J'veux du soleil", artist: "Au P'tit Bonheur", theme: "Hits Soleil", votes: 0 },
+            { id: 421, title: "Is This Love", artist: "Bob Marley", theme: "Hits Soleil", votes: 0 },
+            { id: 422, title: "Samba de Janeiro", artist: "Bellini", theme: "Hits Soleil", votes: 0 },
+            { id: 423, title: "Soca Dance", artist: "Charles D. Lewis", theme: "Hits Soleil", votes: 0 },
+            { id: 424, title: "Bamboleo", artist: "Gipsy Kings", theme: "Hits Soleil", votes: 0 },
+            { id: 425, title: "Alane", artist: "Wes", theme: "Hits Soleil", votes: 0 },
+            { id: 426, title: "Vamos a la Playa", artist: "Righeira", theme: "Hits Soleil", votes: 0 },
+            { id: 427, title: "You'll Be Mine (Party Time)", artist: "Gloria Estefan", theme: "Hits Soleil", votes: 0 },
+            { id: 428, title: "Yaka Dansé", artist: "Raft", theme: "Hits Soleil", votes: 0 },
+            { id: 429, title: "Don't Let Me Be Misunderstood", artist: "Santa Esmeralda", theme: "Hits Soleil", votes: 0 },
+            { id: 430, title: "Gimme Hope Jo'Anna", artist: "Eddy Grant", theme: "Hits Soleil", votes: 0 },
+            { id: 431, title: "Yé Ké Yé Ké", artist: "Mory Kanté", theme: "Hits Soleil", votes: 0 },
+            { id: 432, title: "Club Tropicana", artist: "Wham!", theme: "Hits Soleil", votes: 0 },
+            { id: 433, title: "Cuba", artist: "Gibson Brothers", theme: "Hits Soleil", votes: 0 },
+            { id: 434, title: "Amor de Mis Amores", artist: "Paco", theme: "Hits Soleil", votes: 0 },
+
+            // --- ÉLECTRO / CLUB ---
+            { id: 435, title: "Save the World", artist: "Swedish House Mafia", theme: "Électro / Club", votes: 0 },
+            { id: 436, title: "Hey Brother", artist: "Avicii", theme: "Électro / Club", votes: 0 },
+            { id: 437, title: "Stay the Night", artist: "Zedd", theme: "Électro / Club", votes: 0 },
+            { id: 438, title: "Hear Me Now", artist: "Alok", theme: "Électro / Club", votes: 0 },
+            { id: 439, title: "Hello", artist: "Martin Solveig", theme: "Électro / Club", votes: 0 },
+            { id: 440, title: "Take Over Control", artist: "Afrojack", theme: "Électro / Club", votes: 0 },
+            { id: 441, title: "Boneless", artist: "Steve Aoki", theme: "Électro / Club", votes: 0 },
+            { id: 442, title: "You Don't Know Me", artist: "Armand Van Helden", theme: "Électro / Club", votes: 0 },
+            { id: 443, title: "Where's Your Head At", artist: "Basement Jaxx", theme: "Électro / Club", votes: 0 },
+            { id: 444, title: "Go", artist: "Moby", theme: "Électro / Club", votes: 0 },
+            { id: 445, title: "God Is a DJ", artist: "Faithless", theme: "Électro / Club", votes: 0 },
+            { id: 446, title: "Southern Sun", artist: "Paul Oakenfold", theme: "Électro / Club", votes: 0 },
+            
+            // --- ROCK N' ROLL & SOUL ---
+            { id: 447, title: "In the Mood", artist: "Glenn Miller and His Orchestra", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 448, title: "Blue Suede Shoes", artist: "Elvis Presley", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 449, title: "What'd I Say", artist: "Ray Charles", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 450, title: "Green Onions", artist: "Booker T. & The M.G.'s", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 451, title: "Just a Gigolo / I Ain't Got Nobody", artist: "David Lee Roth", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 452, title: "La Bamba", artist: "Los Lobos", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 453, title: "Rock Around The Clock", artist: "Valentin Asenov", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 454, title: "Let's Twist Again", artist: "Chubby Checker", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 455, title: "Les cactus", artist: "Jacques Dutronc", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 456, title: "Et moi, et moi, et moi", artist: "Jacques Dutronc", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 457, title: "Respect", artist: "Aretha Franklin", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 458, title: "Gimme Some Lovin'", artist: "The Spencer Davis Group", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 459, title: "Think", artist: "Aretha Franklin", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 460, title: "Jumpin' Jack Flash", artist: "The Rolling Stones", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 461, title: "Get Back", artist: "The Beatles", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 462, title: "Bad Moon Rising", artist: "Creedence Clearwater Revival", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 463, title: "Proud Mary", artist: "Creedence Clearwater Revival", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 464, title: "Green River", artist: "Creedence Clearwater Revival", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 465, title: "Sugar, Sugar", artist: "The Archies", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 466, title: "Surfin' U.S.A.", artist: "The Beach Boys", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 467, title: "Da Doo Ron Ron", artist: "The Crystals", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 468, title: "Memphis", artist: "Johnny Rivers", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 469, title: "Twist and Shout", artist: "The Beatles", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 470, title: "Papa's Got a Brand New Bag", artist: "James Brown", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 471, title: "California Dreamin'", artist: "The Mamas & The Papas", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 472, title: "Good Vibrations", artist: "The Beach Boys", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 473, title: "You Keep Me Hangin' On", artist: "The Supremes", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 474, title: "Black Is Black", artist: "Los Bravos", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 475, title: "Light My Fire", artist: "The Doors", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 476, title: "Soul Man", artist: "Sam & Dave", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 477, title: "Can't Take My Eyes Off You", artist: "Frankie Valli", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 478, title: "Sunny", artist: "Bobby Hebb", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 479, title: "Take Five", artist: "Dave Brubeck", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 480, title: "Shout", artist: "Lulu & The Luvvers", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 481, title: "Rum & Coca Cola", artist: "The Andrews Sisters", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 482, title: "Rock-A-Bye Your Baby With a Dixie Melody", artist: "Al Jolson", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 483, title: "Don't Be That Way", artist: "Benny Goodman", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 484, title: "Goody Goody", artist: "Benny Goodman", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 485, title: "Mambo italiano", artist: "Rosemary Clooney", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 486, title: "Le lundi au soleil", artist: "Claude François", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 487, title: "Knock On Wood", artist: "Eddie Floyd", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 488, title: "Cette année-là", artist: "Claude François", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 489, title: "Noir c'est noir", artist: "Johnny Hallyday", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 490, title: "Paint It, Black", artist: "The Rolling Stones", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 491, title: "Twist à Saint-Tropez", artist: "Dick Rivers", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 492, title: "Dactylo Rock", artist: "Les Chaussettes Noires", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 493, title: "Peggy Sue", artist: "Buddy Holly", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 494, title: "La Bamba", artist: "Ritchie Valens", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 495, title: "Daniela", artist: "Les Chaussettes Noires", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 496, title: "Mirza", artist: "Nino Ferrer", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 497, title: "Buena Sera", artist: "Louis Prima", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 498, title: "Just a Gigolo", artist: "Louis Prima", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 499, title: "Baby Love", artist: "The Supremes", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 500, title: "Everybody Needs Somebody to Love", artist: "Solomon Burke", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 501, title: "California Girls", artist: "The Beach Boys", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 502, title: "Jailhouse Rock", artist: "Elvis Presley", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 503, title: "Hold On, I'm Comin'", artist: "Sam & Dave", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 504, title: "Hound Dog", artist: "Elvis Presley", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 505, title: "Johnny B. Goode", artist: "Chuck Berry", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 506, title: "Tutti Frutti", artist: "Little Richard", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 507, title: "Maybellene", artist: "Chuck Berry", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 508, title: "Heartbreak Hotel", artist: "Elvis Presley", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 509, title: "Great Balls Of Fire", artist: "Jerry Lee Lewis", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 510, title: "Long Tall Sally", artist: "Little Richard", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 511, title: "Lucille", artist: "Little Richard", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 512, title: "Shake, Rattle and Roll", artist: "Bill Haley and His Comets", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 513, title: "Sweet Little Sixteen", artist: "Chuck Berry", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 514, title: "Whole Lotta Shakin' Going On", artist: "Jerry Lee Lewis", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 515, title: "C’Mon Everybody", artist: "Eddie Cochran", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 516, title: "Don't Be Cruel", artist: "Elvis Presley", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 517, title: "Be-Bop-a-Lula", artist: "Gene Vincent", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 518, title: "Good Golly Miss Molly", artist: "Little Richard", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 519, title: "Grease", artist: "Frankie Valli", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 520, title: "Your Song", artist: "Billy Paul", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 521, title: "You Can't Hurry Love", artist: "The Supremes", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 522, title: "Born to Be Wild", artist: "Steppenwolf", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 523, title: "Susie Q.", artist: "Creedence Clearwater Revival", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 524, title: "Jimmy Mack", artist: "Martha Reeves & The Vandellas", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 525, title: "Venus", artist: "Shocking Blue", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 526, title: "Spirit In the Sky", artist: "Norman Greenbaum", theme: "Rock n' Roll & Soul", votes: 0 },
+            { id: 527, title: "Eloise", artist: "Barry Ryan", theme: "Rock n' Roll & Soul", votes: 0 },
+            
+            // --- POP ROCK ---
+            { id: 528, title: "Enjoy the Silence", artist: "Depeche Mode", theme: "Pop Rock", votes: 0 },
+            { id: 529, title: "Tainted Love", artist: "Soft Cell", theme: "Pop Rock", votes: 0 },
+            { id: 530, title: "Relax", artist: "Frankie Goes to Hollywood", theme: "Pop Rock", votes: 0 },
+            { id: 531, title: "London Calling", artist: "The Clash", theme: "Pop Rock", votes: 0 },
+            { id: 532, title: "Why ?", artist: "Bronski Beat", theme: "Pop Rock", votes: 0 },
+            { id: 533, title: "Smalltown Boy", artist: "Bronski Beat", theme: "Pop Rock", votes: 0 },
+            { id: 534, title: "99 Luftballons", artist: "Nena", theme: "Pop Rock", votes: 0 },
+            { id: 535, title: "In Between Days", artist: "The Cure", theme: "Pop Rock", votes: 0 },
+            { id: 536, title: "Enola Gay", artist: "Orchestral Manoeuvres In the Dark", theme: "Pop Rock", votes: 0 },
+            { id: 537, title: "L'aventurier", artist: "Indochine", theme: "Pop Rock", votes: 0 },
+            { id: 538, title: "Long Train Running", artist: "Traks", theme: "Pop Rock", votes: 0 },
+            { id: 539, title: "Sweet Dreams (Are Made of This)", artist: "Eurythmics", theme: "Pop Rock", votes: 0 },
+            { id: 540, title: "Another Brick In the Wall, Pt. 2", artist: "Pink Floyd", theme: "Pop Rock", votes: 0 },
+            { id: 541, title: "Boys Don't Cry", artist: "The Cure", theme: "Pop Rock", votes: 0 },
+            { id: 542, title: "Highway to Hell", artist: "AC/DC", theme: "Pop Rock", votes: 0 },
+            { id: 543, title: "I Love Rock 'N' Roll", artist: "Joan Jett & The Blackhearts", theme: "Pop Rock", votes: 0 },
+            { id: 544, title: "J'ai Vu", artist: "Niagara", theme: "Pop Rock", votes: 0 },
+            { id: 545, title: "Pride (In the Name of Love)", artist: "U2", theme: "Pop Rock", votes: 0 },
+            { id: 546, title: "Seven Nation Army", artist: "The White Stripes", theme: "Pop Rock", votes: 0 },
+            { id: 547, title: "Sunday Bloody Sunday", artist: "U2", theme: "Pop Rock", votes: 0 },
+            { id: 548, title: "Take Me Out", artist: "Franz Ferdinand", theme: "Pop Rock", votes: 0 },
+            { id: 549, title: "Shout", artist: "Tears for Fears", theme: "Pop Rock", votes: 0 },
+            { id: 550, title: "Just Can't Get Enough", artist: "Depeche Mode", theme: "Pop Rock", votes: 0 },
+            { id: 551, title: "Everybody Wants to Rule the World", artist: "Tears for Fears", theme: "Pop Rock", votes: 0 },
+            { id: 552, title: "Don't You (Forget About Me)", artist: "Simple Minds", theme: "Pop Rock", votes: 0 },
+            { id: 553, title: "Let's Dance", artist: "David Bowie", theme: "Pop Rock", votes: 0 },
+            { id: 554, title: "Need You Tonight", artist: "INXS", theme: "Pop Rock", votes: 0 },
+            { id: 555, title: "Kiss", artist: "Prince & The Revolution", theme: "Pop Rock", votes: 0 },
+            { id: 556, title: "Take On Me", artist: "a-ha", theme: "Pop Rock", votes: 0 },
+            { id: 557, title: "Heart of Glass", artist: "Blondie", theme: "Pop Rock", votes: 0 },
+            { id: 558, title: "Under Pressure", artist: "Queen & David Bowie", theme: "Pop Rock", votes: 0 },
+            { id: 559, title: "I'm Still Standing", artist: "Elton John", theme: "Pop Rock", votes: 0 },
+            { id: 560, title: "Video Killed the Radio Star", artist: "The Buggles", theme: "Pop Rock", votes: 0 },
+            { id: 561, title: "One Step Beyond", artist: "Madness", theme: "Pop Rock", votes: 0 },
+            { id: 562, title: "I Will Survive", artist: "Gloria Gaynor", theme: "Pop Rock", votes: 0 },
+            { id: 563, title: "Love You Madly", artist: "CAKE", theme: "Pop Rock", votes: 0 },
+            { id: 564, title: "Viva la Vida", artist: "Coldplay", theme: "Pop Rock", votes: 0 },
+            { id: 565, title: "Creep", artist: "Radiohead", theme: "Pop Rock", votes: 0 },
+            { id: 566, title: "Banquet", artist: "Bloc Party", theme: "Pop Rock", votes: 0 },
+            { id: 567, title: "Song 2", artist: "Blur", theme: "Pop Rock", votes: 0 },
+            { id: 568, title: "Girls and Boys", artist: "Blur", theme: "Pop Rock", votes: 0 },
+            { id: 569, title: "Paint It, Black", artist: "The Rolling Stones", theme: "Pop Rock", votes: 0 },
+            { id: 570, title: "Start Me Up", artist: "The Rolling Stones", theme: "Pop Rock", votes: 0 },
+            { id: 571, title: "Wonderwall", artist: "Oasis", theme: "Pop Rock", votes: 0 },
+            { id: 572, title: "Town Called Malice", artist: "The Jam", theme: "Pop Rock", votes: 0 },
+            { id: 573, title: "Charmless Man", artist: "Blur", theme: "Pop Rock", votes: 0 },
+            { id: 574, title: "Mr. Brightside", artist: "The Killers", theme: "Pop Rock", votes: 0 },
+            { id: 575, title: "No Fun", artist: "The Stooges", theme: "Pop Rock", votes: 0 },
+            { id: 576, title: "Sex on Fire", artist: "Kings of Leon", theme: "Pop Rock", votes: 0 },
+            { id: 577, title: "Fortunate Son", artist: "Creedence Clearwater Revival", theme: "Pop Rock", votes: 0 },
+            { id: 578, title: "Born to Be Wild", artist: "Steppenwolf", theme: "Pop Rock", votes: 0 },
+            { id: 579, title: "Jump", artist: "Van Halen", theme: "Pop Rock", votes: 0 },
+            { id: 580, title: "Don't Stop Me Now", artist: "Queen", theme: "Pop Rock", votes: 0 },
+            { id: 581, title: "Sweet Home Alabama", artist: "Lynyrd Skynyrd", theme: "Pop Rock", votes: 0 },
+            { id: 582, title: "Long Train Runnin'", artist: "The Doobie Brothers", theme: "Pop Rock", votes: 0 },
+            { id: 583, title: "Crocodile Rock", artist: "Elton John", theme: "Pop Rock", votes: 0 },
+            { id: 584, title: "Killing In the Name", artist: "Rage Against the Machine", theme: "Pop Rock", votes: 0 },
+            { id: 585, title: "Smells Like Teen Spirit", artist: "Nirvana", theme: "Pop Rock", votes: 0 },
+            { id: 586, title: "Under the Bridge", artist: "Red Hot Chili Peppers", theme: "Pop Rock", votes: 0 },
+            { id: 587, title: "Bohemian Rhapsody", artist: "Queen", theme: "Pop Rock", votes: 0 },
+            { id: 588, title: "La Grange", artist: "ZZ Top", theme: "Pop Rock", votes: 0 },
+            { id: 589, title: "Roxanne", artist: "The Police", theme: "Pop Rock", votes: 0 },
+            { id: 590, title: "Sultans Of Swing", artist: "Dire Straits", theme: "Pop Rock", votes: 0 },
+            { id: 591, title: "Back In Black", artist: "AC/DC", theme: "Pop Rock", votes: 0 },
+            { id: 592, title: "Losing My Religion", artist: "R.E.M.", theme: "Pop Rock", votes: 0 },
+            { id: 593, title: "The Logical Song", artist: "Supertramp", theme: "Pop Rock", votes: 0 },
+            { id: 594, title: "Hold the Line", artist: "Toto", theme: "Pop Rock", votes: 0 },
+            { id: 595, title: "Hysteria", artist: "Muse", theme: "Pop Rock", votes: 0 },
+            { id: 596, title: "You Really Got Me", artist: "The Kinks", theme: "Pop Rock", votes: 0 },
+            { id: 597, title: "Smoke on the Water", artist: "Deep Purple", theme: "Pop Rock", votes: 0 },
+            { id: 598, title: "Born to Run", artist: "Bruce Springsteen", theme: "Pop Rock", votes: 0 },
+            { id: 599, title: "Are You Gonna Go My Way", artist: "Lenny Kravitz", theme: "Pop Rock", votes: 0 },
+            { id: 600, title: "Owner of a Lonely Heart", artist: "Yes", theme: "Pop Rock", votes: 0 },
+            { id: 601, title: "Every You Every Me", artist: "Placebo", theme: "Pop Rock", votes: 0 },
+            { id: 602, title: "A Kind of Magic", artist: "Queen", theme: "Pop Rock", votes: 0 },
+            { id: 603, title: "Another One Bites the Dust", artist: "Queen Factory", theme: "Pop Rock", votes: 0 },
+            { id: 604, title: "We Are The Champions", artist: "Queen", theme: "Pop Rock", votes: 0 },
+            { id: 605, title: "With or Without You", artist: "U2", theme: "Pop Rock", votes: 0 },
+            { id: 606, title: "Desire", artist: "U2", theme: "Pop Rock", votes: 0 },
+            { id: 607, title: "New Year's Day", artist: "U2", theme: "Pop Rock", votes: 0 },
+            { id: 608, title: "Gimme All Your Lovin'", artist: "ZZ Top", theme: "Pop Rock", votes: 0 },
+            { id: 609, title: "The Final Countdown", artist: "Europe", theme: "Pop Rock", votes: 0 },
+            { id: 610, title: "It's Raining Men", artist: "The Weather Girls", theme: "Pop Rock", votes: 0 },
+            { id: 611, title: "Africa", artist: "Toto", theme: "Pop Rock", votes: 0 },
+            { id: 612, title: "I Want To Break Free", artist: "Queen", theme: "Pop Rock", votes: 0 },
+            { id: 613, title: "Footloose", artist: "Kenny Loggins", theme: "Pop Rock", votes: 0 },
+            { id: 614, title: "Blue Monday", artist: "New Order", theme: "Pop Rock", votes: 0 },
+            { id: 615, title: "Maniac", artist: "Michael Sembello", theme: "Pop Rock", votes: 0 },
+            { id: 616, title: "China Girl", artist: "David Bowie", theme: "Pop Rock", votes: 0 },
+            { id: 617, title: "Da Ya Think I'm Sexy?", artist: "Rod Stewart", theme: "Pop Rock", votes: 0 },
+            { id: 618, title: "Bad News", artist: "Moon Martin", theme: "Pop Rock", votes: 0 }
+        ];
+        // ==========================================
+
+        // --- 2. ÉTAT GLOBAL ---
+        let state = {
+            songs: [], 
+            view: 'login', // 'login', 'user', 'adminLogin', 'admin', 'qrcode', 'monitor'
+            selectedTheme: 'Tous',
+            searchQuery: '',
+            userVotes: {}, 
+            totalUserVotes: 0, 
+            loginError: '',
+            guestCode: 'FIESTA'
+        };
+
+        // ==========================================
+        // 🚀 SIMULATION DU SERVEUR (Synchronisation entre onglets)
+        // ==========================================
+        function loadServerData() {
+            try {
+                const savedSongs = localStorage.getItem('dj_songs');
+                if (savedSongs) {
+                    const parsedSongs = JSON.parse(savedSongs);
+                    // Vérification de sécurité anti-crash (écran noir)
+                    if (Array.isArray(parsedSongs)) {
+                        if (parsedSongs.length !== initialSongs.length) {
+                            // On récupère les anciens votes
+                            const oldVotes = {};
+                            parsedSongs.forEach(s => { 
+                                if (s && s.id) oldVotes[s.id] = s.votes || 0; 
+                            });
+                            
+                            // On recrée la liste complète avec les nouvelles chansons tout en gardant les anciens votes
+                            state.songs = JSON.parse(JSON.stringify(initialSongs)).map(song => {
+                                if (oldVotes[song.id]) {
+                                    song.votes = oldVotes[song.id];
+                                }
+                                return song;
+                            });
+                            saveServerData(); // On met à jour la sauvegarde
+                        } else {
+                            state.songs = parsedSongs;
+                        }
+                    } else {
+                        state.songs = JSON.parse(JSON.stringify(initialSongs));
+                    }
+                } else {
+                    state.songs = JSON.parse(JSON.stringify(initialSongs)); 
+                }
+
+                const savedCode = localStorage.getItem('dj_guestCode');
+                if (savedCode) {
+                    state.guestCode = savedCode;
+                }
+                
+                const savedUserVotes = localStorage.getItem('dj_userVotes');
+                if (savedUserVotes) {
+                    state.userVotes = JSON.parse(savedUserVotes);
+                    state.totalUserVotes = Object.values(state.userVotes).reduce((a, b) => a + b, 0);
+                } else {
+                    state.userVotes = {};
+                    state.totalUserVotes = 0;
+                }
+            } catch (error) {
+                console.error("Erreur de mémoire cache. Restauration des données par défaut...", error);
+                state.songs = JSON.parse(JSON.stringify(initialSongs)); 
+                state.userVotes = {};
+                state.totalUserVotes = 0;
+            }
+            
+            // Filet de sécurité absolu
+            if (!Array.isArray(state.songs)) {
+                state.songs = JSON.parse(JSON.stringify(initialSongs));
+            }
+        }
+
+        function saveServerData() {
+            try {
+                localStorage.setItem('dj_songs', JSON.stringify(state.songs));
+                localStorage.setItem('dj_guestCode', state.guestCode);
+                localStorage.setItem('dj_userVotes', JSON.stringify(state.userVotes));
+            } catch (error) {
+                console.error("Erreur de sauvegarde locale", error);
+            }
+        }
+
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'dj_songs' || e.key === 'dj_guestCode') {
+                loadServerData();
+                render(); 
+            }
+        });
+
+        loadServerData();
+
+        // --- 3. ACTIONS ---
+        function checkGuestLogin(event) {
+            event.preventDefault();
+            const input = document.getElementById('guestPass').value.toUpperCase();
+            if (input === state.guestCode) {
+                state.view = 'user';
+                state.loginError = '';
+            } else {
+                state.loginError = 'Code de la soirée incorrect ou expiré !';
+            }
+            render();
+        }
+
+        function checkAdminLogin(event) {
+            event.preventDefault();
+            const input = document.getElementById('adminPass').value.toUpperCase();
+            if (input === PASS_ADMIN) {
+                state.view = 'admin';
+                state.loginError = '';
+            } else {
+                state.loginError = 'Code DJ incorrect !';
+            }
+            render();
+        }
+
+        function updateGuestCode() {
+            const newCode = document.getElementById('newGuestCode').value.toUpperCase().trim();
+            if (newCode) {
+                state.guestCode = newCode;
+                saveServerData(); 
+                alert('Le mot de passe de la soirée a été changé en : ' + newCode + '\n(Le QR Code géant reste le même !)');
+                render();
+            }
+        }
+
+        function resetVotes() {
+            if (confirm("⚠️ Êtes-vous sûr de vouloir effacer tous les votes ? Cela remettra toutes les musiques à zéro pour la prochaine soirée.")) {
+                state.songs = JSON.parse(JSON.stringify(initialSongs)); 
+                saveServerData(); 
+                render();
+            }
+        }
+
+        function toggleQRCode() {
+            state.view = state.view === 'qrcode' ? 'admin' : 'qrcode';
+            render();
+        }
+
+        function toggleMonitor() {
+            state.view = state.view === 'monitor' ? 'admin' : 'monitor';
+            render();
+        }
+
+        function goTo(view) {
+            state.view = view;
+            state.loginError = '';
+            render();
+        }
+
+        function setTheme(theme) { state.selectedTheme = theme; render(); }
+        
+        function handleSearch(event) { 
+            state.searchQuery = event.target.value; 
+            
+            // Sauvegarde de la position du curseur pour éviter d'écrire "à l'envers"
+            const cursorPosition = event.target.selectionStart; 
+            
+            render(); 
+            
+            // On redonne le focus à la barre de recherche et on replace le curseur au bon endroit
+            const input = document.getElementById('searchInput');
+            if (input) {
+                input.focus();
+                input.setSelectionRange(cursorPosition, cursorPosition);
+            }
+        }
+
+        function vote(id) {
+            if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
+
+            const votesForSong = state.userVotes[id] || 0;
+            if (votesForSong >= MAX_VOTES_PER_SONG) return;
+
+            const songIndex = state.songs.findIndex(s => s.id === id);
+            if (songIndex !== -1) {
+                state.songs[songIndex].votes += 1;
+                state.userVotes[id] = votesForSong + 1;
+                state.totalUserVotes += 1;
+                
+                saveServerData(); 
+                render();
+            }
+        }
+
+        // --- 4. AFFICHAGE ---
+        function render() {
+            const root = document.getElementById('root');
+            if (!root) return;
+            
+            const qrUrl = encodeURIComponent("https://la-playlist-ideale.app"); // L'adresse pour les QR Codes
+            
+            // ÉCRAN PANNEAU QR CODE (GÉANT)
+            if (state.view === 'qrcode') {
+                root.innerHTML = `
+                    <div class="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 relative animate-fade-in">
+                        <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                            <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-brand/20 rounded-full blur-[120px]"></div>
+                            <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-dark/20 rounded-full blur-[120px]"></div>
+                        </div>
+
+                        <button onclick="toggleQRCode()" class="absolute top-6 right-6 md:top-10 md:right-10 text-white/50 hover:text-white transition-colors z-20 bg-slate-800/50 p-3 rounded-full backdrop-blur-md border border-white/10 hover:bg-slate-700/50">
+                            <i class="ph-bold ph-x text-2xl md:text-3xl"></i>
+                        </button>
+
+                        <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
+                            
+                            <!-- LOGO GÉANT -->
+                            <div class="flex items-center gap-4 justify-center mb-6 md:mb-10">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-24 md:h-32 object-contain drop-shadow-2xl" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
+                            </div>
+
+                            <h2 class="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-8 md:mb-12 tracking-tight">
+                                Flashez pour <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-brand-light">voter !</span>
+                            </h2>
+                            
+                            <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl mb-8 md:mb-12 mx-auto inline-block border-8 border-brand/50">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-64 h-64 md:w-96 md:h-96 rounded-xl">
+                            </div>
+
+                            <div class="bg-slate-900/80 backdrop-blur-xl border border-brand/20 py-6 px-10 md:py-8 md:px-16 rounded-3xl shadow-2xl inline-block">
+                                <p class="text-xl md:text-3xl text-brand-light mb-2">Code de la soirée :</p>
+                                <p class="text-5xl md:text-7xl font-black text-white tracking-widest">${state.guestCode}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // ÉCRAN CLASSEMENT PUBLIC (MONITEUR GÉANT - SANS SCROLL TOP 40)
+            if (state.view === 'monitor') {
+                const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
+                
+                root.innerHTML = `
+                    <div class="h-screen w-screen flex flex-col p-4 bg-slate-950 relative overflow-hidden animate-fade-in">
+                        <!-- Lumières d'ambiance dynamiques -->
+                        <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
+                            <div class="absolute top-[-20%] left-[10%] w-[40%] h-[50%] bg-brand/20 rounded-full blur-[150px]"></div>
+                            <div class="absolute bottom-[-10%] right-[10%] w-[30%] h-[60%] bg-blue-500/20 rounded-full blur-[150px]"></div>
+                        </div>
+
+                        <!-- Bouton Fermer (Caché, visible au survol dans le coin supérieur droit) -->
+                        <button onclick="toggleMonitor()" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-slate-800/50">
+                            <i class="ph-bold ph-x text-2xl"></i>
+                        </button>
+
+                        <!-- EN-TÊTE COMPACT AVEC QR CODE INTÉGRÉ -->
+                        <div class="relative z-10 flex justify-between items-center mb-4 px-2">
+                            <div class="flex items-center gap-4">
+                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-12 md:h-16 object-contain drop-shadow-2xl" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
+                                <h1 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-brand-light uppercase tracking-widest text-center">
+                                    VOTRE PLAYLIST IDÉALE
+                                </h1>
+                            </div>
+                            <!-- Bloc QR Code sur l'écran Monitor -->
+                            <div class="hidden md:flex items-center gap-3 bg-slate-900/80 backdrop-blur-md border border-brand/30 p-2 pr-6 rounded-2xl shadow-lg">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-16 h-16 rounded-xl bg-white p-1">
+                                <div class="flex flex-col justify-center">
+                                    <span class="text-lg font-bold text-white tracking-wide leading-tight">Flashez pour voter !</span>
+                                    <span class="text-sm font-medium text-brand-light mt-1">Code : <strong class="text-white">${state.guestCode}</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LA GRILLE DES RÉSULTATS (Top 40 en 4 colonnes de 10) -->
+                        <div class="relative z-10 flex-1 w-full bg-slate-900/40 backdrop-blur-xl border border-brand/20 rounded-3xl shadow-2xl p-3">
+                            ${top40Songs.length > 0 ? `
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
+                                    ${top40Songs.map((song, index) => {
+                                        const isTop3 = index < 3;
+                                        let rankStyle = "text-slate-500 text-lg";
+                                        if (index === 0) rankStyle = "text-yellow-400 text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]";
+                                        if (index === 1) rankStyle = "text-slate-300 text-xl";
+                                        if (index === 2) rankStyle = "text-amber-600 text-xl";
+
+                                        return `
+                                            <div class="flex items-center bg-slate-950/60 border ${isTop3 ? 'border-brand/40 bg-slate-900/80' : 'border-slate-800/80'} rounded-xl px-3 overflow-hidden shadow-sm h-full">
+                                                <!-- Rang -->
+                                                <div class="w-8 text-center font-black shrink-0 ${rankStyle}">
+                                                    ${index + 1}
+                                                </div>
+
+                                                <!-- Infos Chanson -->
+                                                <div class="flex-1 min-w-0 px-3 border-l border-slate-700/50 ml-2">
+                                                    <div class="text-sm md:text-base font-bold text-white truncate leading-tight">
+                                                        ${song.title}
+                                                    </div>
+                                                    <div class="text-xs text-brand-light truncate leading-tight mt-0.5">
+                                                        ${song.artist}
+                                                    </div>
+                                                </div>
+
+                                                <!-- Score -->
+                                                <div class="shrink-0 flex items-center justify-center bg-slate-900/80 rounded-lg px-3 py-1 border border-slate-700/50">
+                                                    <span class="text-lg md:text-xl font-black ${isTop3 ? 'text-white' : 'text-brand'}">${song.votes}</span>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : `
+                                <div class="flex flex-col items-center justify-center h-full text-center">
+                                    <i class="ph-duotone ph-disc text-8xl text-brand mb-6 animate-spin-slow" style="animation-duration: 4s;"></i>
+                                    <h3 class="text-3xl font-bold text-white mb-2">En attente des votes...</h3>
+                                    <p class="text-xl text-slate-400">Scannez le QR Code pour lancer la soirée !</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // ÉCRAN DE CONNEXION (INVITÉ OU ADMIN)
+            if (state.view === 'login' || state.view === 'adminLogin') {
+                const isAdmin = state.view === 'adminLogin';
+                
+                root.innerHTML = `
+                    <div class="min-h-screen flex flex-col items-center justify-center p-4 animate-fade-in relative overflow-hidden">
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand/10 rounded-full blur-[100px] pointer-events-none"></div>
+                        
+                        <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative z-10 text-center border-t-brand/30">
+                            
+                            <!-- LOGO UNIVERSAL DJ -->
+                            <div class="mb-6 relative inline-block">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-20 md:h-24 object-contain drop-shadow-2xl mx-auto" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
+                                ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-slate-800 rounded-full p-2 border border-slate-700 shadow-lg"><i class="ph-fill ph-lock-key text-white text-sm"></i></div>' : ''}
+                            </div>
+                            
+                            <h1 class="text-2xl font-bold text-white mb-2">
+                                ${isAdmin ? 'Espace DJ' : 'Bienvenue'}
+                            </h1>
+                            <p class="text-brand-light mb-8 font-medium">
+                                ${isAdmin ? 'Entrez le code administrateur.' : 'Entrez le mot de passe annoncé par le DJ.'}
+                            </p>
+
+                            <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-4">
+                                <div>
+                                    <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="${isAdmin ? 'Code DJ secret' : 'Mot de passe'}" 
+                                        class="w-full bg-slate-950 border border-slate-700 rounded-xl py-4 px-6 text-center text-xl text-white uppercase tracking-widest focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/50 transition-all placeholder:text-slate-600">
+                                </div>
+                                
+                                ${state.loginError ? `<p class="text-red-400 text-sm animate-fade-in">${state.loginError}</p>` : ''}
+                                
+                                <button type="submit" class="w-full bg-brand hover:bg-brand-light text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-brand/25 transition-all transform hover:scale-[1.02] active:scale-95 border border-white/10">
+                                    ${isAdmin ? 'Accéder au Tableau de bord' : 'Rejoindre la soirée !'}
+                                </button>
+                            </form>
+
+                            <div class="mt-8 pt-6 border-t border-slate-800">
+                                <button onclick="goTo('${isAdmin ? 'login' : 'adminLogin'}')" class="text-sm text-slate-400 hover:text-brand-light transition-colors">
+                                    ${isAdmin ? '← Retour à l\'accès invité' : 'Accès DJ (Admin)'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // HEADER COMMUN (INVITÉS ET ADMIN)
+            const headerHTML = `
+                <nav class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/10 px-4 py-4 md:px-8">
+                    <div class="max-w-6xl mx-auto flex items-center justify-between">
+                        
+                        <!-- LOGO DANS LE HEADER -->
+                        <div class="flex items-center gap-3">
+                            <img src="${LOGO_URL}" alt="Universal DJ" class="h-10 md:h-12 object-contain drop-shadow-md" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/6597c8/ffffff?text=Universal+DJ';">
+                            ${state.view === 'admin' ? '<h1 class="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-brand-light hidden md:block border-l border-slate-700 pl-3 ml-1">Tableau de Bord</h1>' : ''}
+                        </div>
+
+                        <button onclick="goTo('login')" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-slate-900 border border-slate-800 px-4 py-2 rounded-full text-sm">
+                            <i class="ph-bold ph-sign-out"></i> <span class="hidden md:inline">Quitter</span>
+                        </button>
+                    </div>
+                </nav>
+            `;
+
+            let mainContent = '';
+
+            // VUE INVITÉ (VOTES)
+            if (state.view === 'user') {
+                const searchLower = (state.searchQuery || '').toLowerCase();
+                const filteredSongs = state.songs.filter(song => {
+                    const matchTheme = state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
+                    const matchSearch = (song.title || '').toLowerCase().includes(searchLower) || 
+                                        (song.artist || '').toLowerCase().includes(searchLower);
+                    return matchTheme && matchSearch;
+                });
+
+                const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
+                
+                const votesLeft = MAX_TOTAL_VOTES - state.totalUserVotes;
+                const progressPercent = (state.totalUserVotes / MAX_TOTAL_VOTES) * 100;
+
+                mainContent = `
+                    <div class="animate-fade-in">
+                        
+                        <!-- BLOC : COMPTEUR DE CRÉDITS -->
+                        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mb-8 shadow-xl relative overflow-hidden">
+                            <div class="absolute bottom-0 left-0 h-1.5 bg-brand transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
+                            
+                            <div class="flex flex-col md:flex-row items-start md:items-center justify-between relative z-10 gap-4">
+                                <div>
+                                    <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2">
+                                        <i class="ph-fill ph-ticket text-brand text-2xl"></i> Vos crédits de vote
+                                    </h3>
+                                    <p class="text-sm text-slate-400">
+                                        Vous pouvez voter <strong>${MAX_VOTES_PER_SONG} fois maximum</strong> par titre.
+                                    </p>
+                                </div>
+                                <div class="text-right bg-slate-950 px-5 py-3 rounded-2xl border border-white/5 w-full md:w-auto flex justify-between md:block items-center">
+                                    <span class="text-slate-400 text-sm md:hidden font-medium">Restants :</span>
+                                    <div>
+                                        <span class="text-3xl font-black ${votesLeft === 0 ? 'text-red-400' : 'text-brand-light'}">${votesLeft}</span>
+                                        <span class="text-slate-500 font-medium text-lg">/ ${MAX_TOTAL_VOTES}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-6 md:flex md:items-center md:justify-between space-y-4 md:space-y-0">
+                            <div>
+                                <h2 class="text-2xl font-bold text-white mb-1">À vous de jouer !</h2>
+                                <p class="text-sm text-slate-400">Cherchez vos titres favoris dans la liste.</p>
+                            </div>
+                            <div class="relative w-full md:w-72">
+                                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xl text-brand-light"></i>
+                                <input id="searchInput" type="text" placeholder="Rechercher un artiste, titre..." 
+                                    value="${(state.searchQuery || '').replace(/"/g, '&quot;')}" oninput="handleSearch(event)"
+                                    class="w-full bg-slate-900 border border-slate-800 rounded-full py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-brand transition-all">
+                            </div>
+                        </div>
+
+                        <div class="flex overflow-x-auto pb-4 mb-6 gap-2 no-scrollbar">
+                            ${themes.map(theme => `
+                                <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-brand/10 border-brand text-brand-light shadow-[0_0_10px_rgba(101,151,200,0.2)]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'}">
+                                    ${theme}
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        ${filteredSongs.length > 0 ? `
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                ${filteredSongs.map(song => {
+                                    const votesForThisSong = state.userVotes[song.id] || 0;
+                                    const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
+                                    const isTotalMaxed = state.totalUserVotes >= MAX_TOTAL_VOTES;
+                                    const isDisabled = isSongMaxed || isTotalMaxed;
+                                    
+                                    let btnClasses = "";
+                                    let btnText = "Voter";
+                                    let iconColor = "";
+
+                                    if (isSongMaxed) {
+                                        btnClasses = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 cursor-default";
+                                        btnText = "Max (2/2)";
+                                        iconColor = "text-emerald-400";
+                                    } else if (votesForThisSong === 1) {
+                                        btnClasses = isDisabled 
+                                            ? "bg-slate-800/50 text-slate-500 border border-slate-700/50 cursor-not-allowed" 
+                                            : "bg-brand/20 text-brand-light border border-brand/40 hover:bg-brand hover:text-white shadow-[0_0_10px_rgba(101,151,200,0.1)]";
+                                        btnText = "Voté (1/2)";
+                                        iconColor = "text-brand-light";
+                                    } else {
+                                        btnClasses = isDisabled 
+                                            ? "bg-slate-800/50 text-slate-500 border border-slate-700/50 cursor-not-allowed" 
+                                            : "bg-slate-800 text-white hover:bg-brand hover:shadow-lg hover:shadow-brand/20 border border-slate-700 hover:border-brand-light";
+                                        btnText = "Voter";
+                                        iconColor = "";
+                                    }
+
+                                    return `
+                                        <div class="group bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex items-center justify-between hover:border-brand/40 transition-colors">
+                                            <div class="flex items-center gap-4 overflow-hidden">
+                                                <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700">
+                                                    <i class="ph-fill ph-play text-brand text-xl"></i>
+                                                </div>
+                                                <div class="min-w-0">
+                                                    <h3 class="font-semibold text-white truncate">${song.title}</h3>
+                                                    <p class="text-sm text-slate-400 truncate">${song.artist}</p>
+                                                </div>
+                                            </div>
+                                            <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${btnClasses}">
+                                                <i class="ph-fill ph-heart ${iconColor}"></i>
+                                                ${btnText}
+                                            </button>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        ` : `<div class="text-center py-20 text-slate-500">
+                                <i class="ph-fill ph-music-notes text-4xl mb-3 text-slate-700"></i>
+                                <p>Aucun titre trouvé.</p>
+                             </div>`}
+                    </div>
+                `;
+            } 
+            
+            // VUE DJ (ADMIN)
+            else if (state.view === 'admin') {
+                const rankedSongs = [...state.songs].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+                const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
+
+                mainContent = `
+                    <div class="animate-fade-in max-w-4xl mx-auto">
+                        
+                        <!-- BLOC : AFFICHAGES ÉCRANS (Public) -->
+                        <div class="bg-slate-900 border border-slate-800 border-t-brand/30 rounded-3xl p-6 md:p-8 mb-8 shadow-xl">
+                            <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                                <i class="ph-fill ph-monitor-play text-brand text-2xl"></i> 
+                                Affichages Écrans (Public)
+                            </h3>
+                            <p class="text-slate-400 text-sm mb-6">Utilisez ces boutons pour afficher l'interface publique sur un écran géant ou une tablette pour vos invités.</p>
+                            
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <button onclick="toggleMonitor()" class="flex-1 bg-gradient-to-r from-blue-600 to-brand hover:from-blue-500 hover:to-brand-light text-white font-bold px-6 py-4 rounded-xl transition-all shadow-lg shadow-brand/25 flex items-center justify-center gap-2 border border-white/10">
+                                    <i class="ph-bold ph-list-numbers text-xl"></i> Lancer le Classement Live
+                                </button>
+                                <button onclick="toggleQRCode()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold px-6 py-4 rounded-xl transition-colors flex items-center justify-center gap-2">
+                                    <i class="ph-bold ph-qr-code text-xl"></i> Afficher le QR Code Géant
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- BLOC : GESTION DU CODE -->
+                        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 mb-8 shadow-xl">
+                            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <i class="ph-fill ph-lock-key text-slate-400"></i> Mot de passe de la soirée
+                            </h3>
+                            <div class="flex flex-col md:flex-row gap-4 items-center">
+                                <input id="newGuestCode" type="text" value="${state.guestCode}" 
+                                    class="w-full md:w-64 bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white uppercase tracking-widest font-bold focus:border-brand focus:outline-none transition-all text-center md:text-left">
+                                <button onclick="updateGuestCode()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white text-sm font-medium px-6 py-3 rounded-xl transition-colors">
+                                    Mettre à jour
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- BLOC : STATISTIQUES ET REMISE À ZÉRO -->
+                        <div class="bg-gradient-to-br from-brand-dark/30 to-slate-900/80 border border-brand/20 rounded-3xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                            <div class="absolute -right-10 -top-10 w-40 h-40 bg-brand/10 rounded-full blur-[50px]"></div>
+                            
+                            <div class="relative z-10">
+                                <h2 class="text-2xl font-bold text-white mb-1">Détail des Votes DJ</h2>
+                                <p class="text-brand-light">Interface de contrôle privée.</p>
+                            </div>
+                            <div class="relative z-10 bg-slate-950/60 rounded-2xl p-4 text-center min-w-[150px] border border-white/5 shadow-inner">
+                                <span class="block text-sm text-slate-400">Total votes reçus</span>
+                                <span class="text-4xl font-black text-brand-light">${totalVotes}</span>
+                                
+                                <button onclick="resetVotes()" class="mt-4 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs py-2 px-3 rounded-xl transition-colors font-medium flex justify-center items-center gap-2">
+                                    <i class="ph-bold ph-trash"></i> Remettre à zéro
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- BLOC : CLASSEMENT DÉTAILLÉ -->
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                            <div class="divide-y divide-slate-800/50">
+                                ${rankedSongs.map((song, index) => {
+                                    if(song.votes === 0) return '';
+                                    return `
+                                    <div class="p-4 flex items-center hover:bg-slate-800/30 group">
+                                        <div class="w-16 flex justify-center">
+                                            ${index === 0 ? '<i class="ph-fill ph-trophy text-yellow-400 text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]"></i>' :
+                                              index === 1 ? '<i class="ph-fill ph-trophy text-slate-300 text-2xl"></i>' :
+                                              index === 2 ? '<i class="ph-fill ph-trophy text-amber-700 text-2xl"></i>' :
+                                              `<span class="text-slate-500 font-medium text-lg">${index + 1}</span>`}
+                                        </div>
+                                        <div class="flex-1 min-w-0 pr-4">
+                                            <h4 class="font-semibold truncate ${index < 3 ? 'text-white text-lg' : 'text-slate-200'}">${song.title}</h4>
+                                            <p class="text-sm text-slate-400 truncate">${song.artist}</p>
+                                        </div>
+                                        <div class="w-24 text-right pr-2">
+                                            <span class="font-bold tabular-nums ${index < 3 ? 'text-xl text-brand-light' : 'text-slate-300'}">${song.votes}</span>
+                                        </div>
+                                    </div>
+                                `}).join('')}
+                                ${totalVotes === 0 ? '<div class="p-8 text-center text-slate-500">Aucun vote pour le moment.</div>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            root.innerHTML = `
+                ${(state.view !== 'qrcode' && state.view !== 'monitor') ? headerHTML : ''}
+                <main class="${(state.view !== 'qrcode' && state.view !== 'monitor') ? 'max-w-6xl mx-auto px-4 py-8 md:px-8' : ''}">
+                    ${mainContent}
+                </main>
+            `;
+        }
+
+        render();
+    </script>
+</body>
+</html>
