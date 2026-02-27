@@ -36,6 +36,7 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans selection:bg-brand/30 min-h-screen">
@@ -48,10 +49,14 @@
         // ==========================================
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
 
-        // --- PARAMÈTRES DES VOTES ---
+        // --- PARAMÈTRES DES VOTES ET DU MINUTEUR ---
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
         const PASS_ADMIN = "DJ";
+        
+        // Configuration des durées (en millisecondes)
+        const PHASE_1_DURATION = 2 * 60 * 60 * 1000; // 2 Heures (QR Code)
+        const PHASE_2_DURATION = 1 * 60 * 60 * 1000; // 1 Heure (Top 40)
 
         // ==========================================
         // 🎵 LA LISTE COMPLÈTE FUSIONNÉE (688 Titres)
@@ -780,34 +785,30 @@
             userVotes: {}, 
             totalUserVotes: 0, 
             loginError: '',
-            guestCode: 'FIESTA'
+            guestCode: 'FIESTA',
+            eventStartTime: null, // Timestamp de début de soirée
+            currentPhase: 0 // 0=Non Démarré, 1=QR(2h), 2=Top40(1h), 3=Clôturé
         };
 
         // ==========================================
-        // 🚀 SIMULATION DU SERVEUR (Synchronisation entre onglets)
+        // 🚀 SIMULATION DU SERVEUR (Synchronisation)
         // ==========================================
         function loadServerData() {
             try {
                 const savedSongs = localStorage.getItem('dj_songs');
                 if (savedSongs) {
                     const parsedSongs = JSON.parse(savedSongs);
-                    // Vérification de sécurité anti-crash (écran noir)
                     if (Array.isArray(parsedSongs)) {
                         if (parsedSongs.length !== initialSongs.length) {
-                            // On récupère les anciens votes
                             const oldVotes = {};
                             parsedSongs.forEach(s => { 
                                 if (s && s.id) oldVotes[s.id] = s.votes || 0; 
                             });
-                            
-                            // On recrée la liste complète avec les nouvelles chansons tout en gardant les anciens votes
                             state.songs = JSON.parse(JSON.stringify(initialSongs)).map(song => {
-                                if (oldVotes[song.id]) {
-                                    song.votes = oldVotes[song.id];
-                                }
+                                if (oldVotes[song.id]) song.votes = oldVotes[song.id];
                                 return song;
                             });
-                            saveServerData(); // On met à jour la sauvegarde
+                            saveServerData();
                         } else {
                             state.songs = parsedSongs;
                         }
@@ -819,9 +820,7 @@
                 }
 
                 const savedCode = localStorage.getItem('dj_guestCode');
-                if (savedCode) {
-                    state.guestCode = savedCode;
-                }
+                if (savedCode) state.guestCode = savedCode;
                 
                 const savedUserVotes = localStorage.getItem('dj_userVotes');
                 if (savedUserVotes) {
@@ -831,17 +830,22 @@
                     state.userVotes = {};
                     state.totalUserVotes = 0;
                 }
+
+                const savedStartTime = localStorage.getItem('dj_eventStartTime');
+                if (savedStartTime && savedStartTime !== 'null') {
+                    state.eventStartTime = parseInt(savedStartTime, 10);
+                } else {
+                    state.eventStartTime = null;
+                }
             } catch (error) {
-                console.error("Erreur de mémoire cache. Restauration des données par défaut...", error);
+                console.error("Erreur de mémoire cache.", error);
                 state.songs = JSON.parse(JSON.stringify(initialSongs)); 
                 state.userVotes = {};
                 state.totalUserVotes = 0;
+                state.eventStartTime = null;
             }
             
-            // Filet de sécurité absolu
-            if (!Array.isArray(state.songs)) {
-                state.songs = JSON.parse(JSON.stringify(initialSongs));
-            }
+            if (!Array.isArray(state.songs)) state.songs = JSON.parse(JSON.stringify(initialSongs));
         }
 
         function saveServerData() {
@@ -849,19 +853,66 @@
                 localStorage.setItem('dj_songs', JSON.stringify(state.songs));
                 localStorage.setItem('dj_guestCode', state.guestCode);
                 localStorage.setItem('dj_userVotes', JSON.stringify(state.userVotes));
+                localStorage.setItem('dj_eventStartTime', state.eventStartTime || 'null');
             } catch (error) {
-                console.error("Erreur de sauvegarde locale", error);
+                console.error("Erreur de sauvegarde", error);
             }
         }
 
+        // ==========================================
+        // ⏱ GESTION DU MINUTEUR GLOBAL
+        // ==========================================
+        function checkPhase() {
+            if (!state.eventStartTime) {
+                if (state.currentPhase !== 0) {
+                    state.currentPhase = 0;
+                    render();
+                }
+                return;
+            }
+
+            const now = Date.now();
+            const elapsed = now - state.eventStartTime;
+            let newPhase = 0;
+            let timeLeft = 0;
+
+            if (elapsed < PHASE_1_DURATION) {
+                newPhase = 1; // Affichage QR (2h)
+                timeLeft = PHASE_1_DURATION - elapsed;
+            } else if (elapsed < PHASE_1_DURATION + PHASE_2_DURATION) {
+                newPhase = 2; // Affichage Top 40 (1h)
+                timeLeft = (PHASE_1_DURATION + PHASE_2_DURATION) - elapsed;
+            } else {
+                newPhase = 3; // Clôturé
+                timeLeft = 0;
+            }
+
+            if (state.currentPhase !== newPhase) {
+                state.currentPhase = newPhase;
+                render(); // Force le re-render complet quand on change de phase
+            }
+
+            // Met à jour l'affichage du temps sans tout re-calculer
+            const h = Math.floor(timeLeft / 3600000).toString().padStart(2, '0');
+            const m = Math.floor((timeLeft % 3600000) / 60000).toString().padStart(2, '0');
+            const s = Math.floor((timeLeft % 60000) / 1000).toString().padStart(2, '0');
+            const timeStr = `${h}:${m}:${s}`;
+
+            document.querySelectorAll('.dynamic-timer-display').forEach(el => {
+                if (el.textContent !== timeStr) el.textContent = timeStr;
+            });
+        }
+
         window.addEventListener('storage', function(e) {
-            if (e.key === 'dj_songs' || e.key === 'dj_guestCode') {
+            if (e.key === 'dj_songs' || e.key === 'dj_guestCode' || e.key === 'dj_eventStartTime') {
                 loadServerData();
+                checkPhase();
                 render(); 
             }
         });
 
         loadServerData();
+        setInterval(checkPhase, 1000); // Vérifie le minuteur chaque seconde
 
         // --- 3. ACTIONS ---
         function checkGuestLogin(event) {
@@ -893,7 +944,27 @@
             if (newCode) {
                 state.guestCode = newCode;
                 saveServerData(); 
-                alert('Le mot de passe de la soirée a été changé en : ' + newCode + '\n(Le QR Code géant reste le même !)');
+                alert('Le mot de passe a été changé en : ' + newCode);
+                render();
+            }
+        }
+
+        function startEventTimer() {
+            if (confirm("Démarrer le minuteur de la soirée ?\n- 2 Heures : Affichage du QR Code géant.\n- 1 Heure : Affichage de la Playlist Top 40.\n- Ensuite : Clôture définitive des votes.")) {
+                state.eventStartTime = Date.now();
+                saveServerData();
+                checkPhase();
+                // Ouvre automatiquement la vue monitor pour le DJ
+                state.view = 'monitor';
+                render();
+            }
+        }
+
+        function stopEventTimer() {
+            if (confirm("⚠️ Arrêter et annuler le minuteur en cours ?")) {
+                state.eventStartTime = null;
+                state.currentPhase = 0;
+                saveServerData();
                 render();
             }
         }
@@ -926,13 +997,8 @@
         
         function handleSearch(event) { 
             state.searchQuery = event.target.value; 
-            
-            // Sauvegarde de la position du curseur pour éviter d'écrire "à l'envers"
             const cursorPosition = event.target.selectionStart; 
-            
             render(); 
-            
-            // On redonne le focus à la barre de recherche et on replace le curseur au bon endroit
             const input = document.getElementById('searchInput');
             if (input) {
                 input.focus();
@@ -941,6 +1007,11 @@
         }
 
         function vote(id) {
+            if (state.currentPhase === 3) {
+                alert("Désolé, les votes sont définitivement clôturés !");
+                return;
+            }
+
             if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
 
             const votesForSong = state.userVotes[id] || 0;
@@ -951,7 +1022,6 @@
                 state.songs[songIndex].votes += 1;
                 state.userVotes[id] = votesForSong + 1;
                 state.totalUserVotes += 1;
-                
                 saveServerData(); 
                 render();
             }
@@ -962,36 +1032,28 @@
             const root = document.getElementById('root');
             if (!root) return;
             
-            const qrUrl = encodeURIComponent("https://la-playlist-ideale.app"); // L'adresse pour les QR Codes
+            // Le lien s'adapte maintenant automatiquement à ton adresse GitHub Pages !
+            const qrUrl = encodeURIComponent(window.location.origin + window.location.pathname); 
             
-            // ÉCRAN PANNEAU QR CODE (GÉANT)
-            if (state.view === 'qrcode') {
+            // =====================================
+            // ÉCRAN PANNEAU QR CODE CLASSIQUE
+            // =====================================
+            if (state.view === 'qrcode' && state.currentPhase !== 1) {
                 root.innerHTML = `
                     <div class="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 relative animate-fade-in">
-                        <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                            <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-brand/20 rounded-full blur-[120px]"></div>
-                            <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-dark/20 rounded-full blur-[120px]"></div>
-                        </div>
-
-                        <button onclick="toggleQRCode()" class="absolute top-6 right-6 md:top-10 md:right-10 text-white/50 hover:text-white transition-colors z-20 bg-slate-800/50 p-3 rounded-full backdrop-blur-md border border-white/10 hover:bg-slate-700/50">
-                            <i class="ph-bold ph-x text-2xl md:text-3xl"></i>
+                        <button onclick="toggleQRCode()" class="absolute top-6 right-6 md:top-10 md:right-10 text-white/50 hover:text-white z-20 bg-slate-800/50 p-3 rounded-full hover:bg-slate-700/50">
+                            <i class="ph-bold ph-x text-2xl"></i>
                         </button>
-
                         <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
-                            
-                            <!-- LOGO GÉANT -->
                             <div class="flex items-center gap-4 justify-center mb-6 md:mb-10">
-                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-24 md:h-32 object-contain drop-shadow-2xl" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
+                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-24 md:h-32 object-contain drop-shadow-2xl" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
                             </div>
-
-                            <h2 class="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-8 md:mb-12 tracking-tight">
+                            <h2 class="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-8 tracking-tight">
                                 Flashez pour <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-brand-light">voter !</span>
                             </h2>
-                            
-                            <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl mb-8 md:mb-12 mx-auto inline-block border-8 border-brand/50">
+                            <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl mb-8 mx-auto inline-block border-8 border-brand/50">
                                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-64 h-64 md:w-96 md:h-96 rounded-xl">
                             </div>
-
                             <div class="bg-slate-900/80 backdrop-blur-xl border border-brand/20 py-6 px-10 md:py-8 md:px-16 rounded-3xl shadow-2xl inline-block">
                                 <p class="text-xl md:text-3xl text-brand-light mb-2">Code de la soirée :</p>
                                 <p class="text-5xl md:text-7xl font-black text-white tracking-widest">${state.guestCode}</p>
@@ -1002,24 +1064,62 @@
                 return;
             }
 
-            // ÉCRAN CLASSEMENT PUBLIC (MONITEUR GÉANT - SANS SCROLL TOP 40)
-            if (state.view === 'monitor') {
+            // =====================================
+            // ÉCRAN CLASSEMENT PUBLIC (MONITEUR INTELLIGENT)
+            // =====================================
+            if (state.view === 'monitor' || (state.view === 'qrcode' && state.currentPhase === 1)) {
+                
+                // --- PHASE 1 : QR CODE GÉANT (2 PREMIÈRES HEURES) ---
+                if (state.currentPhase === 1) {
+                    root.innerHTML = `
+                        <div class="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 relative animate-fade-in">
+                            <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
+                                <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-brand/20 rounded-full blur-[120px]"></div>
+                                <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-dark/20 rounded-full blur-[120px]"></div>
+                            </div>
+                            <button onclick="goTo('admin')" class="absolute top-6 right-6 text-white/0 hover:text-white/50 z-50 p-3 rounded-full hover:bg-slate-800/50 transition-colors">
+                                <i class="ph-bold ph-x text-2xl"></i>
+                            </button>
+                            <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
+                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-20 md:h-28 object-contain drop-shadow-2xl mb-8" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
+                                
+                                <h2 class="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight">
+                                    Flashez le QR Code pour <span class="text-brand-light">voter !</span>
+                                </h2>
+                                
+                                <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl mb-6 mx-auto inline-block border-8 border-brand/50">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-48 h-48 md:w-80 md:h-80 rounded-xl">
+                                </div>
+                                
+                                <div class="bg-slate-900/80 border border-brand/20 py-4 px-10 md:py-6 md:px-16 rounded-3xl shadow-2xl inline-block mb-8">
+                                    <p class="text-lg md:text-2xl text-brand-light mb-1">Code de la soirée :</p>
+                                    <p class="text-4xl md:text-6xl font-black text-white tracking-widest">${state.guestCode}</p>
+                                </div>
+
+                                <div class="bg-brand/10 border border-brand px-8 py-4 rounded-3xl backdrop-blur-sm animate-pulse">
+                                    <p class="text-brand-light font-medium text-lg mb-1 uppercase tracking-widest">Affichage de la playlist dans :</p>
+                                    <div class="text-white font-black text-5xl md:text-6xl tabular-nums tracking-wider dynamic-timer-display">--:--:--</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // --- PHASE 2 ET 3 : GRILLE DU TOP 40 ---
                 const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
                 
                 root.innerHTML = `
                     <div class="h-screen w-screen flex flex-col p-4 bg-slate-950 relative overflow-hidden animate-fade-in">
-                        <!-- Lumières d'ambiance dynamiques -->
                         <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
                             <div class="absolute top-[-20%] left-[10%] w-[40%] h-[50%] bg-brand/20 rounded-full blur-[150px]"></div>
-                            <div class="absolute bottom-[-10%] right-[10%] w-[30%] h-[60%] bg-blue-500/20 rounded-full blur-[150px]"></div>
                         </div>
 
-                        <!-- Bouton Fermer (Caché, visible au survol dans le coin supérieur droit) -->
-                        <button onclick="toggleMonitor()" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-slate-800/50">
+                        <button onclick="goTo('admin')" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-slate-800/50">
                             <i class="ph-bold ph-x text-2xl"></i>
                         </button>
 
-                        <!-- EN-TÊTE COMPACT AVEC QR CODE INTÉGRÉ -->
+                        <!-- EN-TÊTE -->
                         <div class="relative z-10 flex justify-between items-center mb-4 px-2">
                             <div class="flex items-center gap-4">
                                 <img src="${LOGO_URL}" alt="Universal DJ" class="h-12 md:h-16 object-contain drop-shadow-2xl" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
@@ -1027,17 +1127,34 @@
                                     VOTRE PLAYLIST IDÉALE
                                 </h1>
                             </div>
-                            <!-- Bloc QR Code sur l'écran Monitor -->
-                            <div class="hidden md:flex items-center gap-3 bg-slate-900/80 backdrop-blur-md border border-brand/30 p-2 pr-6 rounded-2xl shadow-lg">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-16 h-16 rounded-xl bg-white p-1">
-                                <div class="flex flex-col justify-center">
-                                    <span class="text-lg font-bold text-white tracking-wide leading-tight">Flashez pour voter !</span>
-                                    <span class="text-sm font-medium text-brand-light mt-1">Code : <strong class="text-white">${state.guestCode}</strong></span>
+                            
+                            <div class="flex flex-col items-end gap-2">
+                                <!-- MINUTEUR OU MESSAGE DE CLÔTURE -->
+                                ${state.currentPhase === 2 ? `
+                                    <div class="bg-brand/20 border border-brand px-4 py-1.5 rounded-xl flex items-center gap-3">
+                                        <span class="text-brand-light font-bold text-sm uppercase">Fin des votes : </span>
+                                        <span class="text-white font-black text-2xl tabular-nums dynamic-timer-display">--:--:--</span>
+                                    </div>
+                                ` : state.currentPhase === 3 ? `
+                                    <div class="bg-red-600/90 border border-red-500 px-6 py-2 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.5)] pulse-slow">
+                                        <span class="text-white font-black text-xl uppercase tracking-widest">Les votes sont clôturés</span>
+                                    </div>
+                                ` : ''}
+
+                                <!-- QR CODE INTÉGRÉ -->
+                                ${state.currentPhase === 2 ? `
+                                <div class="hidden md:flex items-center gap-3 bg-slate-900/80 backdrop-blur-md border border-brand/30 p-2 pr-6 rounded-2xl shadow-lg">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-14 h-14 rounded-xl bg-white p-1">
+                                    <div class="flex flex-col justify-center">
+                                        <span class="text-base font-bold text-white tracking-wide leading-tight">Flashez pour voter !</span>
+                                        <span class="text-xs font-medium text-brand-light mt-0.5">Code : <strong class="text-white">${state.guestCode}</strong></span>
+                                    </div>
                                 </div>
+                                ` : ''}
                             </div>
                         </div>
 
-                        <!-- LA GRILLE DES RÉSULTATS (Top 40 en 4 colonnes de 10) -->
+                        <!-- LA GRILLE DES RÉSULTATS (Top 40 en 4 colonnes) -->
                         <div class="relative z-10 flex-1 w-full bg-slate-900/40 backdrop-blur-xl border border-brand/20 rounded-3xl shadow-2xl p-3">
                             ${top40Songs.length > 0 ? `
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
@@ -1050,22 +1167,11 @@
 
                                         return `
                                             <div class="flex items-center bg-slate-950/60 border ${isTop3 ? 'border-brand/40 bg-slate-900/80' : 'border-slate-800/80'} rounded-xl px-3 overflow-hidden shadow-sm h-full">
-                                                <!-- Rang -->
-                                                <div class="w-8 text-center font-black shrink-0 ${rankStyle}">
-                                                    ${index + 1}
-                                                </div>
-
-                                                <!-- Infos Chanson -->
+                                                <div class="w-8 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
                                                 <div class="flex-1 min-w-0 px-3 border-l border-slate-700/50 ml-2">
-                                                    <div class="text-sm md:text-base font-bold text-white truncate leading-tight">
-                                                        ${song.title}
-                                                    </div>
-                                                    <div class="text-xs text-brand-light truncate leading-tight mt-0.5">
-                                                        ${song.artist}
-                                                    </div>
+                                                    <div class="text-sm md:text-base font-bold text-white truncate leading-tight">${song.title}</div>
+                                                    <div class="text-xs text-brand-light truncate leading-tight mt-0.5">${song.artist}</div>
                                                 </div>
-
-                                                <!-- Score -->
                                                 <div class="shrink-0 flex items-center justify-center bg-slate-900/80 rounded-lg px-3 py-1 border border-slate-700/50">
                                                     <span class="text-lg md:text-xl font-black ${isTop3 ? 'text-white' : 'text-brand'}">${song.votes}</span>
                                                 </div>
@@ -1077,7 +1183,7 @@
                                 <div class="flex flex-col items-center justify-center h-full text-center">
                                     <i class="ph-duotone ph-disc text-8xl text-brand mb-6 animate-spin-slow" style="animation-duration: 4s;"></i>
                                     <h3 class="text-3xl font-bold text-white mb-2">En attente des votes...</h3>
-                                    <p class="text-xl text-slate-400">Scannez le QR Code pour lancer la soirée !</p>
+                                    <p class="text-xl text-slate-400">La playlist idéale se prépare !</p>
                                 </div>
                             `}
                         </div>
@@ -1086,42 +1192,31 @@
                 return;
             }
 
+            // =====================================
             // ÉCRAN DE CONNEXION (INVITÉ OU ADMIN)
+            // =====================================
             if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
-                
                 root.innerHTML = `
                     <div class="min-h-screen flex flex-col items-center justify-center p-4 animate-fade-in relative overflow-hidden">
                         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand/10 rounded-full blur-[100px] pointer-events-none"></div>
-                        
                         <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative z-10 text-center border-t-brand/30">
-                            
-                            <!-- LOGO UNIVERSAL DJ -->
                             <div class="mb-6 relative inline-block">
                                 <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-20 md:h-24 object-contain drop-shadow-2xl mx-auto" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
                                 ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-slate-800 rounded-full p-2 border border-slate-700 shadow-lg"><i class="ph-fill ph-lock-key text-white text-sm"></i></div>' : ''}
                             </div>
-                            
-                            <h1 class="text-2xl font-bold text-white mb-2">
-                                ${isAdmin ? 'Espace DJ' : 'Bienvenue'}
-                            </h1>
-                            <p class="text-brand-light mb-8 font-medium">
-                                ${isAdmin ? 'Entrez le code administrateur.' : 'Entrez le mot de passe annoncé par le DJ.'}
-                            </p>
-
+                            <h1 class="text-2xl font-bold text-white mb-2">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
+                            <p class="text-brand-light mb-8 font-medium">${isAdmin ? 'Entrez le code administrateur.' : 'Entrez le mot de passe annoncé par le DJ.'}</p>
                             <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-4">
                                 <div>
                                     <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="${isAdmin ? 'Code DJ secret' : 'Mot de passe'}" 
                                         class="w-full bg-slate-950 border border-slate-700 rounded-xl py-4 px-6 text-center text-xl text-white uppercase tracking-widest focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/50 transition-all placeholder:text-slate-600">
                                 </div>
-                                
                                 ${state.loginError ? `<p class="text-red-400 text-sm animate-fade-in">${state.loginError}</p>` : ''}
-                                
                                 <button type="submit" class="w-full bg-brand hover:bg-brand-light text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-brand/25 transition-all transform hover:scale-[1.02] active:scale-95 border border-white/10">
                                     ${isAdmin ? 'Accéder au Tableau de bord' : 'Rejoindre la soirée !'}
                                 </button>
                             </form>
-
                             <div class="mt-8 pt-6 border-t border-slate-800">
                                 <button onclick="goTo('${isAdmin ? 'login' : 'adminLogin'}')" class="text-sm text-slate-400 hover:text-brand-light transition-colors">
                                     ${isAdmin ? '← Retour à l\'accès invité' : 'Accès DJ (Admin)'}
@@ -1133,17 +1228,14 @@
                 return;
             }
 
-            // HEADER COMMUN (INVITÉS ET ADMIN)
+            // HEADER COMMUN
             const headerHTML = `
                 <nav class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/10 px-4 py-4 md:px-8">
                     <div class="max-w-6xl mx-auto flex items-center justify-between">
-                        
-                        <!-- LOGO DANS LE HEADER -->
                         <div class="flex items-center gap-3">
                             <img src="${LOGO_URL}" alt="Universal DJ" class="h-10 md:h-12 object-contain drop-shadow-md" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/6597c8/ffffff?text=Universal+DJ';">
                             ${state.view === 'admin' ? '<h1 class="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-brand-light hidden md:block border-l border-slate-700 pl-3 ml-1">Tableau de Bord</h1>' : ''}
                         </div>
-
                         <button onclick="goTo('login')" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-slate-900 border border-slate-800 px-4 py-2 rounded-full text-sm">
                             <i class="ph-bold ph-sign-out"></i> <span class="hidden md:inline">Quitter</span>
                         </button>
@@ -1153,7 +1245,9 @@
 
             let mainContent = '';
 
+            // =====================================
             // VUE INVITÉ (VOTES)
+            // =====================================
             if (state.view === 'user') {
                 const searchLower = (state.searchQuery || '').toLowerCase();
                 const filteredSongs = state.songs.filter(song => {
@@ -1164,25 +1258,30 @@
                 });
 
                 const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
-                
                 const votesLeft = MAX_TOTAL_VOTES - state.totalUserVotes;
                 const progressPercent = (state.totalUserVotes / MAX_TOTAL_VOTES) * 100;
+                
+                const isClosed = state.currentPhase === 3;
 
                 mainContent = `
                     <div class="animate-fade-in">
                         
+                        ${isClosed ? `
+                            <div class="bg-red-600 border border-red-500 rounded-2xl p-4 mb-6 shadow-[0_0_20px_rgba(239,68,68,0.3)] text-center pulse-slow">
+                                <h2 class="text-white font-black text-2xl uppercase tracking-widest">Les votes sont clôturés</h2>
+                                <p class="text-red-100 text-sm mt-1">La playlist idéale est prête, regardez l'écran géant !</p>
+                            </div>
+                        ` : ''}
+
                         <!-- BLOC : COMPTEUR DE CRÉDITS -->
-                        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mb-8 shadow-xl relative overflow-hidden">
+                        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mb-8 shadow-xl relative overflow-hidden ${isClosed ? 'opacity-50 grayscale' : ''}">
                             <div class="absolute bottom-0 left-0 h-1.5 bg-brand transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
-                            
                             <div class="flex flex-col md:flex-row items-start md:items-center justify-between relative z-10 gap-4">
                                 <div>
                                     <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2">
                                         <i class="ph-fill ph-ticket text-brand text-2xl"></i> Vos crédits de vote
                                     </h3>
-                                    <p class="text-sm text-slate-400">
-                                        Vous pouvez voter <strong>${MAX_VOTES_PER_SONG} fois maximum</strong> par titre.
-                                    </p>
+                                    <p class="text-sm text-slate-400">Vous pouvez voter <strong>${MAX_VOTES_PER_SONG} fois maximum</strong> par titre.</p>
                                 </div>
                                 <div class="text-right bg-slate-950 px-5 py-3 rounded-2xl border border-white/5 w-full md:w-auto flex justify-between md:block items-center">
                                     <span class="text-slate-400 text-sm md:hidden font-medium">Restants :</span>
@@ -1221,13 +1320,17 @@
                                     const votesForThisSong = state.userVotes[song.id] || 0;
                                     const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
                                     const isTotalMaxed = state.totalUserVotes >= MAX_TOTAL_VOTES;
-                                    const isDisabled = isSongMaxed || isTotalMaxed;
+                                    const isDisabled = isSongMaxed || isTotalMaxed || isClosed;
                                     
                                     let btnClasses = "";
                                     let btnText = "Voter";
                                     let iconColor = "";
 
-                                    if (isSongMaxed) {
+                                    if (isClosed) {
+                                        btnClasses = "bg-slate-800/50 text-slate-500 border border-slate-700/50 cursor-not-allowed";
+                                        btnText = votesForThisSong > 0 ? "Voté" : "Fermé";
+                                        iconColor = votesForThisSong > 0 ? "text-slate-400" : "text-slate-600";
+                                    } else if (isSongMaxed) {
                                         btnClasses = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 cursor-default";
                                         btnText = "Max (2/2)";
                                         iconColor = "text-emerald-400";
@@ -1246,10 +1349,10 @@
                                     }
 
                                     return `
-                                        <div class="group bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex items-center justify-between hover:border-brand/40 transition-colors">
+                                        <div class="group bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex items-center justify-between ${!isClosed ? 'hover:border-brand/40' : ''} transition-colors">
                                             <div class="flex items-center gap-4 overflow-hidden">
                                                 <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700">
-                                                    <i class="ph-fill ph-play text-brand text-xl"></i>
+                                                    <i class="ph-fill ph-play ${isClosed ? 'text-slate-600' : 'text-brand'} text-xl"></i>
                                                 </div>
                                                 <div class="min-w-0">
                                                     <h3 class="font-semibold text-white truncate">${song.title}</h3>
@@ -1272,7 +1375,9 @@
                 `;
             } 
             
+            // =====================================
             // VUE DJ (ADMIN)
+            // =====================================
             else if (state.view === 'admin') {
                 const rankedSongs = [...state.songs].sort((a, b) => (b.votes || 0) - (a.votes || 0));
                 const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
@@ -1280,20 +1385,51 @@
                 mainContent = `
                     <div class="animate-fade-in max-w-4xl mx-auto">
                         
-                        <!-- BLOC : AFFICHAGES ÉCRANS (Public) -->
+                        <!-- BLOC NOUVEAU : GESTION DU MINUTEUR -->
+                        <div class="bg-slate-900 border border-slate-800 border-t-red-500/50 rounded-3xl p-6 md:p-8 mb-8 shadow-xl">
+                            <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-3">
+                                <i class="ph-fill ph-timer text-red-500 text-2xl"></i> 
+                                Minuteur Automatique (3 Heures)
+                            </h3>
+                            <p class="text-slate-400 text-sm mb-6">Le minuteur automatise l'écran "Monitor" : 2 heures sur le QR Code géant, puis 1 heure sur le Top 40, puis clôture définitive des votes.</p>
+                            
+                            <div class="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-950 p-5 rounded-2xl border border-slate-700/50">
+                                <div class="w-full md:w-auto">
+                                    <span class="block text-sm text-slate-400 font-medium mb-1">Statut actuel :</span>
+                                    ${state.currentPhase === 0 ? '<span class="text-slate-500 font-bold text-lg">Non démarré</span>' :
+                                      state.currentPhase === 1 ? '<span class="text-brand-light font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-spinner animate-spin"></i> Phase 1 : QR Code (<span class="dynamic-timer-display">--:--:--</span>)</span>' :
+                                      state.currentPhase === 2 ? '<span class="text-amber-400 font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-spinner animate-spin"></i> Phase 2 : Top 40 (<span class="dynamic-timer-display">--:--:--</span>)</span>' :
+                                      '<span class="text-red-500 font-bold text-lg flex items-center gap-2"><i class="ph-fill ph-check-circle"></i> Clôturé définitivement</span>'}
+                                </div>
+                                
+                                <div class="flex w-full md:w-auto gap-3 mt-4 md:mt-0">
+                                    ${state.currentPhase === 0 ? 
+                                        `<button onclick="startEventTimer()" class="w-full md:w-auto bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-red-500/30 flex items-center justify-center gap-2">
+                                            <i class="ph-bold ph-play"></i> Démarrer les 3H
+                                        </button>` 
+                                        : 
+                                        `<button onclick="stopEventTimer()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-medium py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+                                            <i class="ph-bold ph-stop"></i> Arrêter / Annuler
+                                        </button>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BLOC : AFFICHAGES ÉCRANS -->
                         <div class="bg-slate-900 border border-slate-800 border-t-brand/30 rounded-3xl p-6 md:p-8 mb-8 shadow-xl">
                             <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-3">
                                 <i class="ph-fill ph-monitor-play text-brand text-2xl"></i> 
-                                Affichages Écrans (Public)
+                                Écran Vidéoprojecteur / TV
                             </h3>
-                            <p class="text-slate-400 text-sm mb-6">Utilisez ces boutons pour afficher l'interface publique sur un écran géant ou une tablette pour vos invités.</p>
+                            <p class="text-slate-400 text-sm mb-6">Affiche l'interface publique. Si le minuteur est lancé, l'écran s'adaptera tout seul !</p>
                             
                             <div class="flex flex-col sm:flex-row gap-4">
                                 <button onclick="toggleMonitor()" class="flex-1 bg-gradient-to-r from-blue-600 to-brand hover:from-blue-500 hover:to-brand-light text-white font-bold px-6 py-4 rounded-xl transition-all shadow-lg shadow-brand/25 flex items-center justify-center gap-2 border border-white/10">
-                                    <i class="ph-bold ph-list-numbers text-xl"></i> Lancer le Classement Live
+                                    <i class="ph-bold ph-monitor"></i> Ouvrir le "Monitor"
                                 </button>
                                 <button onclick="toggleQRCode()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold px-6 py-4 rounded-xl transition-colors flex items-center justify-center gap-2">
-                                    <i class="ph-bold ph-qr-code text-xl"></i> Afficher le QR Code Géant
+                                    <i class="ph-bold ph-qr-code text-xl"></i> Forcer QR Code Simple
                                 </button>
                             </div>
                         </div>
@@ -1365,6 +1501,9 @@
                     ${mainContent}
                 </main>
             `;
+            
+            // Un dernier appel pour s'assurer que les chronos affichent la bonne heure dès l'affichage
+            checkPhase();
         }
 
         render();
