@@ -5,19 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Playlist Idéale - Universal DJ</title>
     
+    <!-- Polices Google Fonts (Premium, Moderne) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <!-- Tailwind CSS pour le design -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Configuration des couleurs sur-mesure -->
+    <!-- Configuration des couleurs sur-mesure (Holographic & Festif) -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
                     colors: {
-                        brand: {
-                            light: '#8cb6de',   
-                            DEFAULT: '#6597c8', 
-                            dark: '#4a759e'     
+                        magical: {
+                            pink: '#FF007A',
+                            cyan: '#00F0FF',
+                            purple: '#7000FF',
+                            gold: '#FFD700',
+                            bg: '#050212'
                         }
                     }
                 }
@@ -29,25 +39,148 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
+        /* Masquer la scrollbar pour un look d'app native */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        
+        body {
+            background-color: #050212;
         }
-        .pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        /* Texture Grain / Bruit pour le côté Premium */
+        .noise-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Animations fluides d'apparition */
+        .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); filter: blur(10px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        
+        /* Lumières Vivantes (Aurora / Holographic Background) */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.6;
+            animation: orbFloat 25s infinite cubic-bezier(0.4, 0, 0.2, 1) alternate;
+            z-index: 0;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+        .orb-pink { background: #FF007A; width: 60vw; height: 60vw; top: -10%; left: -20%; animation-delay: 0s; }
+        .orb-cyan { background: #00F0FF; width: 50vw; height: 50vw; bottom: -20%; right: -10%; animation-delay: -7s; }
+        .orb-purple { background: #7000FF; width: 70vw; height: 70vw; top: 30%; left: 30%; animation-delay: -14s; opacity: 0.4; }
+        .orb-gold { background: #FFD700; width: 40vw; height: 40vw; top: -20%; right: 10%; animation-delay: -2s; opacity: 0.2; }
+
+        @keyframes orbFloat {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+            33% { transform: translate(8vw, -8vh) scale(1.2) rotate(10deg); }
+            66% { transform: translate(-5vw, 5vh) scale(0.9) rotate(-10deg); }
+            100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+        }
+        
+        /* HOLOGRAPHIC GLASSMORPHISM (Verre Premium) */
+        .neo-glass {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Cartes Interactives (Chansons) */
+        .neo-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .neo-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 240, 255, 0.15), 0 0 30px rgba(255, 0, 122, 0.15);
+        }
+
+        /* Boutons "Candy / Liquid" */
+        .btn-liquid {
+            background: linear-gradient(135deg, #FF007A 0%, #7000FF 100%);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(255, 0, 122, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .btn-liquid::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #00F0FF 0%, #7000FF 100%);
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.4s ease;
+        }
+        .btn-liquid:hover::before { opacity: 1; }
+        .btn-liquid:hover {
+            box-shadow: 0 8px 25px rgba(0, 240, 255, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px) scale(1.05);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+        .btn-liquid:active {
+            transform: translateY(2px) scale(0.95);
+        }
+
+        /* Textes lumineux / Typographie */
+        .text-glow-white { text-shadow: 0 0 20px rgba(255, 255, 255, 0.6); }
+        .text-glow-pink { text-shadow: 0 0 20px rgba(255, 0, 122, 0.8); }
+        .text-glow-cyan { text-shadow: 0 0 20px rgba(0, 240, 255, 0.8); }
+
+        /* Animation de respiration pour les minuteurs / alertes */
+        .pulse-magical { animation: pulseMagical 3s ease-in-out infinite alternate; }
+        @keyframes pulseMagical {
+            0% { box-shadow: 0 0 20px rgba(255,0,122,0.2); border-color: rgba(255,0,122,0.3); }
+            100% { box-shadow: 0 0 40px rgba(0,240,255,0.4); border-color: rgba(0,240,255,0.6); }
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans selection:bg-brand/30 min-h-screen">
+<body class="text-slate-100 font-sans selection:bg-magical-pink/50 min-h-screen relative overflow-x-hidden">
 
-    <div id="root"></div>
+    <!-- GRAIN PREMIUM -->
+    <div class="noise-overlay"></div>
+
+    <!-- LUMIÈRES D'AMBIANCE HOLOGRAPHIQUES -->
+    <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div class="orb orb-pink"></div>
+        <div class="orb orb-cyan"></div>
+        <div class="orb orb-purple"></div>
+        <div class="orb orb-gold"></div>
+    </div>
+
+    <!-- CONTENEUR PRINCIPAL -->
+    <div id="root" class="relative z-10 min-h-screen flex flex-col"></div>
 
     <script>
         // ==========================================
-        // 🎨 LOGO
+        // 🎨 LOGO ET QR CODE
         // ==========================================
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
+        // Ton fichier QR code doit être nommé exactement comme ça dans ton GitHub :
+        const QR_CODE_URL = "qrcode.png"; 
 
         // --- PARAMÈTRES DES VOTES ET DU MINUTEUR ---
         const MAX_TOTAL_VOTES = 30;
@@ -322,7 +455,7 @@
             { id: 231, title: "Baby One More Time", artist: "Britney Spears", theme: "Hits 90s", votes: 0 },
             { id: 232, title: "The Sign", artist: "Ace of Base", theme: "Hits 90s", votes: 0 },
             { id: 233, title: "Another Night", artist: "Real McCoy", theme: "Hits 90s", votes: 0 },
-            { id: 234, title: "Mr. Vain", artist: "Culture Beat", theme: "Hits 90s", votes: 0 },
+            { id: 234, title: "Mr. Vain", Culture: "Culture Beat", theme: "Hits 90s", votes: 0 },
             { id: 235, title: "It's My Life", artist: "Dr. Alban", theme: "Hits 90s", votes: 0 },
             { id: 236, title: "Pump Up the Jam", artist: "Technotronic", theme: "Hits 90s", votes: 0 },
             { id: 237, title: "Music Sounds Better with You", artist: "Stardust", theme: "Hits 90s", votes: 0 },
@@ -892,7 +1025,7 @@
                 render(); // Force le re-render complet quand on change de phase
             }
 
-            // --- NOUVEAU : Calcul du temps global restant pour les invités ---
+            // Calcul du temps global restant pour les invités
             let globalTimeLeft = (PHASE_1_DURATION + PHASE_2_DURATION) - elapsed;
             if (globalTimeLeft < 0) globalTimeLeft = 0;
             const gh = Math.floor(globalTimeLeft / 3600000).toString().padStart(2, '0');
@@ -903,7 +1036,6 @@
             document.querySelectorAll('.global-timer-display').forEach(el => {
                 if (el.textContent !== globalTimeStr) el.textContent = globalTimeStr;
             });
-            // -----------------------------------------------------------------
 
             // Met à jour l'affichage du temps sans tout re-calculer
             const h = Math.floor(timeLeft / 3600000).toString().padStart(2, '0');
@@ -1045,36 +1177,35 @@
             const root = document.getElementById('root');
             if (!root) return;
             
-            // Le lien s'adapte maintenant automatiquement à ton adresse GitHub Pages !
-            const qrUrl = encodeURIComponent(window.location.origin + window.location.pathname); 
-            
             // =====================================
             // ÉCRAN PANNEAU QR CODE CLASSIQUE
             // =====================================
             if (state.view === 'qrcode' && state.currentPhase !== 1) {
                 root.innerHTML = `
-                    <div class="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 relative animate-fade-in">
-                        <button onclick="toggleQRCode()" class="absolute top-6 right-6 md:top-10 md:right-10 text-white/50 hover:text-white z-20 bg-slate-800/50 p-3 rounded-full hover:bg-slate-700/50">
+                    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
+                        <button onclick="toggleQRCode()" class="absolute top-6 right-6 md:top-10 md:right-10 text-white/50 hover:text-white z-20 neo-glass p-3 rounded-full hover:bg-white/10 transition-all">
                             <i class="ph-bold ph-x text-2xl"></i>
                         </button>
                         <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
                             <div class="flex items-center gap-4 justify-center mb-6 md:mb-8">
-                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-24 md:h-32 object-contain drop-shadow-2xl" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-24 md:h-32 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                             </div>
                             
-                            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-brand-light uppercase tracking-widest mb-4">
+                            <h1 class="text-5xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
                                 VOTRE PLAYLIST IDÉALE
                             </h1>
                             
-                            <h2 class="text-2xl md:text-4xl font-bold text-white mb-8 tracking-tight">
-                                Flashez pour <span class="text-brand-light">voter !</span>
+                            <h2 class="text-2xl md:text-4xl font-light text-white/90 mb-10 tracking-tight text-glow-white">
+                                Flashez pour <span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-magical-gold to-magical-pink drop-shadow-md">voter !</span>
                             </h2>
-                            <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl mb-8 mx-auto inline-block border-8 border-brand/50">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-64 h-64 md:w-96 md:h-96 rounded-xl">
+                            <div class="neo-glass p-6 md:p-8 rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] mb-10 mx-auto inline-block border-2 border-white/20">
+                                <div class="bg-white p-4 rounded-3xl">
+                                    <img src="${QR_CODE_URL}" alt="QR Code" class="w-64 h-64 md:w-96 md:h-96 rounded-xl object-contain">
+                                </div>
                             </div>
-                            <div class="bg-slate-900/80 backdrop-blur-xl border border-brand/20 py-6 px-10 md:py-8 md:px-16 rounded-3xl shadow-2xl inline-block">
-                                <p class="text-xl md:text-3xl text-brand-light mb-2">Code de la soirée :</p>
-                                <p class="text-5xl md:text-7xl font-black text-white tracking-widest">${state.guestCode}</p>
+                            <div class="neo-glass py-6 px-10 md:py-8 md:px-16 rounded-[2.5rem] inline-block">
+                                <p class="text-xl md:text-2xl text-magical-cyan/90 mb-2 font-medium">Code de la soirée :</p>
+                                <p class="text-6xl md:text-8xl font-black text-white tracking-widest text-glow-white">${state.guestCode}</p>
                             </div>
                         </div>
                     </div>
@@ -1090,37 +1221,36 @@
                 // --- PHASE 1 : QR CODE GÉANT (2 PREMIÈRES HEURES) ---
                 if (state.currentPhase === 1) {
                     root.innerHTML = `
-                        <div class="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 relative animate-fade-in">
-                            <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
-                                <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-brand/20 rounded-full blur-[120px]"></div>
-                                <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-dark/20 rounded-full blur-[120px]"></div>
-                            </div>
-                            <button onclick="goTo('admin')" class="absolute top-6 right-6 text-white/0 hover:text-white/50 z-50 p-3 rounded-full hover:bg-slate-800/50 transition-colors">
+                        <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
+                            <button onclick="goTo('admin')" class="absolute top-6 right-6 text-white/0 hover:text-white/50 z-50 p-3 rounded-full hover:bg-white/10 transition-colors">
                                 <i class="ph-bold ph-x text-2xl"></i>
                             </button>
                             <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
-                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-20 md:h-28 object-contain drop-shadow-2xl mb-6" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
+                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-20 md:h-28 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)] mb-8" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                 
-                                <h1 class="text-4xl md:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-brand-light uppercase tracking-widest mb-4">
+                                <h1 class="text-5xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
                                     VOTRE PLAYLIST IDÉALE
                                 </h1>
 
-                                <h2 class="text-2xl md:text-4xl font-bold text-white mb-6 tracking-tight">
-                                    Flashez le QR Code pour <span class="text-brand-light">voter !</span>
+                                <h2 class="text-2xl md:text-4xl font-light text-white/90 mb-8 tracking-tight text-glow-white">
+                                    Flashez le QR Code pour <span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-magical-gold to-magical-pink drop-shadow-md">voter !</span>
                                 </h2>
                                 
-                                <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl mb-6 mx-auto inline-block border-8 border-brand/50">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-48 h-48 md:w-80 md:h-80 rounded-xl">
+                                <div class="neo-glass p-6 md:p-8 rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] mb-8 mx-auto inline-block border-2 border-white/20">
+                                    <div class="bg-white p-4 rounded-3xl">
+                                        <img src="${QR_CODE_URL}" alt="QR Code" class="w-48 h-48 md:w-80 md:h-80 rounded-xl object-contain">
+                                    </div>
                                 </div>
                                 
-                                <div class="bg-slate-900/80 border border-brand/20 py-4 px-10 md:py-6 md:px-16 rounded-3xl shadow-2xl inline-block mb-8">
-                                    <p class="text-lg md:text-2xl text-brand-light mb-1">Code de la soirée :</p>
-                                    <p class="text-4xl md:text-6xl font-black text-white tracking-widest">${state.guestCode}</p>
+                                <div class="neo-glass py-4 px-10 md:py-6 md:px-16 rounded-[2rem] inline-block mb-10">
+                                    <p class="text-lg md:text-xl text-magical-cyan/90 mb-1 font-medium">Code de la soirée :</p>
+                                    <p class="text-5xl md:text-7xl font-black text-white tracking-widest text-glow-white">${state.guestCode}</p>
                                 </div>
 
-                                <div class="bg-brand/10 border border-brand px-8 py-4 rounded-3xl backdrop-blur-sm animate-pulse">
-                                    <p class="text-brand-light font-medium text-lg mb-1 uppercase tracking-widest">Affichage de la playlist dans :</p>
-                                    <div class="text-white font-black text-5xl md:text-6xl tabular-nums tracking-wider dynamic-timer-display">--:--:--</div>
+                                <div class="neo-glass border-magical-pink/50 px-10 py-5 rounded-[2.5rem] pulse-magical relative overflow-hidden">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-magical-pink/10 to-magical-cyan/10"></div>
+                                    <p class="relative z-10 text-white/90 font-medium text-lg mb-1 uppercase tracking-widest">Affichage de la playlist dans :</p>
+                                    <div class="relative z-10 text-white font-black text-6xl md:text-7xl tabular-nums tracking-wider dynamic-timer-display text-glow-white">--:--:--</div>
                                 </div>
                             </div>
                         </div>
@@ -1132,44 +1262,42 @@
                 const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
                 
                 root.innerHTML = `
-                    <div class="h-screen w-screen flex flex-col p-4 bg-slate-950 relative overflow-hidden animate-fade-in">
-                        <div class="absolute top-0 left-0 w-full h-full pointer-events-none">
-                            <div class="absolute top-[-20%] left-[10%] w-[40%] h-[50%] bg-brand/20 rounded-full blur-[150px]"></div>
-                        </div>
-
-                        <button onclick="goTo('admin')" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-slate-800/50">
+                    <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden animate-fade-in">
+                        <button onclick="goTo('admin')" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-white/10">
                             <i class="ph-bold ph-x text-2xl"></i>
                         </button>
 
-                        <!-- EN-TÊTE -->
-                        <div class="relative z-10 flex justify-between items-center mb-4 px-2">
-                            <div class="flex items-center gap-4">
-                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-12 md:h-16 object-contain drop-shadow-2xl" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
-                                <h1 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-brand-light uppercase tracking-widest text-center">
+                        <!-- EN-TÊTE COMPACT -->
+                        <div class="relative z-10 flex justify-between items-center mb-6 px-2">
+                            <div class="flex items-center gap-6">
+                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
                                     VOTRE PLAYLIST IDÉALE
                                 </h1>
                             </div>
                             
-                            <div class="flex flex-col items-end gap-2">
+                            <div class="flex items-center gap-6">
                                 <!-- MINUTEUR OU MESSAGE DE CLÔTURE -->
                                 ${state.currentPhase === 2 ? `
-                                    <div class="bg-brand/20 border border-brand px-4 py-1.5 rounded-xl flex items-center gap-3">
-                                        <span class="text-brand-light font-bold text-sm uppercase">Fin des votes : </span>
-                                        <span class="text-white font-black text-2xl tabular-nums dynamic-timer-display">--:--:--</span>
+                                    <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
+                                        <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
+                                        <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
                                     </div>
                                 ` : state.currentPhase === 3 ? `
-                                    <div class="bg-red-600/90 border border-red-500 px-6 py-2 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.5)] pulse-slow">
-                                        <span class="text-white font-black text-xl uppercase tracking-widest">Les votes sont clôturés</span>
+                                    <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                        <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
                                     </div>
                                 ` : ''}
 
                                 <!-- QR CODE INTÉGRÉ -->
                                 ${state.currentPhase === 2 ? `
-                                <div class="hidden md:flex items-center gap-3 bg-slate-900/80 backdrop-blur-md border border-brand/30 p-2 pr-6 rounded-2xl shadow-lg">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrUrl}&margin=0&color=4a759e" alt="QR Code" class="w-14 h-14 rounded-xl bg-white p-1">
+                                <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
+                                    <div class="bg-white p-2 rounded-2xl">
+                                        <img src="${QR_CODE_URL}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
+                                    </div>
                                     <div class="flex flex-col justify-center">
-                                        <span class="text-base font-bold text-white tracking-wide leading-tight">Flashez pour voter !</span>
-                                        <span class="text-xs font-medium text-brand-light mt-0.5">Code : <strong class="text-white">${state.guestCode}</strong></span>
+                                        <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
+                                        <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
                                     </div>
                                 </div>
                                 ` : ''}
@@ -1177,25 +1305,27 @@
                         </div>
 
                         <!-- LA GRILLE DES RÉSULTATS (Top 40 en 4 colonnes) -->
-                        <div class="relative z-10 flex-1 w-full bg-slate-900/40 backdrop-blur-xl border border-brand/20 rounded-3xl shadow-2xl p-3">
+                        <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4">
                             ${top40Songs.length > 0 ? `
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
                                     ${top40Songs.map((song, index) => {
                                         const isTop3 = index < 3;
-                                        let rankStyle = "text-slate-500 text-lg";
-                                        if (index === 0) rankStyle = "text-yellow-400 text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]";
-                                        if (index === 1) rankStyle = "text-slate-300 text-xl";
-                                        if (index === 2) rankStyle = "text-amber-600 text-xl";
+                                        let rankStyle = "text-white/40 text-xl font-bold";
+                                        let boxStyle = "neo-card bg-white/[0.01]";
+                                        
+                                        if (index === 0) { rankStyle = "text-magical-gold text-3xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-magical-gold/20 to-transparent border-magical-gold/40 shadow-[0_0_20px_rgba(255,215,0,0.3)]"; }
+                                        else if (index === 1) { rankStyle = "text-slate-300 text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-white/10 to-transparent border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]"; }
+                                        else if (index === 2) { rankStyle = "text-orange-500 text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-orange-500/20 to-transparent border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"; }
 
                                         return `
-                                            <div class="flex items-center bg-slate-950/60 border ${isTop3 ? 'border-brand/40 bg-slate-900/80' : 'border-slate-800/80'} rounded-xl px-3 overflow-hidden shadow-sm h-full">
-                                                <div class="w-8 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
-                                                <div class="flex-1 min-w-0 px-3 border-l border-slate-700/50 ml-2">
-                                                    <div class="text-sm md:text-base font-bold text-white truncate leading-tight">${song.title}</div>
-                                                    <div class="text-xs text-brand-light truncate leading-tight mt-0.5">${song.artist}</div>
+                                            <div class="flex items-center ${boxStyle} rounded-2xl px-4 overflow-hidden h-full">
+                                                <div class="w-10 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
+                                                <div class="flex-1 min-w-0 px-4 border-l border-white/10 ml-3 py-1">
+                                                    <div class="text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
+                                                    <div class="text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
                                                 </div>
-                                                <div class="shrink-0 flex items-center justify-center bg-slate-900/80 rounded-lg px-3 py-1 border border-slate-700/50">
-                                                    <span class="text-lg md:text-xl font-black ${isTop3 ? 'text-white' : 'text-brand'}">${song.votes}</span>
+                                                <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-4 py-1.5 border border-white/10 shadow-inner">
+                                                    <span class="text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
                                                 </div>
                                             </div>
                                         `;
@@ -1203,9 +1333,9 @@
                                 </div>
                             ` : `
                                 <div class="flex flex-col items-center justify-center h-full text-center">
-                                    <i class="ph-duotone ph-disc text-8xl text-brand mb-6 animate-spin-slow" style="animation-duration: 4s;"></i>
-                                    <h3 class="text-3xl font-bold text-white mb-2">En attente des votes...</h3>
-                                    <p class="text-xl text-slate-400">La playlist idéale se prépare !</p>
+                                    <i class="ph-duotone ph-disc text-9xl text-magical-pink/50 mb-6 animate-spin-slow" style="animation-duration: 4s;"></i>
+                                    <h3 class="text-4xl font-bold text-white mb-3 text-glow-white">En attente des votes...</h3>
+                                    <p class="text-2xl text-white/60 font-light">La playlist idéale se prépare !</p>
                                 </div>
                             `}
                         </div>
@@ -1220,27 +1350,26 @@
             if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
                 root.innerHTML = `
-                    <div class="min-h-screen flex flex-col items-center justify-center p-4 animate-fade-in relative overflow-hidden">
-                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand/10 rounded-full blur-[100px] pointer-events-none"></div>
-                        <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl relative z-10 text-center border-t-brand/30">
-                            <div class="mb-6 relative inline-block">
-                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-20 md:h-24 object-contain drop-shadow-2xl mx-auto" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/6597c8/ffffff?text=Universal+DJ';">
-                                ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-slate-800 rounded-full p-2 border border-slate-700 shadow-lg"><i class="ph-fill ph-lock-key text-white text-sm"></i></div>' : ''}
+                    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
+                        <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative z-10 text-center border-t-magical-pink/50">
+                            <div class="mb-8 relative inline-block">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-20 md:h-28 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.5)] mx-auto" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-magical-purple rounded-full p-3 shadow-[0_0_20px_rgba(112,0,255,0.8)]"><i class="ph-fill ph-lock-key text-white text-lg"></i></div>' : ''}
                             </div>
-                            <h1 class="text-2xl font-bold text-white mb-2">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
-                            <p class="text-brand-light mb-8 font-medium">${isAdmin ? 'Entrez le code administrateur.' : 'Entrez le mot de passe annoncé par le DJ.'}</p>
-                            <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-4">
+                            <h1 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
+                            <p class="text-white/70 mb-10 font-medium text-lg">${isAdmin ? 'Entrez le code administrateur.' : 'Entrez le mot de passe de la soirée.'}</p>
+                            <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-6">
                                 <div>
                                     <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="${isAdmin ? 'Code DJ secret' : 'Mot de passe'}" 
-                                        class="w-full bg-slate-950 border border-slate-700 rounded-xl py-4 px-6 text-center text-xl text-white uppercase tracking-widest focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/50 transition-all placeholder:text-slate-600">
+                                        class="w-full bg-black/60 border border-white/20 rounded-2xl py-4 px-6 text-center text-2xl text-white uppercase tracking-[0.3em] focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all placeholder:text-white/30 font-black shadow-inner">
                                 </div>
-                                ${state.loginError ? `<p class="text-red-400 text-sm animate-fade-in">${state.loginError}</p>` : ''}
-                                <button type="submit" class="w-full bg-brand hover:bg-brand-light text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-brand/25 transition-all transform hover:scale-[1.02] active:scale-95 border border-white/10">
-                                    ${isAdmin ? 'Accéder au Tableau de bord' : 'Rejoindre la soirée !'}
+                                ${state.loginError ? `<p class="text-magical-pink font-bold animate-fade-in drop-shadow-md">${state.loginError}</p>` : ''}
+                                <button type="submit" class="w-full btn-liquid font-black py-4 px-6 rounded-2xl text-lg tracking-widest uppercase">
+                                    ${isAdmin ? 'Accéder au Dashboard' : 'Rejoindre la soirée !'}
                                 </button>
                             </form>
-                            <div class="mt-8 pt-6 border-t border-slate-800">
-                                <button onclick="goTo('${isAdmin ? 'login' : 'adminLogin'}')" class="text-sm text-slate-400 hover:text-brand-light transition-colors">
+                            <div class="mt-10 pt-8 border-t border-white/10">
+                                <button onclick="goTo('${isAdmin ? 'login' : 'adminLogin'}')" class="text-sm font-bold text-white/50 hover:text-white transition-colors uppercase tracking-widest">
                                     ${isAdmin ? '← Retour à l\'accès invité' : 'Accès DJ (Admin)'}
                                 </button>
                             </div>
@@ -1250,19 +1379,19 @@
                 return;
             }
 
-            // HEADER COMMUN
+            // HEADER COMMUN (Bulle flottante)
             const headerHTML = `
-                <nav class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/10 px-4 py-4 md:px-8">
-                    <div class="max-w-6xl mx-auto flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <img src="${LOGO_URL}" alt="Universal DJ" class="h-10 md:h-12 object-contain drop-shadow-md" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/6597c8/ffffff?text=Universal+DJ';">
-                            ${state.view === 'admin' ? '<h1 class="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-brand-light hidden md:block border-l border-slate-700 pl-3 ml-1">Tableau de Bord</h1>' : ''}
+                <div class="fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-6xl z-50 animate-fade-in">
+                    <nav class="neo-glass rounded-full px-6 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <img src="${LOGO_URL}" alt="Universal DJ" class="h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
+                            ${state.view === 'admin' ? '<h1 class="text-lg md:text-xl font-black text-white hidden md:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
                         </div>
-                        <button onclick="goTo('login')" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-slate-900 border border-slate-800 px-4 py-2 rounded-full text-sm">
-                            <i class="ph-bold ph-sign-out"></i> <span class="hidden md:inline">Quitter</span>
+                        <button onclick="goTo('login')" class="flex items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-6 py-2.5 rounded-full text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider">
+                            <i class="ph-bold ph-sign-out text-lg"></i> <span class="hidden md:inline">Quitter</span>
                         </button>
-                    </div>
-                </nav>
+                    </nav>
+                </div>
             `;
 
             let mainContent = '';
@@ -1287,66 +1416,65 @@
                 const isTimerStarted = state.eventStartTime !== null;
 
                 mainContent = `
-                    <div class="animate-fade-in">
+                    <div class="animate-fade-in pb-24 pt-28">
                         
                         ${isClosed ? `
-                            <div class="bg-red-600 border border-red-500 rounded-2xl p-4 mb-6 shadow-[0_0_20px_rgba(239,68,68,0.3)] text-center pulse-slow">
-                                <h2 class="text-white font-black text-2xl uppercase tracking-widest">Les votes sont clôturés</h2>
-                                <p class="text-red-100 text-sm mt-1">La playlist idéale est prête, regardez l'écran géant !</p>
+                            <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
+                                <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
+                                <p class="text-white/90 text-base md:text-lg mt-2 font-medium">La playlist idéale est prête, regardez l'écran géant !</p>
                             </div>
                         ` : isTimerStarted ? `
-                            <!-- NOUVEAU : Affichage du temps restant chez l'invité -->
-                            <div class="bg-slate-900/80 border border-brand/40 rounded-2xl p-4 mb-6 shadow-lg shadow-brand/10 text-center flex flex-col items-center justify-center animate-pulse">
-                                <span class="text-brand-light font-bold text-xs md:text-sm uppercase tracking-widest mb-1 flex items-center gap-2">
-                                    <i class="ph-fill ph-timer text-brand"></i> Temps restant pour voter
+                            <div class="neo-glass border-magical-cyan/40 rounded-3xl p-5 mb-8 shadow-[0_0_30px_rgba(0,240,255,0.2)] text-center flex flex-col items-center justify-center animate-pulse">
+                                <span class="text-magical-cyan font-bold text-sm md:text-base uppercase tracking-widest mb-1 flex items-center gap-2 text-glow-cyan">
+                                    <i class="ph-fill ph-timer text-xl"></i> Temps restant pour voter
                                 </span>
-                                <span class="text-white font-black text-3xl md:text-4xl tabular-nums tracking-widest global-timer-display">--:--:--</span>
+                                <span class="text-white font-black text-5xl md:text-6xl tabular-nums tracking-widest global-timer-display text-glow-white">--:--:--</span>
                             </div>
                         ` : ''}
 
                         <!-- BLOC : COMPTEUR DE CRÉDITS -->
-                        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mb-8 shadow-xl relative overflow-hidden ${isClosed ? 'opacity-50 grayscale' : ''}">
-                            <div class="absolute bottom-0 left-0 h-1.5 bg-brand transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
-                            <div class="flex flex-col md:flex-row items-start md:items-center justify-between relative z-10 gap-4">
+                        <div class="neo-glass rounded-[2rem] p-6 md:p-8 mb-10 relative overflow-hidden ${isClosed ? 'opacity-50 grayscale' : ''}">
+                            <div class="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-magical-cyan to-magical-pink transition-all duration-500 ease-out shadow-[0_-5px_20px_rgba(255,0,122,0.8)]" style="width: ${progressPercent}%"></div>
+                            <div class="flex flex-col md:flex-row items-start md:items-center justify-between relative z-10 gap-6">
                                 <div>
-                                    <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2">
-                                        <i class="ph-fill ph-ticket text-brand text-2xl"></i> Vos crédits de vote
+                                    <h3 class="text-white font-black text-3xl mb-1 flex items-center gap-3 tracking-tight text-glow-white">
+                                        <i class="ph-fill ph-ticket text-magical-pink text-4xl drop-shadow-[0_0_15px_rgba(255,0,122,0.8)]"></i> Vos crédits
                                     </h3>
-                                    <p class="text-sm text-slate-400">Vous pouvez voter <strong>${MAX_VOTES_PER_SONG} fois maximum</strong> par titre.</p>
+                                    <p class="text-lg text-white/70 font-light">Vous pouvez voter <strong>${MAX_VOTES_PER_SONG} fois maximum</strong> par titre.</p>
                                 </div>
-                                <div class="text-right bg-slate-950 px-5 py-3 rounded-2xl border border-white/5 w-full md:w-auto flex justify-between md:block items-center">
-                                    <span class="text-slate-400 text-sm md:hidden font-medium">Restants :</span>
+                                <div class="text-right bg-black/60 px-8 py-5 rounded-[1.5rem] border border-white/10 w-full md:w-auto flex justify-between md:block items-center shadow-inner">
+                                    <span class="text-white/50 text-sm md:hidden font-bold uppercase tracking-widest">Restants :</span>
                                     <div>
-                                        <span class="text-3xl font-black ${votesLeft === 0 ? 'text-red-400' : 'text-brand-light'}">${votesLeft}</span>
-                                        <span class="text-slate-500 font-medium text-lg">/ ${MAX_TOTAL_VOTES}</span>
+                                        <span class="text-5xl font-black ${votesLeft === 0 ? 'text-red-500 text-glow-pink' : 'text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]'}">${votesLeft}</span>
+                                        <span class="text-white/40 font-black text-2xl"> / ${MAX_TOTAL_VOTES}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="mb-6 md:flex md:items-center md:justify-between space-y-4 md:space-y-0">
+                        <div class="mb-8 md:flex md:items-center md:justify-between space-y-6 md:space-y-0">
                             <div>
-                                <h2 class="text-2xl font-bold text-white mb-1">À vous de jouer !</h2>
-                                <p class="text-sm text-slate-400">Cherchez vos titres favoris dans la liste.</p>
+                                <h2 class="text-4xl font-black text-white mb-1 tracking-tight text-glow-white">À vous de jouer !</h2>
+                                <p class="text-lg text-white/70 font-light">Cherchez vos titres favoris dans la liste.</p>
                             </div>
-                            <div class="relative w-full md:w-72">
-                                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xl text-brand-light"></i>
+                            <div class="relative w-full md:w-96">
+                                <i class="ph-bold ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-2xl text-magical-cyan"></i>
                                 <input id="searchInput" type="text" placeholder="Rechercher un artiste, titre..." 
                                     value="${(state.searchQuery || '').replace(/"/g, '&quot;')}" oninput="handleSearch(event)"
-                                    class="w-full bg-slate-900 border border-slate-800 rounded-full py-2.5 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-brand transition-all">
+                                    class="w-full bg-black/50 backdrop-blur-xl border border-white/20 rounded-full py-4 pl-14 pr-6 text-lg text-white focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/50 transition-all font-medium placeholder:text-white/30 shadow-inner">
                             </div>
                         </div>
 
-                        <div class="flex overflow-x-auto pb-4 mb-6 gap-2 no-scrollbar">
+                        <div class="flex overflow-x-auto pb-6 mb-8 gap-3 md:gap-4 no-scrollbar -mx-4 px-4 md:-mx-8 md:px-8">
                             ${themes.map(theme => `
-                                <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-brand/10 border-brand text-brand-light shadow-[0_0_10px_rgba(101,151,200,0.2)]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'}">
+                                <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-8 py-3.5 rounded-full text-base font-bold transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-gradient-to-r from-magical-purple/40 to-magical-pink/40 border-magical-pink text-white shadow-[0_0_20px_rgba(255,0,122,0.4)]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/20 hover:text-white hover:border-white/30'}">
                                     ${theme}
                                 </button>
                             `).join('')}
                         </div>
 
                         ${filteredSongs.length > 0 ? `
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 ${filteredSongs.map(song => {
                                     const votesForThisSong = state.userVotes[song.id] || 0;
                                     const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
@@ -1358,49 +1486,50 @@
                                     let iconColor = "";
 
                                     if (isClosed) {
-                                        btnClasses = "bg-slate-800/50 text-slate-500 border border-slate-700/50 cursor-not-allowed";
+                                        btnClasses = "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed";
                                         btnText = votesForThisSong > 0 ? "Voté" : "Fermé";
-                                        iconColor = votesForThisSong > 0 ? "text-slate-400" : "text-slate-600";
+                                        iconColor = votesForThisSong > 0 ? "text-white/40" : "text-white/20";
                                     } else if (isSongMaxed) {
-                                        btnClasses = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 cursor-default";
+                                        btnClasses = "bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 cursor-default shadow-[0_0_15px_rgba(0,240,255,0.3)]";
                                         btnText = "Max (2/2)";
-                                        iconColor = "text-emerald-400";
+                                        iconColor = "text-magical-cyan";
                                     } else if (votesForThisSong === 1) {
                                         btnClasses = isDisabled 
-                                            ? "bg-slate-800/50 text-slate-500 border border-slate-700/50 cursor-not-allowed" 
-                                            : "bg-brand/20 text-brand-light border border-brand/40 hover:bg-brand hover:text-white shadow-[0_0_10px_rgba(101,151,200,0.1)]";
+                                            ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" 
+                                            : "bg-magical-pink/20 text-white border border-magical-pink/50 hover:bg-magical-pink hover:shadow-[0_0_20px_rgba(255,0,122,0.5)]";
                                         btnText = "Voté (1/2)";
-                                        iconColor = "text-brand-light";
+                                        iconColor = "text-white";
                                     } else {
                                         btnClasses = isDisabled 
-                                            ? "bg-slate-800/50 text-slate-500 border border-slate-700/50 cursor-not-allowed" 
-                                            : "bg-slate-800 text-white hover:bg-brand hover:shadow-lg hover:shadow-brand/20 border border-slate-700 hover:border-brand-light";
+                                            ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" 
+                                            : "btn-liquid border-transparent";
                                         btnText = "Voter";
                                         iconColor = "";
                                     }
 
                                     return `
-                                        <div class="group bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex items-center justify-between ${!isClosed ? 'hover:border-brand/40' : ''} transition-colors">
-                                            <div class="flex items-center gap-4 overflow-hidden">
-                                                <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700">
-                                                    <i class="ph-fill ph-play ${isClosed ? 'text-slate-600' : 'text-brand'} text-xl"></i>
+                                        <div class="neo-card rounded-[1.5rem] p-5 flex items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}">
+                                            <div class="flex items-center gap-5 overflow-hidden">
+                                                <div class="w-14 h-14 rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
+                                                    <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-2xl transition-all"></i>
                                                 </div>
                                                 <div class="min-w-0">
-                                                    <h3 class="font-semibold text-white truncate">${song.title}</h3>
-                                                    <p class="text-sm text-slate-400 truncate">${song.artist}</p>
+                                                    <h3 class="font-bold text-white text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
+                                                    <p class="text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
                                                 </div>
                                             </div>
-                                            <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${btnClasses}">
-                                                <i class="ph-fill ph-heart ${iconColor}"></i>
+                                            <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-2 md:ml-4 flex items-center gap-2 px-6 md:px-8 py-3 md:py-3.5 rounded-2xl text-sm md:text-base font-black uppercase tracking-widest transition-all ${btnClasses}">
+                                                <i class="ph-fill ph-heart ${iconColor} text-xl"></i>
                                                 ${btnText}
                                             </button>
                                         </div>
                                     `;
                                 }).join('')}
                             </div>
-                        ` : `<div class="text-center py-20 text-slate-500">
-                                <i class="ph-fill ph-music-notes text-4xl mb-3 text-slate-700"></i>
-                                <p>Aucun titre trouvé.</p>
+                        ` : `<div class="text-center py-32 neo-glass rounded-[3rem]">
+                                <i class="ph-duotone ph-music-notes text-8xl text-magical-cyan/40 mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
+                                <p class="text-lg text-white/60 font-light">Essayez une autre recherche.</p>
                              </div>`}
                     </div>
                 `;
@@ -1414,32 +1543,32 @@
                 const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
 
                 mainContent = `
-                    <div class="animate-fade-in max-w-4xl mx-auto">
+                    <div class="animate-fade-in max-w-5xl mx-auto pb-24 pt-28">
                         
-                        <!-- BLOC NOUVEAU : GESTION DU MINUTEUR -->
-                        <div class="bg-slate-900 border border-slate-800 border-t-red-500/50 rounded-3xl p-6 md:p-8 mb-8 shadow-xl">
-                            <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                                <i class="ph-fill ph-timer text-red-500 text-2xl"></i> 
+                        <!-- BLOC : GESTION DU MINUTEUR -->
+                        <div class="neo-glass border-t-magical-pink/50 rounded-[2.5rem] p-8 md:p-10 mb-8 relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                            <h3 class="text-3xl font-black text-white mb-2 flex items-center gap-4 tracking-tight relative z-10 text-glow-white">
+                                <i class="ph-fill ph-timer text-magical-pink text-4xl drop-shadow-[0_0_15px_rgba(255,0,122,0.8)]"></i> 
                                 Minuteur Automatique (3 Heures)
                             </h3>
-                            <p class="text-slate-400 text-sm mb-6">Le minuteur automatise l'écran "Monitor" : 2 heures sur le QR Code géant, puis 1 heure sur le Top 40, puis clôture définitive des votes.</p>
+                            <p class="text-white/70 text-lg mb-8 font-light relative z-10">Automatise l'écran géant : 2H sur le QR Code, puis 1H sur le Top 40, puis clôture définitive.</p>
                             
-                            <div class="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-950 p-5 rounded-2xl border border-slate-700/50">
+                            <div class="flex flex-col md:flex-row gap-6 items-center justify-between bg-black/50 p-8 rounded-[2rem] border border-white/10 relative z-10 shadow-inner backdrop-blur-md">
                                 <div class="w-full md:w-auto">
-                                    <span class="block text-sm text-slate-400 font-medium mb-1">Statut actuel :</span>
-                                    ${state.currentPhase === 0 ? '<span class="text-slate-500 font-bold text-lg">Non démarré</span>' :
-                                      state.currentPhase === 1 ? '<span class="text-brand-light font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-spinner animate-spin"></i> Phase 1 : QR Code (<span class="dynamic-timer-display">--:--:--</span>)</span>' :
-                                      state.currentPhase === 2 ? '<span class="text-amber-400 font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-spinner animate-spin"></i> Phase 2 : Top 40 (<span class="dynamic-timer-display">--:--:--</span>)</span>' :
-                                      '<span class="text-red-500 font-bold text-lg flex items-center gap-2"><i class="ph-fill ph-check-circle"></i> Clôturé définitivement</span>'}
+                                    <span class="block text-sm text-white/50 font-bold mb-2 uppercase tracking-widest">Statut actuel :</span>
+                                    ${state.currentPhase === 0 ? '<span class="text-white/60 font-black text-2xl">Non démarré</span>' :
+                                      state.currentPhase === 1 ? '<span class="text-magical-cyan font-black text-2xl flex items-center gap-3 text-glow-cyan"><i class="ph-bold ph-spinner animate-spin"></i> Phase 1 : QR Code (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
+                                      state.currentPhase === 2 ? '<span class="text-magical-gold font-black text-2xl flex items-center gap-3 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]"><i class="ph-bold ph-spinner animate-spin"></i> Phase 2 : Top 40 (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
+                                      '<span class="text-magical-pink font-black text-2xl flex items-center gap-3 text-glow-pink"><i class="ph-fill ph-check-circle"></i> Clôturé définitivement</span>'}
                                 </div>
                                 
-                                <div class="flex w-full md:w-auto gap-3 mt-4 md:mt-0">
+                                <div class="flex w-full md:w-auto gap-4 mt-4 md:mt-0">
                                     ${state.currentPhase === 0 ? 
-                                        `<button onclick="startEventTimer()" class="w-full md:w-auto bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-red-500/30 flex items-center justify-center gap-2">
-                                            <i class="ph-bold ph-play"></i> Démarrer les 3H
+                                        `<button onclick="startEventTimer()" class="w-full md:w-auto btn-liquid text-white font-black py-4 px-10 rounded-2xl flex items-center justify-center gap-3 text-xl tracking-widest uppercase">
+                                            <i class="ph-fill ph-play-circle text-3xl"></i> Démarrer les 3H
                                         </button>` 
                                         : 
-                                        `<button onclick="stopEventTimer()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-medium py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2">
+                                        `<button onclick="stopEventTimer()" class="w-full md:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-10 rounded-2xl transition-all flex items-center justify-center gap-3 text-xl tracking-widest uppercase hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                                             <i class="ph-bold ph-stop"></i> Arrêter / Annuler
                                         </button>`
                                     }
@@ -1447,79 +1576,85 @@
                             </div>
                         </div>
 
-                        <!-- BLOC : AFFICHAGES ÉCRANS -->
-                        <div class="bg-slate-900 border border-slate-800 border-t-brand/30 rounded-3xl p-6 md:p-8 mb-8 shadow-xl">
-                            <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-3">
-                                <i class="ph-fill ph-monitor-play text-brand text-2xl"></i> 
-                                Écran Vidéoprojecteur / TV
-                            </h3>
-                            <p class="text-slate-400 text-sm mb-6">Affiche l'interface publique. Si le minuteur est lancé, l'écran s'adaptera tout seul !</p>
-                            
-                            <div class="flex flex-col sm:flex-row gap-4">
-                                <button onclick="toggleMonitor()" class="flex-1 bg-gradient-to-r from-blue-600 to-brand hover:from-blue-500 hover:to-brand-light text-white font-bold px-6 py-4 rounded-xl transition-all shadow-lg shadow-brand/25 flex items-center justify-center gap-2 border border-white/10">
-                                    <i class="ph-bold ph-monitor"></i> Ouvrir le "Monitor"
-                                </button>
-                                <button onclick="toggleQRCode()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white font-bold px-6 py-4 rounded-xl transition-colors flex items-center justify-center gap-2">
-                                    <i class="ph-bold ph-qr-code text-xl"></i> Forcer QR Code Simple
-                                </button>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                            <!-- BLOC : AFFICHAGES ÉCRANS -->
+                            <div class="neo-glass rounded-[2.5rem] p-8 relative overflow-hidden">
+                                <h3 class="text-2xl font-black text-white mb-2 flex items-center gap-3 tracking-tight text-glow-white">
+                                    <i class="ph-fill ph-monitor-play text-magical-cyan text-3xl drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i> 
+                                    Écrans Publics
+                                </h3>
+                                <p class="text-white/70 text-base mb-8 font-light">Contrôle l'affichage sur vidéoprojecteur/TV.</p>
+                                
+                                <div class="flex flex-col gap-4">
+                                    <button onclick="toggleMonitor()" class="w-full btn-liquid font-black px-6 py-5 rounded-2xl flex items-center justify-center gap-3 text-lg uppercase tracking-widest border-transparent">
+                                        <i class="ph-bold ph-monitor text-2xl"></i> Ouvrir le "Monitor"
+                                    </button>
+                                    <button onclick="toggleQRCode()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-6 py-5 rounded-2xl transition-colors flex items-center justify-center gap-3 text-lg uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                        <i class="ph-bold ph-qr-code text-2xl"></i> Forcer QR Code Simple
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- BLOC : GESTION DU CODE -->
-                        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 mb-8 shadow-xl">
-                            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <i class="ph-fill ph-lock-key text-slate-400"></i> Mot de passe de la soirée
-                            </h3>
-                            <div class="flex flex-col md:flex-row gap-4 items-center">
-                                <input id="newGuestCode" type="text" value="${state.guestCode}" 
-                                    class="w-full md:w-64 bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white uppercase tracking-widest font-bold focus:border-brand focus:outline-none transition-all text-center md:text-left">
-                                <button onclick="updateGuestCode()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-white text-sm font-medium px-6 py-3 rounded-xl transition-colors">
-                                    Mettre à jour
-                                </button>
+                            <!-- BLOC : GESTION DU CODE -->
+                            <div class="neo-glass rounded-[2.5rem] p-8 flex flex-col justify-center">
+                                <h3 class="text-2xl font-black text-white mb-6 flex items-center gap-3 text-glow-white">
+                                    <i class="ph-fill ph-lock-key text-white/50 text-3xl"></i> Mot de passe de la soirée
+                                </h3>
+                                <div class="flex flex-col sm:flex-row gap-4 items-center">
+                                    <input id="newGuestCode" type="text" value="${state.guestCode}" 
+                                        class="w-full bg-black/60 border border-white/20 rounded-2xl py-5 px-6 text-white uppercase tracking-[0.2em] font-black text-2xl focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all text-center sm:text-left shadow-inner">
+                                    <button onclick="updateGuestCode()" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-5 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                        Mettre à jour
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         <!-- BLOC : STATISTIQUES ET REMISE À ZÉRO -->
-                        <div class="bg-gradient-to-br from-brand-dark/30 to-slate-900/80 border border-brand/20 rounded-3xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-                            <div class="absolute -right-10 -top-10 w-40 h-40 bg-brand/10 rounded-full blur-[50px]"></div>
-                            
-                            <div class="relative z-10">
-                                <h2 class="text-2xl font-bold text-white mb-1">Détail des Votes DJ</h2>
-                                <p class="text-brand-light">Interface de contrôle privée.</p>
+                        <div class="neo-glass rounded-[2.5rem] p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                            <div class="relative z-10 text-center md:text-left">
+                                <h2 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">Détail des Votes DJ</h2>
+                                <p class="text-white/70 font-medium text-lg">Interface de contrôle privée.</p>
                             </div>
-                            <div class="relative z-10 bg-slate-950/60 rounded-2xl p-4 text-center min-w-[150px] border border-white/5 shadow-inner">
-                                <span class="block text-sm text-slate-400">Total votes reçus</span>
-                                <span class="text-4xl font-black text-brand-light">${totalVotes}</span>
-                                
-                                <button onclick="resetVotes()" class="mt-4 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs py-2 px-3 rounded-xl transition-colors font-medium flex justify-center items-center gap-2">
-                                    <i class="ph-bold ph-trash"></i> Remettre à zéro
+                            <div class="relative z-10 flex flex-col sm:flex-row gap-6 items-center">
+                                <div class="bg-black/50 rounded-[1.5rem] px-10 py-5 border border-white/10 shadow-inner text-center">
+                                    <span class="block text-sm text-white/50 uppercase tracking-[0.2em] mb-1 font-bold">Total votes</span>
+                                    <span class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink drop-shadow-md">${totalVotes}</span>
+                                </div>
+                                <button onclick="resetVotes()" class="w-full sm:w-auto bg-white/5 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 font-bold py-5 px-8 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                                    <i class="ph-bold ph-trash text-2xl"></i> Remettre à zéro
                                 </button>
                             </div>
                         </div>
 
                         <!-- BLOC : CLASSEMENT DÉTAILLÉ -->
-                        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                            <div class="divide-y divide-slate-800/50">
+                        <div class="neo-glass rounded-[2.5rem] overflow-hidden">
+                            <div class="divide-y divide-white/10">
                                 ${rankedSongs.map((song, index) => {
                                     if(song.votes === 0) return '';
                                     return `
-                                    <div class="p-4 flex items-center hover:bg-slate-800/30 group">
-                                        <div class="w-16 flex justify-center">
-                                            ${index === 0 ? '<i class="ph-fill ph-trophy text-yellow-400 text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]"></i>' :
-                                              index === 1 ? '<i class="ph-fill ph-trophy text-slate-300 text-2xl"></i>' :
-                                              index === 2 ? '<i class="ph-fill ph-trophy text-amber-700 text-2xl"></i>' :
-                                              `<span class="text-slate-500 font-medium text-lg">${index + 1}</span>`}
+                                    <div class="p-6 flex items-center hover:bg-white/5 transition-colors group">
+                                        <div class="w-20 flex justify-center shrink-0">
+                                            ${index === 0 ? '<i class="ph-fill ph-trophy text-magical-gold text-4xl drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]"></i>' :
+                                              index === 1 ? '<i class="ph-fill ph-trophy text-slate-300 text-4xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]"></i>' :
+                                              index === 2 ? '<i class="ph-fill ph-trophy text-orange-500 text-4xl drop-shadow-[0_0_10px_rgba(249,115,22,0.5)]"></i>' :
+                                              `<span class="text-white/40 font-black text-2xl">${index + 1}</span>`}
                                         </div>
-                                        <div class="flex-1 min-w-0 pr-4">
-                                            <h4 class="font-semibold truncate ${index < 3 ? 'text-white text-lg' : 'text-slate-200'}">${song.title}</h4>
-                                            <p class="text-sm text-slate-400 truncate">${song.artist}</p>
+                                        <div class="flex-1 min-w-0 px-6 border-l border-white/10 ml-2 py-2">
+                                            <h4 class="font-black truncate ${index < 3 ? 'text-white text-2xl text-glow-white' : 'text-white/90 text-xl tracking-wide'}">${song.title}</h4>
+                                            <p class="text-base font-light tracking-widest text-white/60 truncate mt-1">${song.artist}</p>
                                         </div>
-                                        <div class="w-24 text-right pr-2">
-                                            <span class="font-bold tabular-nums ${index < 3 ? 'text-xl text-brand-light' : 'text-slate-300'}">${song.votes}</span>
+                                        <div class="w-32 text-right pl-4 shrink-0">
+                                            <span class="font-black tabular-nums ${index < 3 ? 'text-5xl text-transparent bg-clip-text bg-gradient-to-br from-magical-cyan to-magical-pink drop-shadow-lg' : 'text-3xl text-white/80'}">${song.votes}</span>
                                         </div>
                                     </div>
                                 `}).join('')}
-                                ${totalVotes === 0 ? '<div class="p-8 text-center text-slate-500">Aucun vote pour le moment.</div>' : ''}
+                                ${totalVotes === 0 ? `
+                                    <div class="p-24 text-center">
+                                        <i class="ph-duotone ph-ghost text-8xl text-white/20 mb-6 inline-block"></i>
+                                        <p class="text-2xl font-medium text-white/50 tracking-widest uppercase">Aucun vote pour le moment.</p>
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
@@ -1528,12 +1663,12 @@
 
             root.innerHTML = `
                 ${(state.view !== 'qrcode' && state.view !== 'monitor') ? headerHTML : ''}
-                <main class="${(state.view !== 'qrcode' && state.view !== 'monitor') ? 'max-w-6xl mx-auto px-4 py-8 md:px-8' : ''}">
+                <main class="relative z-10 w-full px-4 md:px-8 max-w-6xl mx-auto">
                     ${mainContent}
                 </main>
             `;
             
-            // Un dernier appel pour s'assurer que les chronos affichent la bonne heure dès l'affichage
+            // Relance l'affichage correct du minuteur si on vient de re-render
             checkPhase();
         }
 
