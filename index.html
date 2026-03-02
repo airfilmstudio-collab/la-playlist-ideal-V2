@@ -134,6 +134,7 @@
 
     <script>
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
+        const QR_CODE_URL = "qrcode.png"; // <-- Ton fichier QR code fixe
 
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
@@ -988,7 +989,7 @@
             const root = document.getElementById('root');
             if (!root) return;
             
-            // L'application génère maintenant toute seule le QR Code vers SA PROPRE adresse exacte, tu n'as plus besoin d'importer d'image (qrcode.png). C'est beaucoup plus robuste.
+            // Le lien s'adapte maintenant automatiquement à l'adresse URL (GitHub Pages par exemple)
             const currentUrl = window.location.href.split('#')[0].split('?')[0];
             const qrUrl = encodeURIComponent(currentUrl); 
             const dynamicQrImage = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${qrUrl}&margin=0&color=050212&bgcolor=ffffff`;
@@ -1102,18 +1103,18 @@
                                     ${top40Songs.map((song, index) => {
                                         const isTop3 = index < 3;
                                         let rankStyle = "text-white/40 text-xl font-bold"; let boxStyle = "neo-card bg-white/[0.01]";
-                                        if (index === 0) { rankStyle = "text-magical-gold text-3xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-magical-gold/20 to-transparent border-magical-gold/40 shadow-[0_0_20px_rgba(255,215,0,0.3)]"; }
-                                        else if (index === 1) { rankStyle = "text-slate-300 text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-white/10 to-transparent border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]"; }
-                                        else if (index === 2) { rankStyle = "text-orange-500 text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-orange-500/20 to-transparent border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"; }
+                                        if (index === 0) { rankStyle = "text-magical-gold text-2xl sm:text-3xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-magical-gold/20 to-transparent border-magical-gold/40 shadow-[0_0_20px_rgba(255,215,0,0.3)]"; }
+                                        else if (index === 1) { rankStyle = "text-slate-300 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-white/10 to-transparent border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]"; }
+                                        else if (index === 2) { rankStyle = "text-orange-500 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-orange-500/20 to-transparent border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"; }
                                         return `
-                                            <div class="flex items-center ${boxStyle} rounded-2xl px-4 overflow-hidden h-full">
-                                                <div class="w-10 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
-                                                <div class="flex-1 min-w-0 px-4 border-l border-white/10 ml-3 py-1">
-                                                    <div class="text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
-                                                    <div class="text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
+                                            <div class="flex items-center ${boxStyle} rounded-2xl px-3 sm:px-4 overflow-hidden h-full">
+                                                <div class="w-8 sm:w-10 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
+                                                <div class="flex-1 min-w-0 px-2 sm:px-4 border-l border-white/10 ml-2 sm:ml-3 py-1">
+                                                    <div class="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
+                                                    <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
                                                 </div>
-                                                <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-4 py-1.5 border border-white/10 shadow-inner">
-                                                    <span class="text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
+                                                <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 border border-white/10 shadow-inner">
+                                                    <span class="text-lg sm:text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
                                                 </div>
                                             </div>
                                         `;
@@ -1172,7 +1173,7 @@
                             ${state.view === 'admin' ? '<h1 class="text-lg md:text-xl font-black text-white hidden md:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
                         </div>
                         <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-4 md:px-6 py-2 md:py-2.5 rounded-full text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider">
-                            <i class="ph-bold ph-sign-out text-lg"></i> <span class="hidden md:inline">Quitter</span>
+                            <i class="ph-bold ph-sign-out text-lg"></i> <span class="hidden sm:inline">Quitter</span>
                         </button>
                     </nav>
                 </div>
@@ -1275,19 +1276,20 @@
                                         btnText = "Voter"; iconColor = "";
                                     }
 
+                                    // CHANGEMENT MAJEUR ICI POUR SMARTPHONES : Textes plus flexibles, boutons plus compacts, marges optimisées.
                                     return `
-                                        <div class="neo-card rounded-[1.5rem] p-5 flex items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}">
-                                            <div class="flex items-center gap-5 overflow-hidden">
-                                                <div class="w-14 h-14 rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
-                                                    <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-2xl transition-all"></i>
+                                        <div class="neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3.5 sm:p-5 flex items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}">
+                                            <div class="flex items-center gap-3 sm:gap-5 overflow-hidden flex-1 pr-1">
+                                                <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
+                                                    <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-xl sm:text-2xl transition-all"></i>
                                                 </div>
-                                                <div class="min-w-0">
-                                                    <h3 class="font-bold text-white text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
-                                                    <p class="text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
+                                                <div class="min-w-0 flex-1">
+                                                    <h3 class="font-bold text-white text-base sm:text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
+                                                    <p class="text-xs sm:text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
                                                 </div>
                                             </div>
-                                            <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-2 md:ml-4 flex items-center gap-2 px-6 md:px-8 py-3 md:py-3.5 rounded-2xl text-sm md:text-base font-black uppercase tracking-widest transition-all ${btnClasses}">
-                                                <i class="ph-fill ph-heart ${iconColor} text-xl"></i>
+                                            <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-1 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest transition-all ${btnClasses}">
+                                                <i class="ph-fill ph-heart ${iconColor} text-sm sm:text-xl"></i>
                                                 ${btnText}
                                             </button>
                                         </div>
@@ -1384,19 +1386,19 @@
                                 ${rankedSongs.map((song, index) => {
                                     if(song.votes === 0) return '';
                                     return `
-                                    <div class="p-6 flex items-center hover:bg-white/5 transition-colors group">
-                                        <div class="w-20 flex justify-center shrink-0">
-                                            ${index === 0 ? '<i class="ph-fill ph-trophy text-magical-gold text-4xl drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]"></i>' :
-                                              index === 1 ? '<i class="ph-fill ph-trophy text-slate-300 text-4xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]"></i>' :
-                                              index === 2 ? '<i class="ph-fill ph-trophy text-orange-500 text-4xl drop-shadow-[0_0_10px_rgba(249,115,22,0.5)]"></i>' :
-                                              `<span class="text-white/40 font-black text-2xl">${index + 1}</span>`}
+                                    <div class="p-4 sm:p-6 flex items-center hover:bg-white/5 transition-colors group">
+                                        <div class="w-12 sm:w-20 flex justify-center shrink-0">
+                                            ${index === 0 ? '<i class="ph-fill ph-trophy text-magical-gold text-2xl sm:text-4xl drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]"></i>' :
+                                              index === 1 ? '<i class="ph-fill ph-trophy text-slate-300 text-2xl sm:text-4xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]"></i>' :
+                                              index === 2 ? '<i class="ph-fill ph-trophy text-orange-500 text-2xl sm:text-4xl drop-shadow-[0_0_10px_rgba(249,115,22,0.5)]"></i>' :
+                                              `<span class="text-white/40 font-black text-xl sm:text-2xl">${index + 1}</span>`}
                                         </div>
-                                        <div class="flex-1 min-w-0 px-6 border-l border-white/10 ml-2 py-2">
-                                            <h4 class="font-black truncate ${index < 3 ? 'text-white text-2xl text-glow-white' : 'text-white/90 text-xl tracking-wide'}">${song.title}</h4>
-                                            <p class="text-base font-light tracking-widest text-white/60 truncate mt-1">${song.artist}</p>
+                                        <div class="flex-1 min-w-0 px-3 sm:px-6 border-l border-white/10 ml-2 py-2">
+                                            <h4 class="font-black truncate ${index < 3 ? 'text-white text-lg sm:text-2xl text-glow-white' : 'text-white/90 text-base sm:text-xl tracking-wide'}">${song.title}</h4>
+                                            <p class="text-xs sm:text-base font-light tracking-wide sm:tracking-widest text-white/60 truncate mt-0.5 sm:mt-1">${song.artist}</p>
                                         </div>
-                                        <div class="w-32 text-right pl-4 shrink-0">
-                                            <span class="font-black tabular-nums ${index < 3 ? 'text-5xl text-transparent bg-clip-text bg-gradient-to-br from-magical-cyan to-magical-pink drop-shadow-lg' : 'text-3xl text-white/80'}">${song.votes}</span>
+                                        <div class="w-20 sm:w-32 text-right pl-2 sm:pl-4 shrink-0">
+                                            <span class="font-black tabular-nums ${index < 3 ? 'text-3xl sm:text-5xl text-transparent bg-clip-text bg-gradient-to-br from-magical-cyan to-magical-pink drop-shadow-lg' : 'text-2xl sm:text-3xl text-white/80'}">${song.votes}</span>
                                         </div>
                                     </div>
                                 `}).join('')}
