@@ -38,11 +38,11 @@
         /* Fallbacks de sécurité pour éviter la page blanche au chargement */
         html, body { background-color: #050212; color: #ffffff; }
 
-        /* Animations fluides d'apparition */
-        .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        /* Animations fluides d'apparition (réservées aux changements de vues complets) */
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px) scale(0.95); filter: blur(10px); }
-            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+            from { opacity: 0; filter: blur(5px); }
+            to { opacity: 1; filter: blur(0); }
         }
         
         /* Lumières Vivantes (Aurora / Holographic Background) */
@@ -154,7 +154,7 @@
         // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
         // =========================================================================
         const MY_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCrcyE5HbYE-fjiWwonzVmng_zCvXaSk", // <- La clé corrigée, sans erreur !
+            apiKey: "AIzaSyCrcyE5HbYE-fjiWwonzVmng_zCvXaSk", 
             authDomain: "laplaylistideale.firebaseapp.com",
             projectId: "laplaylistideale",
             storageBucket: "laplaylistideale.firebasestorage.app",
@@ -662,10 +662,26 @@
             render(); 
         }
         
+        // --- OPTIMISATION MOBILE : Recherche en temps réel sans recharger l'écran ---
         window.handleSearch = function(event) { 
-            state.searchQuery = event.target.value; const cursorPosition = event.target.selectionStart; render(); 
-            const input = document.getElementById('searchInput');
-            if (input) { input.focus(); input.setSelectionRange(cursorPosition, cursorPosition); }
+            state.searchQuery = event.target.value.toLowerCase(); 
+            const cards = document.querySelectorAll('.song-item-card');
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const searchData = card.getAttribute('data-search');
+                if (searchData.includes(state.searchQuery)) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            const emptyMsg = document.getElementById('empty-search-msg');
+            if (emptyMsg) {
+                emptyMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
         }
 
         window.vote = function(id) {
@@ -781,7 +797,7 @@
                 } else {
                     const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
                     htmlToRender = `
-                        <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden animate-fade-in">
+                        <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden">
                             <button onclick="goTo('admin')" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-white/10">
                                 <i class="ph-bold ph-x text-2xl"></i>
                             </button>
@@ -789,7 +805,7 @@
                                 <div class="flex items-center gap-6">
                                     <img src="${LOGO_URL}" alt="Universal DJ" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                     <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
-                                        VOTRE PLAYLIST IDÉALE
+                                        ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
                                     </h1>
                                 </div>
                                 <div class="flex items-center gap-6">
@@ -816,7 +832,7 @@
                                     ` : ''}
                                 </div>
                             </div>
-                            <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4">
+                            <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
                                 ${top40Songs.length > 0 ? `
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
                                         ${top40Songs.map((song, index) => {
@@ -841,9 +857,13 @@
                                     </div>
                                 ` : `
                                     <div class="flex flex-col items-center justify-center h-full text-center">
-                                        <i class="ph-duotone ph-disc text-9xl text-magical-pink/50 mb-6 animate-spin-slow" style="animation-duration: 4s;"></i>
-                                        <h3 class="text-4xl font-bold text-white mb-3 text-glow-white">En attente des votes...</h3>
-                                        <p class="text-2xl text-white/60 font-light">La playlist idéale se prépare !</p>
+                                        <i class="ph-duotone ${state.currentPhase === 3 ? 'ph-check-circle text-magical-cyan' : 'ph-disc text-magical-pink/50 animate-spin-slow'} text-9xl mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                        <h3 class="text-4xl font-bold text-white mb-3 text-glow-white">
+                                            ${state.currentPhase === 3 ? 'Playlist Terminée' : 'En attente des votes...'}
+                                        </h3>
+                                        <p class="text-2xl text-white/60 font-light">
+                                            ${state.currentPhase === 3 ? 'Le Top 40 est vide car aucun vote n\'a été enregistré.' : 'La playlist idéale se prépare !'}
+                                        </p>
                                     </div>
                                 `}
                             </div>
@@ -899,7 +919,7 @@
                 const panelScrolledClass = isScrolled ? 'glass-scrolled-panel' : '';
 
                 const headerHTML = `
-                    <div class="fixed top-4 left-0 w-full z-50 animate-fade-in px-2 sm:px-4 md:px-8 pointer-events-none">
+                    <div class="fixed top-4 left-0 w-full z-50 px-2 sm:px-4 md:px-8 pointer-events-none">
                         <nav id="main-nav" class="max-w-7xl mx-auto neo-glass rounded-full px-3 sm:px-4 py-2.5 sm:py-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto w-full transition-all duration-300 ${navScrolledClass}">
                             <button onclick="${state.view === 'admin' ? "goTo('admin')" : "window.scrollTo({top: 0, behavior: 'smooth'})"}" class="flex items-center gap-2 sm:gap-4 hover:opacity-80 transition-opacity focus:outline-none text-left">
                                 <img src="${LOGO_URL}" alt="Universal DJ" class="h-7 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
@@ -934,12 +954,12 @@
                 let mainContent = '';
 
                 if (state.view === 'user') {
-                    const searchLower = (state.searchQuery || '').toLowerCase();
+                    // Pour éviter de perdre le focus de la barre de recherche et optimiser la vitesse, 
+                    // on applique uniquement le filtre des thèmes au rendu initial.
                     const filteredSongs = state.songs.filter(song => {
-                        const matchTheme = state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
-                        const matchSearch = (song.title || '').toLowerCase().includes(searchLower) || (song.artist || '').toLowerCase().includes(searchLower);
-                        return matchTheme && matchSearch;
+                        return state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
                     });
+                    const searchLower = (state.searchQuery || '').toLowerCase();
 
                     const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
                     const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
@@ -948,7 +968,8 @@
                     const isTimerStarted = state.eventStartTime !== null;
 
                     mainContent = `
-                        <div class="animate-fade-in pb-32 pt-28 max-w-7xl mx-auto px-4 w-full">
+                        <!-- RETRAIT DU ANIMATE-FADE-IN POUR RÉSOUDRE LA LENTEUR DE CLICS SUR MOBILE -->
+                        <div id="user-view-container" class="pb-32 pt-28 max-w-7xl mx-auto px-4 w-full">
                             ${isClosed ? `
                                 <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
                                     <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
@@ -995,12 +1016,15 @@
                             <!-- FIN ZONE STICKY -->
 
                             ${filteredSongs.length > 0 ? `
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
+                                <div id="songs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
                                     ${filteredSongs.map(song => {
                                         const votesForThisSong = state.userVotes[song.id] || 0;
                                         const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
                                         const isTotalMaxed = state.totalUserVotes >= MAX_TOTAL_VOTES;
                                         const isDisabled = isSongMaxed || isTotalMaxed || isClosed;
+                                        
+                                        const matchSearch = (song.title || '').toLowerCase().includes(searchLower) || (song.artist || '').toLowerCase().includes(searchLower);
+                                        const displayStyle = matchSearch ? 'flex' : 'none';
                                         
                                         let btnClasses = ""; let btnText = "Voter"; let iconColor = "";
 
@@ -1020,7 +1044,7 @@
                                         }
 
                                         return `
-                                            <div class="neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3.5 sm:p-5 flex items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}">
+                                            <div class="song-item-card neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3.5 sm:p-5 items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}" style="display: ${displayStyle};" data-search="${(song.title + ' ' + song.artist).toLowerCase().replace(/"/g, '&quot;')}">
                                                 <div class="flex items-center gap-3 sm:gap-5 overflow-hidden flex-1 pr-1">
                                                     <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
                                                         <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-xl sm:text-2xl transition-all"></i>
@@ -1038,14 +1062,19 @@
                                         `;
                                     }).join('')}
                                 </div>
-                            ` : `<div class="text-center py-32 neo-glass rounded-[3rem]">
+                                <div id="empty-search-msg" class="text-center py-32 neo-glass rounded-[3rem]" style="display: ${filteredSongs.some(s => (s.title + ' ' + s.artist).toLowerCase().includes(searchLower)) ? 'none' : 'block'};">
                                     <i class="ph-duotone ph-music-notes text-8xl text-magical-cyan/40 mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
                                     <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
                                     <p class="text-lg text-white/60 font-light">Essayez une autre recherche.</p>
+                                </div>
+                            ` : `<div class="text-center py-32 neo-glass rounded-[3rem]">
+                                    <i class="ph-duotone ph-music-notes text-8xl text-magical-cyan/40 mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                    <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
+                                    <p class="text-lg text-white/60 font-light">Essayez une autre catégorie.</p>
                                  </div>`}
                                  
                             <!-- BARRE FLOTTANTE POUR LE COMPTEUR DE VOTES -->
-                            <div class="fixed bottom-4 sm:bottom-6 left-0 w-full px-4 z-[60] pointer-events-none flex justify-center pb-safe animate-fade-in" style="animation-delay: 0.2s">
+                            <div class="fixed bottom-4 sm:bottom-6 left-0 w-full px-4 z-[60] pointer-events-none flex justify-center pb-safe">
                                 <div class="neo-glass rounded-full px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/20 backdrop-blur-xl pointer-events-auto relative overflow-hidden max-w-md w-full">
                                     <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-magical-cyan to-magical-pink transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
                                     <div class="flex items-center gap-2 sm:gap-3">
@@ -1066,7 +1095,8 @@
                     const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
 
                     mainContent = `
-                        <div class="animate-fade-in max-w-5xl mx-auto pb-24 pt-28 px-4 w-full">
+                        <!-- RETRAIT DU ANIMATE-FADE-IN SUR LA VUE ADMIN POUR PLUS DE FLUIDITÉ -->
+                        <div class="max-w-5xl mx-auto pb-24 pt-28 px-4 w-full">
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                                 <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
                                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
