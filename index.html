@@ -271,11 +271,8 @@
                         }
                     } catch (error) {
                         console.error("Erreur d'authentification Firebase:", error);
-                        if (error.code === 'auth/operation-not-allowed') {
-                            setTimeout(() => {
-                                window.showModal('alert', 'Erreur Firebase (Étape 3)', 'L\'authentification Anonyme n\'est pas activée.<br><br>Retournez sur Firebase, cliquez sur <strong>Authentication</strong> > onglet <strong>Sign-in method</strong> > Activez <strong>Anonyme</strong> et enregistrez.');
-                            }, 1000);
-                        }
+                        // On ne bloque pas l'écran de connexion pour l'instant.
+                        // L'erreur sera signalée si l'utilisateur tente de voter.
                     }
                 };
                 initAuth();
@@ -682,7 +679,7 @@
             }
         }
 
-        window.vote = function(id) {
+        window.vote = async function(id) {
             if (state.currentPhase === 3) { window.showModal('alert', 'Votes clôturés', 'Les votes sont terminés pour cette session ! Regardez l\'écran géant.'); return; }
             if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
             const votesForSong = state.userVotes[id] || 0;
@@ -690,11 +687,26 @@
 
             // ⚠️ SÉCURITÉ FIREBASE : Vérification avant toute chose
             if (isCloudActive && db && !userId) {
-                window.showModal('alert', 'Erreur de Connexion', '⚠️ Firebase bloque la connexion !<br><br>Allez dans Firebase > Authentication > Sign-in method > Et <strong>activez "Anonyme"</strong> puis cliquez sur <strong>Enregistrer</strong>.');
-                return;
+                try {
+                    // On tente de forcer la reconnexion anonyme si elle avait échoué
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                    await new Promise(r => setTimeout(r, 600)); // Laisse le temps au système de valider l'ID
+                    if (!userId) throw new Error("Connexion annulée");
+                } catch (error) {
+                    console.error("Auth error on vote:", error);
+                    if (error.code === 'auth/unauthorized-domain') {
+                         window.showModal('alert', 'Sécurité Firebase (Domaines)', 'Firebase bloque le site Github !<br><br>Dans Firebase > Authentication > Paramètres > <strong>Domaines Autorisés</strong>, ajoutez :<br><br><strong class="text-magical-cyan text-xs sm:text-sm">airfilmstudio-collab.github.io</strong>');
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                         window.showModal('alert', 'Erreur Firebase (Étape 3)', 'L\'authentification Anonyme n\'est pas activée.<br>Vérifiez Firebase > Authentication > Sign-in method.');
+                    } else {
+                         window.showModal('alert', 'Erreur de Connexion', '⚠️ Impossible de contacter le Cloud Firebase.<br>' + error.message);
+                    }
+                    return; // Stoppe le vote pour ne pas faire perdre le crédit à l'utilisateur
+                }
             }
 
-            // 1. Mise à jour Locale
+            // 1. Mise à jour Locale IMMÉDIATE
             state.userVotes[id] = votesForSong + 1; 
             state.totalUserVotes += 1;
             const songIndex = state.songs.findIndex(s => s.id === id);
@@ -1248,10 +1260,10 @@
                                 ${state.modal.type === 'goodbye' ? `
                                     <i class="ph-duotone ph-spinner-gap animate-spin text-5xl text-magical-cyan mx-auto mt-2 block drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
                                 ` : state.modal.type === 'confirm' ? `
-                                    <button onclick="closeModal()" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">Annuler</button>
-                                    <button onclick="confirmModal()" class="flex-1 btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Confirmer</button>
+                                    <button onclick="window.closeModal()" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">Annuler</button>
+                                    <button onclick="window.confirmModal()" class="flex-1 btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Confirmer</button>
                                 ` : `
-                                    <button onclick="closeModal()" class="w-full sm:w-2/3 mx-auto btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Compris</button>
+                                    <button onclick="window.closeModal()" class="w-full sm:w-2/3 mx-auto btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Compris</button>
                                 `}
                             </div>
                         </div>
