@@ -506,7 +506,7 @@
                     saveServerData();
                 }
                 
-                // Nettoyage de l'URL ultra-sécurisé (anti-crash)
+                // Nettoyage de l'URL avec protection Try-Catch
                 try {
                     if (window.history && window.history.replaceState) {
                         const currentUrl = new URL(window.location.href);
@@ -516,8 +516,8 @@
                             window.history.replaceState({}, document.title, currentUrl.toString());
                         }
                     }
-                } catch (err) {
-                    console.warn("Nettoyage d'URL ignoré (environnement de test).");
+                } catch (e) {
+                    console.warn("Environnement restreint : nettoyage d'URL ignoré.");
                 }
             } 
             else { 
@@ -667,6 +667,12 @@
             if (container) state.themeScrollPos = container.scrollLeft;
             state.selectedTheme = theme; 
             render(); 
+            
+            // Remonter en haut de l'écran avec une belle animation fluide
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
         }
         
         // --- OPTIMISATION MOBILE : Recherche en temps réel sans recharger l'écran ---
