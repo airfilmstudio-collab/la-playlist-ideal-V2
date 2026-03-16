@@ -236,6 +236,32 @@
             window.closeModal();
         }
 
+        // Fonction pour générer et télécharger le fichier M3U (Top 40)
+        window.downloadM3U = function() {
+            const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
+            if (top40Songs.length === 0) {
+                console.warn("Aucun vote pour générer le fichier M3U.");
+                return;
+            }
+
+            let m3uContent = "#EXTM3U\n";
+            top40Songs.forEach((song) => {
+                m3uContent += `#EXTINF:-1,${song.artist} - ${song.title}\n`;
+                m3uContent += `${song.artist} - ${song.title}.mp3\n`; 
+            });
+
+            const blob = new Blob([m3uContent], { type: 'audio/x-mpegurl;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const date = new Date().toISOString().slice(0,10);
+            a.download = `Universal_DJ_Top40_${date}.m3u`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
         // --- INTEGRATION FIREBASE (CLOUD TEMPS RÉEL) ---
         let db, auth, appId, userId = null;
         let isCloudActive = false; // <-- Indicateur pour le tableau de bord
@@ -594,7 +620,7 @@
         }
 
         window.forceEndAndShowMonitor = function() {
-            window.showModal('confirm', "Clôturer et Résultats", "⚠️ Voulez-vous clôturer définitivement les votes et afficher le classement final sur l'écran géant ?", () => {
+            window.showModal('confirm', "Clôturer et Résultats", "⚠️ Voulez-vous clôturer définitivement les votes, afficher le classement final sur l'écran géant, et générer le fichier M3U ?", () => {
                 state.eventStartTime = Date.now() - (state.phase1Duration + state.phase2Duration + 5000);
                 saveServerData(); 
 
@@ -604,6 +630,10 @@
                         eventStartTime: state.eventStartTime
                     }, { merge: true }).catch(e=>console.error(e));
                 }
+                
+                // Téléchargement automatique du Top 40 classé
+                window.downloadM3U();
+                
                 state.view = 'monitor';
                 checkPhase(); 
                 render();
@@ -781,7 +811,7 @@
                         </button>
                         <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
                             <div class="flex items-center gap-4 justify-center mb-6 md:mb-8">
-                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-24 md:h-32 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('admin')" class="h-24 md:h-32 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                             </div>
                             <h1 class="text-5xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
                                 VOTRE PLAYLIST IDÉALE
@@ -811,7 +841,7 @@
                                 <i class="ph-bold ph-x text-2xl"></i>
                             </button>
                             <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
-                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-20 md:h-28 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)] mb-8" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-20 md:h-28 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)] mb-8 cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                 <h1 class="text-5xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
                                     VOTRE PLAYLIST IDÉALE
                                 </h1>
@@ -844,7 +874,7 @@
                             </button>
                             <div class="relative z-10 flex justify-between items-center mb-6 px-2">
                                 <div class="flex items-center gap-6">
-                                    <img src="${LOGO_URL}" alt="Universal DJ" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                    <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                     <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
                                         ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
                                     </h1>
@@ -966,7 +996,7 @@
                             
                             <!-- LEFT: Logo + Socials -->
                             <div class="flex items-center gap-2 sm:gap-6 overflow-hidden">
-                                <button onclick="${state.view === 'admin' ? "goTo('admin')" : "window.scrollTo({top: 0, behavior: 'smooth'})"}" class="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none text-left shrink-0">
+                                <button onclick="${state.view === 'user' ? "window.scrollTo({top: 0, behavior: 'smooth'})" : "goTo('admin')"}" class="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none text-left shrink-0">
                                     <img src="${LOGO_URL}" alt="Universal DJ" class="h-6 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
                                     ${state.view === 'admin' ? '<h1 class="text-sm md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
                                 </button>
