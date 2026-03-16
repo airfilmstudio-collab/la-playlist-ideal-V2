@@ -218,6 +218,24 @@
             modal: null
         };
 
+        // --- EXPOSITION DES FONCTIONS GLOBALES (Pour les onclick HTML) ---
+        window.showModal = function(type, title, message, onConfirmCallback = null) {
+            state.modal = { type, title, message, onConfirmCallback };
+            render();
+        }
+
+        window.closeModal = function() {
+            state.modal = null;
+            render();
+        }
+
+        window.confirmModal = function() {
+            if (state.modal && state.modal.onConfirmCallback) {
+                state.modal.onConfirmCallback();
+            }
+            window.closeModal();
+        }
+
         // --- INTEGRATION FIREBASE (CLOUD TEMPS RÉEL) ---
         let db, auth, appId, userId = null;
         let isCloudActive = false; // <-- Indicateur pour le tableau de bord
@@ -255,7 +273,7 @@
                         console.error("Erreur d'authentification Firebase:", error);
                         if (error.code === 'auth/operation-not-allowed') {
                             setTimeout(() => {
-                                window.showModal('alert', 'Erreur Firebase', 'L\'authentification Anonyme n\'est pas activée. Vérifiez l\'Étape 3 du tutoriel dans Firebase.');
+                                window.showModal('alert', 'Erreur Firebase (Étape 3)', 'L\'authentification Anonyme n\'est pas activée.<br><br>Retournez sur Firebase, cliquez sur <strong>Authentication</strong> > onglet <strong>Sign-in method</strong> > Activez <strong>Anonyme</strong> et enregistrez.');
                             }, 1000);
                         }
                     }
@@ -471,24 +489,7 @@
 
         loadServerData(); setInterval(checkPhase, 1000);
 
-        // --- EXPOSITION DES FONCTIONS AU WINDOW ---
-        
-        window.showModal = function(type, title, message, onConfirmCallback = null) {
-            state.modal = { type, title, message, onConfirmCallback };
-            render();
-        }
-
-        window.closeModal = function() {
-            state.modal = null;
-            render();
-        }
-
-        window.confirmModal = function() {
-            if (state.modal && state.modal.onConfirmCallback) {
-                state.modal.onConfirmCallback();
-            }
-            window.closeModal();
-        }
+        // --- METHODES D'ACTIONS UTILISATEUR ---
 
         window.checkGuestLogin = function(event) {
             event.preventDefault();
@@ -498,7 +499,6 @@
             const input = passEl.value.toUpperCase().trim();
             const correctCode = state.guestCode.toUpperCase().trim();
             
-            // Si le code est correct OU si on est en mode "Hors ligne" on force l'accès
             if (input === correctCode || !isCloudActive) { 
                 state.view = 'user'; 
                 state.loginError = ''; 
@@ -536,7 +536,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, { guestCode: newCode }).catch(e=>console.error(e));
+                    setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Mot de passe modifié', 'Le mot de passe de la soirée est désormais : <br><br><strong class="text-4xl text-magical-cyan tracking-widest">' + newCode + '</strong>'); 
                 render();
@@ -557,11 +557,11 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, {
+                    setDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
                         eventStartTime: state.eventStartTime
-                    }).catch(e=>console.error(e));
+                    }, { merge: true }).catch(e=>console.error(e));
                 }
                 state.view = 'monitor'; 
                 checkPhase();
@@ -577,7 +577,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, { eventStartTime: null }).catch(e=>console.error(e));
+                    setDoc(publicRef, { eventStartTime: null }, { merge: true }).catch(e=>console.error(e));
                 }
                 render();
             });
@@ -590,9 +590,9 @@
 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, {
+                    setDoc(publicRef, {
                         eventStartTime: state.eventStartTime
-                    }).catch(e=>console.error(e));
+                    }, { merge: true }).catch(e=>console.error(e));
                 }
                 state.view = 'monitor';
                 checkPhase(); 
@@ -600,7 +600,6 @@
             });
         }
 
-        // --- NOUVEAU BOUTON : AUTORISER NOUVEAU VOTE (Garde les scores) ---
         window.allowReVote = function() {
             window.showModal('confirm', "Nouveau Tour de Votes", "Cela va générer un nouveau QR Code. En le scannant, les invités recevront 30 nouveaux crédits !<br><br><strong class='text-magical-cyan'>Les scores actuels des chansons seront CONSERVÉS.</strong>", () => { 
                 state.sessionId = Date.now().toString(); 
@@ -609,7 +608,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, { sessionId: state.sessionId }).catch(e=>console.error(e));
+                    setDoc(publicRef, { sessionId: state.sessionId }, { merge: true }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Succès', '✅ C\'est prêt ! Affichez le QR Code sur l\'écran géant, les invités n\'ont plus qu\'à le scanner pour revoter.');
             });
@@ -633,7 +632,6 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    // On écrase le document en entier sans merge pour purger les votes
                     setDoc(publicRef, {
                         sessionId: state.sessionId, 
                         guestCode: state.guestCode,
@@ -663,7 +661,6 @@
             render(); 
         }
         
-        // --- OPTIMISATION MOBILE : Recherche en temps réel sans recharger l'écran ---
         window.handleSearch = function(event) { 
             state.searchQuery = event.target.value.toLowerCase(); 
             const cards = document.querySelectorAll('.song-item-card');
@@ -691,7 +688,13 @@
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
 
-            // 1. Mise à jour Locale IMMÉDIATE
+            // ⚠️ SÉCURITÉ FIREBASE : Vérification avant toute chose
+            if (isCloudActive && db && !userId) {
+                window.showModal('alert', 'Erreur de Connexion', '⚠️ Firebase bloque la connexion !<br><br>Allez dans Firebase > Authentication > Sign-in method > Et <strong>activez "Anonyme"</strong> puis cliquez sur <strong>Enregistrer</strong>.');
+                return;
+            }
+
+            // 1. Mise à jour Locale
             state.userVotes[id] = votesForSong + 1; 
             state.totalUserVotes += 1;
             const songIndex = state.songs.findIndex(s => s.id === id);
@@ -700,13 +703,8 @@
             saveServerData();
             render();
 
-            // 2. Envoi sur le Cloud (En tâche de fond)
-            if (isCloudActive && db) {
-                if (!userId) {
-                    window.showModal('alert', 'Erreur de Connexion', 'La connexion au serveur est impossible. L\'Authentification n\'est pas active. (Vérifiez l\'étape 3 du tuto).');
-                    return;
-                }
-
+            // 2. Envoi sur le Cloud
+            if (isCloudActive && db && userId) {
                 const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
                 setDoc(privateRef, {
                     sessionId: state.sessionId,
@@ -715,15 +713,14 @@
                 }).catch(e=>console.error(e));
 
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                updateDoc(publicRef, {
-                    [`songVotes.${id}`]: increment(1)
-                }).catch(err => {
+                setDoc(publicRef, {
+                    songVotes: {
+                        [id]: increment(1)
+                    }
+                }, { merge: true }).catch(err => {
                     console.error("Erreur PublicRef:", err);
                     if (err.code === 'permission-denied') {
                         window.showModal('alert', 'Sécurité Firestore', 'Vos votes sont bloqués par Firebase. Avez-vous bien choisi le "Mode Test" à l\'étape 4 ?');
-                    } else if (err.code === 'not-found') {
-                        // Fallback sécurité
-                        setDoc(publicRef, { songVotes: { [id]: 1 } }, { merge: true });
                     }
                 });
             }
