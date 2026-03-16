@@ -27,7 +27,7 @@
         }
     </script>
 
-    <!-- Phosphor Icons pour les icônes -->
+    <!-- Phosphor Icons pour les icônes (en defer pour ne pas bloquer le chargement) -->
     <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     
     <style>
@@ -152,10 +152,10 @@
 
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
         
-        // Génération Dynamique du QR Code pointant vers la bonne adresse Github (Avec index.html pour éviter la perte du paramètre)
+        // Génération Dynamique du QR Code pointant vers la bonne adresse Github + INJECTION DE LA SESSION
         function getQRCodeUrl() {
             const baseUrl = "https://airfilmstudio-collab.github.io/la-playlist-ideal-V2/index.html";
-            const shareUrl = `${baseUrl}?code=${encodeURIComponent(state.guestCode)}`;
+            const shareUrl = `${baseUrl}?code=${encodeURIComponent(state.guestCode)}&s=${state.sessionId}`;
             return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}&color=050212&bgcolor=FFFFFF`;
         }
 
@@ -176,7 +176,7 @@
             [366,"Gasolina","Daddy Yankee","Reggaeton & Latin"],[367,"Chantaje","Shakira","Reggaeton & Latin"],[368,"Mi Gente","J Balvin","Reggaeton & Latin"],[369,"Despacito","Luis Fonsi","Reggaeton & Latin"],[370,"Dakiti","Bad Bunny","Reggaeton & Latin"],[371,"Tusa","Karol G","Reggaeton & Latin"],[372,"Baila Baila Baila","Ozuna","Reggaeton & Latin"],[373,"Hawái","Maluma","Reggaeton & Latin"],[374,"Con Altura","Rosalía","Reggaeton & Latin"],[375,"China","Anuel AA","Reggaeton & Latin"],
             [376,"Jerusalema","Master KG","Hits Soleil"],[377,"C'est la vie","Khaled","Hits Soleil"],[378,"Danza Kuduro","Don Omar","Hits Soleil"],[379,"Waka Waka","Shakira","Hits Soleil"],[380,"Bailando","Enrique Iglesias","Hits Soleil"],[381,"El Perdón","Nicky Jam","Hits Soleil"],[382,"La Gozadera","Gente de Zona","Hits Soleil"],[383,"Subeme la Radio","Enrique Iglesias","Hits Soleil"],[384,"Taki Taki","DJ Snake","Hits Soleil"],[385,"Calma (Remix)","Pedro Capó","Hits Soleil"],[386,"Con Calma","Daddy Yankee","Hits Soleil"],[387,"Obsesión","Aventura","Hits Soleil"],[388,"Maldòn","Zouk Machine","Hits Soleil"],[389,"Kolé séré","Philippe Lavil","Hits Soleil"],[390,"Angela","Saïan Supa Crew","Hits Soleil"],[391,"Les Sunlights des Tropiques","Gilbert Montagné","Hits Soleil"],[392,"Flamme","Slaï","Hits Soleil"],[393,"Enamórame","Papi Sánchez","Hits Soleil"],[394,"Petites îles","Neg' Marrons","Hits Soleil"],[395,"Temperature","Sean Paul","Hits Soleil"],[396,"Cheap Thrills","Sia","Hits Soleil"],[397,"One Dance","Drake","Hits Soleil"],[398,"Sorry","Justin Bieber","Hits Soleil"],[399,"Havana","Camila Cabello","Hits Soleil"],[400,"Bum Bum Tam Tam","MC Fioti","Hits Soleil"],[401,"Safari","J Balvin","Hits Soleil"],[402,"Gyal You a Party Animal","Charly Black","Hits Soleil"],[403,"Te Boté","Nio García","Hits Soleil"],[404,"X (Equis)","Nicky Jam","Hits Soleil"],[405,"Felices los 4","Maluma","Hits Soleil"],[406,"Vivir Mi Vida","Marc Anthony","Hits Soleil"],[407,"Bailar","Deorro","Hits Soleil"],[408,"El Taxi","Osmani Garcia","Hits Soleil"],[409,"Ginza","J Balvin","Hits Soleil"],[410,"Duele el Corazón","Enrique Iglesias","Hits Soleil"],[411,"Reggaetón Lento (Bailemos)","CNCO","Hits Soleil"],[412,"Je vais à Rio","Claude François","Hits Soleil"],[413,"Could You Be Loved","Bob Marley","Hits Soleil"],[414,"L'amour à la plage","Niagara","Hits Soleil"],[415,"Un, Dos, Tres, Maria","Ricky Martin","Hits Soleil"],[416,"Macumba","Jean-Pierre Mader","Hits Soleil"],[417,"Macarena","Los Del Rio","Hits Soleil"],[418,"Mambo No. 5","Lou Bega","Hits Soleil"],[419,"Paris Latino","Bandolero","Hits Soleil"],[420,"J'veux du soleil","Au P'tit Bonheur","Hits Soleil"],[421,"Is This Love","Bob Marley","Hits Soleil"],[422,"Samba de Janeiro","Bellini","Hits Soleil"],[423,"Soca Dance","Charles D. Lewis","Hits Soleil"],[424,"Bamboleo","Gipsy Kings","Hits Soleil"],[425,"Alane","Wes","Hits Soleil"],[426,"Vamos a la Playa","Righeira","Hits Soleil"],[427,"You'll Be Mine (Party Time)","Gloria Estefan","Hits Soleil"],[428,"Yaka Dansé","Raft","Hits Soleil"],[429,"Don't Let Me Be Misunderstood","Santa Esmeralda","Hits Soleil"],[430,"Gimme Hope Jo'Anna","Eddy Grant","Hits Soleil"],[431,"Yé Ké Yé Ké","Mory Kanté","Hits Soleil"],[432,"Club Tropicana","Wham!","Hits Soleil"],[433,"Cuba","Gibson Brothers","Hits Soleil"],[434,"Amor de Mis Amores","Paco","Hits Soleil"],
             [435,"Save the World","Swedish House Mafia","Électro / Club"],[436,"Hey Brother","Avicii","Électro / Club"],[437,"Stay the Night","Zedd","Électro / Club"],[438,"Hear Me Now","Alok","Électro / Club"],[439,"Hello","Martin Solveig","Électro / Club"],[440,"Take Over Control","Afrojack","Électro / Club"],[441,"Boneless","Steve Aoki","Électro / Club"],[442,"You Don't Know Me","Armand Van Helden","Électro / Club"],[443,"Where's Your Head At","Basement Jaxx","Électro / Club"],[444,"Go","Moby","Électro / Club"],[445,"God Is a DJ","Faithless","Électro / Club"],[446,"Southern Sun","Paul Oakenfold","Électro / Club"],
-            [447,"In the Mood","Glenn Miller and His Orchestra","Rock n' Roll & Soul"],[448,"Blue Suede Shoes","Elvis Presley","Rock n' Roll & Soul"],[449,"What'd I Say","Ray Charles","Rock n' Roll & Soul"],[450,"Green Onions","Booker T. & The M.G.'s","Rock n' Roll & Soul"],[451,"Just a Gigolo / I Ain't Got Nobody","David Lee Roth","Rock n' Roll & Soul"],[452,"La Bamba","Los Lobos","Rock n' Roll & Soul"],[453,"Rock Around The Clock","Valentin Asenov","Rock n' Roll & Soul"],[454,"Let's Twist Again","Chubby Checker","Rock n' Roll & Soul"],[455,"Les cactus","Jacques Dutronc","Rock n' Roll & Soul"],[456,"Et moi, et moi, et moi","Jacques Dutronc","Rock n' Roll & Soul"],[457,"Respect","Aretha Franklin","Rock n' Roll & Soul"],[458,"Gimme Some Lovin'","The Spencer Davis Group","Rock n' Roll & Soul"],[459,"Think","Aretha Franklin","Rock n' Roll & Soul"],[460,"Jumpin' Jack Flash","The Rolling Stones","Rock n' Roll & Soul"],[461,"Get Back","The Beatles","Rock n' Roll & Soul"],[462,"Bad Moon Rising","Creedence Clearwater Revival","Rock n' Roll & Soul"],[463,"Proud Mary","Creedence Clearwater Revival","Rock n' Roll & Soul"],[464,"Green River","Creedence Clearwater Revival","Rock n' Roll & Soul"],[465,"Sugar, Sugar","The Archies","Rock n' Roll & Soul"],[466,"Surfin' U.S.A.","The Beach Boys","Rock n' Roll & Soul"],[467,"Da Doo Ron Ron","The Crystals","Rock n' Roll & Soul"],[468,"Memphis","Johnny Rivers","Rock n' Roll & Soul"],[469,"Twist and Shout","The Beatles","Rock n' Roll & Soul"],[470,"Papa's Got a Brand New Bag","James Brown","Rock n' Roll & Soul"],[471,"California Dreamin'","The Mamas & The Papas","Rock n' Roll & Soul"],[472,"Good Vibrations","The Beach Boys","Rock n' Roll & Soul"],[473,"You Keep Me Hangin' On","The Supremes","Rock n' Roll & Soul"],[474,"Black Is Black","Los Bravos","Rock n' Roll & Soul"],[475,"Light My Fire","The Doors","Rock n' Roll & Soul"],[476,"Soul Man","Sam & Dave","Rock n' Roll & Soul"],[477,"Can't Take My Eyes Off You","Frankie Valli","Rock n' Roll & Soul"],[478,"Sunny","Bobby Hebb","Rock n' Roll & Soul"],[479,"Take Five","Dave Brubeck","Rock n' Roll & Soul"],[480,"Shout","Lulu & The Luvvers","Rock n' Roll & Soul"],[481,"Rum & Coca Cola","The Andrews Sisters","Rock n' Roll & Soul"],[482,"Rock-A-Bye Your Baby With a Dixie Melody","Al Jolson","Rock n' Roll & Soul"],[483,"Don't Be That Way","Benny Goodman","Rock n' Roll & Soul"],[484,"Goody Goody","Benny Goodman","Rock n' Roll & Soul"],[485,"Mambo italiano","Rosemary Clooney","Rock n' Roll & Soul"],[486,"Le lundi au soleil","Claude François","Rock n' Roll & Soul"],[487,"Knock On Wood","Eddie Floyd","Rock n' Roll & Soul"],[488,"Cette année-là","Claude François","Rock n' Roll & Soul"],[489,"Noir c'est noir","Johnny Hallyday","Rock n' Roll & Soul"],[490,"Paint It, Black","The Rolling Stones","Rock n' Roll & Soul"],[491,"Twist à Saint-Tropez","Dick Rivers","Rock n' Roll & Soul"],[492,"Dactylo Rock","Les Chaussettes Noires","Rock n' Roll & Soul"],[493,"Peggy Sue","Buddy Holly","Rock n' Roll & Soul"],[494,"La Bamba","Ritchie Valens","Rock n' Roll & Soul"],[495,"Daniela","Les Chaussettes Noires","Rock n' Roll & Soul"],[496,"Mirza","Nino Ferrer","Rock n' Roll & Soul"],[497,"Buena Sera","Louis Prima","Rock n' Roll & Soul"],[498,"Just a Gigolo","Louis Prima","Rock n' Roll & Soul"],[499,"Baby Love","The Supremes","Rock n' Roll & Soul"],[500,"Everybody Needs Somebody to Love","Solomon Burke","Rock n' Roll & Soul"],[501,"California Girls","The Beach Boys","Rock n' Roll & Soul"],[502,"Jailhouse Rock","Elvis Presley","Rock n' Roll & Soul"],[503,"Hold On, I'm Comin'","Sam & Dave","Rock n' Roll & Soul"],[504,"Hound Dog","Elvis Presley","Rock n' Roll & Soul"],[505,"Johnny B. Goode","Chuck Berry","Rock n' Roll & Soul"],[506,"Tutti Frutti","Little Richard","Rock n' Roll & Soul"],[507,"Maybellene","Chuck Berry","Rock n' Roll & Soul"],[508,"Heartbreak Hotel","Elvis Presley","Rock n' Roll & Soul"],[509,"Great Balls Of Fire","Jerry Lee Lewis","Rock n' Roll & Soul"],[510,"Long Tall Sally","Little Richard","Rock n' Roll & Soul"],[511,"Lucille","Little Richard","Rock n' Roll & Soul"],[512,"Shake, Rattle and Roll","Bill Haley and His Comets","Rock n' Roll & Soul"],[513,"Sweet Little Sixteen","Chuck Berry","Rock n' Roll & Soul"],[514,"Whole Lotta Shakin' Going On","Jerry Lee Lewis","Rock n' Roll & Soul"],[515,"C’Mon Everybody","Eddie Cochran","Rock n' Roll & Soul"],[516,"Don't Be Cruel","Elvis Presley","Rock n' Roll & Soul"],[517,"Be-Bop-a-Lula","Gene Vincent","Rock n' Roll & Soul"],[518,"Good Golly Miss Molly","Little Richard","Rock n' Roll & Soul"],[519,"Grease","Frankie Valli","Rock n' Roll & Soul"],[520,"Your Song","Billy Paul","Rock n' Roll & Soul"],[521,"You Can't hurry Love","The Supremes","Rock n' Roll & Soul"],[522,"Born to Be Wild","Steppenwolf","Rock n' Roll & Soul"],[523,"Susie Q.","Creedence Clearwater Revival","Rock n' Roll & Soul"],[524,"Jimmy Mack","Martha Reeves & The Vandellas","Rock n' Roll & Soul"],[525,"Venus","Shocking Blue","Rock n' Roll & Soul"],[526,"Spirit In the Sky","Norman Greenbaum","Rock n' Roll & Soul"],[527,"Eloise","Barry Ryan","Rock n' Roll & Soul"],
+            [447,"In the Mood","Glenn Miller and His Orchestra","Rock n' Roll & Soul"],[448,"Blue Suede Shoes","Elvis Presley","Rock n' Roll & Soul"],[449,"What'd I Say","Ray Charles","Rock n' Roll & Soul"],[450,"Green Onions","Booker T. & The M.G.","Rock n' Roll & Soul"],[451,"Just a Gigolo / I Ain't Got Nobody","David Lee Roth","Rock n' Roll & Soul"],[452,"La Bamba","Los Lobos","Rock n' Roll & Soul"],[453,"Rock Around The Clock","Valentin Asenov","Rock n' Roll & Soul"],[454,"Let's Twist Again","Chubby Checker","Rock n' Roll & Soul"],[455,"Les cactus","Jacques Dutronc","Rock n' Roll & Soul"],[456,"Et moi, et moi, et moi","Jacques Dutronc","Rock n' Roll & Soul"],[457,"Respect","Aretha Franklin","Rock n' Roll & Soul"],[458,"Gimme Some Lovin'","The Spencer Davis Group","Rock n' Roll & Soul"],[459,"Think","Aretha Franklin","Rock n' Roll & Soul"],[460,"Jumpin' Jack Flash","The Rolling Stones","Rock n' Roll & Soul"],[461,"Get Back","The Beatles","Rock n' Roll & Soul"],[462,"Bad Moon Rising","Creedence Clearwater Revival","Rock n' Roll & Soul"],[463,"Proud Mary","Creedence Clearwater Revival","Rock n' Roll & Soul"],[464,"Green River","Creedence Clearwater Revival","Rock n' Roll & Soul"],[465,"Sugar, Sugar","The Archies","Rock n' Roll & Soul"],[466,"Surfin' U.S.A.","The Beach Boys","Rock n' Roll & Soul"],[467,"Da Doo Ron Ron","The Crystals","Rock n' Roll & Soul"],[468,"Memphis","Johnny Rivers","Rock n' Roll & Soul"],[469,"Twist and Shout","The Beatles","Rock n' Roll & Soul"],[470,"Papa's Got a Brand New Bag","James Brown","Rock n' Roll & Soul"],[471,"California Dreamin'","The Mamas & The Papas","Rock n' Roll & Soul"],[472,"Good Vibrations","The Beach Boys","Rock n' Roll & Soul"],[473,"You Keep Me Hangin' On","The Supremes","Rock n' Roll & Soul"],[474,"Black Is Black","Los Bravos","Rock n' Roll & Soul"],[475,"Light My Fire","The Doors","Rock n' Roll & Soul"],[476,"Soul Man","Sam & Dave","Rock n' Roll & Soul"],[477,"Can't Take My Eyes Off You","Frankie Valli","Rock n' Roll & Soul"],[478,"Sunny","Bobby Hebb","Rock n' Roll & Soul"],[479,"Take Five","Dave Brubeck","Rock n' Roll & Soul"],[480,"Shout","Lulu & The Luvvers","Rock n' Roll & Soul"],[481,"Rum & Coca Cola","The Andrews Sisters","Rock n' Roll & Soul"],[482,"Rock-A-Bye Your Baby With a Dixie Melody","Al Jolson","Rock n' Roll & Soul"],[483,"Don't Be That Way","Benny Goodman","Rock n' Roll & Soul"],[484,"Goody Goody","Benny Goodman","Rock n' Roll & Soul"],[485,"Mambo italiano","Rosemary Clooney","Rock n' Roll & Soul"],[486,"Le lundi au soleil","Claude François","Rock n' Roll & Soul"],[487,"Knock On Wood","Eddie Floyd","Rock n' Roll & Soul"],[488,"Cette année-là","Claude François","Rock n' Roll & Soul"],[489,"Noir c'est noir","Johnny Hallyday","Rock n' Roll & Soul"],[490,"Paint It, Black","The Rolling Stones","Rock n' Roll & Soul"],[491,"Twist à Saint-Tropez","Dick Rivers","Rock n' Roll & Soul"],[492,"Dactylo Rock","Les Chaussettes Noires","Rock n' Roll & Soul"],[493,"Peggy Sue","Buddy Holly","Rock n' Roll & Soul"],[494,"La Bamba","Ritchie Valens","Rock n' Roll & Soul"],[495,"Daniela","Les Chaussettes Noires","Rock n' Roll & Soul"],[496,"Mirza","Nino Ferrer","Rock n' Roll & Soul"],[497,"Buena Sera","Louis Prima","Rock n' Roll & Soul"],[498,"Just a Gigolo","Louis Prima","Rock n' Roll & Soul"],[499,"Baby Love","The Supremes","Rock n' Roll & Soul"],[500,"Everybody Needs Somebody to Love","Solomon Burke","Rock n' Roll & Soul"],[501,"California Girls","The Beach Boys","Rock n' Roll & Soul"],[502,"Jailhouse Rock","Elvis Presley","Rock n' Roll & Soul"],[503,"Hold On, I'm Comin'","Sam & Dave","Rock n' Roll & Soul"],[504,"Hound Dog","Elvis Presley","Rock n' Roll & Soul"],[505,"Johnny B. Goode","Chuck Berry","Rock n' Roll & Soul"],[506,"Tutti Frutti","Little Richard","Rock n' Roll & Soul"],[507,"Maybellene","Chuck Berry","Rock n' Roll & Soul"],[508,"Heartbreak Hotel","Elvis Presley","Rock n' Roll & Soul"],[509,"Great Balls Of Fire","Jerry Lee Lewis","Rock n' Roll & Soul"],[510,"Long Tall Sally","Little Richard","Rock n' Roll & Soul"],[511,"Lucille","Little Richard","Rock n' Roll & Soul"],[512,"Shake, Rattle and Roll","Bill Haley and His Comets","Rock n' Roll & Soul"],[513,"Sweet Little Sixteen","Chuck Berry","Rock n' Roll & Soul"],[514,"Whole Lotta Shakin' Going On","Jerry Lee Lewis","Rock n' Roll & Soul"],[515,"C’Mon Everybody","Eddie Cochran","Rock n' Roll & Soul"],[516,"Don't Be Cruel","Elvis Presley","Rock n' Roll & Soul"],[517,"Be-Bop-a-Lula","Gene Vincent","Rock n' Roll & Soul"],[518,"Good Golly Miss Molly","Little Richard","Rock n' Roll & Soul"],[519,"Grease","Frankie Valli","Rock n' Roll & Soul"],[520,"Your Song","Billy Paul","Rock n' Roll & Soul"],[521,"You Can't hurry Love","The Supremes","Rock n' Roll & Soul"],[522,"Born to Be Wild","Steppenwolf","Rock n' Roll & Soul"],[523,"Susie Q.","Creedence Clearwater Revival","Rock n' Roll & Soul"],[524,"Jimmy Mack","Martha Reeves & The Vandellas","Rock n' Roll & Soul"],[525,"Venus","Shocking Blue","Rock n' Roll & Soul"],[526,"Spirit In the Sky","Norman Greenbaum","Rock n' Roll & Soul"],[527,"Eloise","Barry Ryan","Rock n' Roll & Soul"],
             [528,"Enjoy the Silence","Depeche Mode","Pop Rock"],[529,"Tainted Love","Soft Cell","Pop Rock"],[530,"Relax","Frankie Goes to Hollywood","Pop Rock"],[531,"London Calling","The Clash","Pop Rock"],[532,"Why ?","Bronski Beat","Pop Rock"],[533,"Smalltown Boy","Bronski Beat","Pop Rock"],[534,"99 Luftballons","Nena","Pop Rock"],[535,"In Between Days","The Cure","Pop Rock"],[536,"Enola Gay","Orchestral Manoeuvres In the Dark","Pop Rock"],[537,"L'aventurier","Indochine","Pop Rock"],[538,"Long Train Running","Traks","Pop Rock"],[539,"Sweet Dreams (Are Made of This)","Eurythmics","Pop Rock"],[540,"Another Brick In the Wall, Pt. 2","Pink Floyd","Pop Rock"],[541,"Boys Don't Cry","The Cure","Pop Rock"],[542,"Highway to Hell","AC/DC","Pop Rock"],[543,"I Love Rock 'N' Roll","Joan Jett & The Blackhearts","Pop Rock"],[544,"J'ai Vu","Niagara","Pop Rock"],[545,"Pride (In the Name of Love)","U2","Pop Rock"],[546,"Seven Nation Army","The White Stripes","Pop Rock"],[547,"Sunday Bloody Sunday","U2","Pop Rock"],[548,"Take Me Out","Franz Ferdinand","Pop Rock"],[549,"Shout","Tears for Fears","Pop Rock"],[550,"Just Can't Get Enough","Depeche Mode","Pop Rock"],[551,"Everybody Wants to Rule the World","Tears for Fears","Pop Rock"],[552,"Don't You (Forget About Me)","Simple Minds","Pop Rock"],[553,"Let's Dance","David Bowie","Pop Rock"],[554,"Need You Tonight","INXS","Pop Rock"],[555,"Kiss","Prince & The Revolution","Pop Rock"],[556,"Take On Me","a-ha","Pop Rock"],[557,"Heart of Glass","Blondie","Pop Rock"],[558,"Under Pressure","Queen & David Bowie","Pop Rock"],[559,"I'm Still Standing","Elton John","Pop Rock"],[560,"Video Killed the Radio Star","The Buggles","Pop Rock"],[561,"One Step Beyond","Madness","Pop Rock"],[562,"I Will Survive","Gloria Gaynor","Pop Rock"],[563,"Love You Madly","CAKE","Pop Rock"],[564,"Viva la Vida","Coldplay","Pop Rock"],[565,"Creep","Radiohead","Pop Rock"],[566,"Banquet","Bloc Party","Pop Rock"],[567,"Song 2","Blur","Pop Rock"],[568,"Girls and Boys","Blur","Pop Rock"],[569,"Paint It, Black","The Rolling Stones","Pop Rock"],[570,"Start Me Up","The Rolling Stones","Pop Rock"],[571,"Wonderwall","Oasis","Pop Rock"],[572,"Town Called Malice","The Jam","Pop Rock"],[573,"Charmless Man","Blur","Pop Rock"],[574,"Mr. Brightside","The Killers","Pop Rock"],[575,"No Fun","The Stooges","Pop Rock"],[576,"Sex on Fire","Kings of Leon","Pop Rock"],[577,"Fortunate Son","Creedence Clearwater Revival","Pop Rock"],[578,"Born to Be Wild","Steppenwolf","Pop Rock"],[579,"Jump","Van Halen","Pop Rock"],[580,"Don't Stop Me Now","Queen","Pop Rock"],[581,"Sweet Home Alabama","Lynyrd Skynyrd","Pop Rock"],[582,"Long Train Runnin'","The Doobie Brothers","Pop Rock"],[583,"Crocodile Rock","Elton John","Pop Rock"],[584,"Killing In the Name","Rage Against the Machine","Pop Rock"],[585,"Smells Like Teen Spirit","Nirvana","Pop Rock"],[586,"Under the Bridge","Red Hot Chili Peppers","Pop Rock"],[587,"Bohemian Rhapsody","Queen","Pop Rock"],[588,"La Grange","ZZ Top","Pop Rock"],[589,"Roxanne","The Police","Pop Rock"],[590,"Sultans Of Swing","Dire Straits","Pop Rock"],[591,"Back In Black","AC/DC","Pop Rock"],[592,"Losing My Religion","R.E.M.","Pop Rock"],[593,"The Logical Song","Supertramp","Pop Rock"],[594,"Hold the Line","Toto","Pop Rock"],[595,"Hysteria","Muse","Pop Rock"],[596,"You Really Got Me","The Kinks","Pop Rock"],[597,"Smoke on the Water","Deep Purple","Pop Rock"],[598,"Born to Run","Bruce Springsteen","Pop Rock"],[599,"Are You Gonna Go My Way","Lenny Kravitz","Pop Rock"],[600,"Owner of a Lonely Heart","Yes","Pop Rock"],[601,"Every You Every Me","Placebo","Pop Rock"],[602,"A Kind of Magic","Queen","Pop Rock"],[603,"Another One Bites the Dust","Queen Factory","Pop Rock"],[604,"We Are The Champions","Queen","Pop Rock"],[605,"With or Without You","U2","Pop Rock"],[606,"Desire","U2","Pop Rock"],[607,"New Year's Day","U2","Pop Rock"],[608,"Gimme All Your Lovin'","ZZ Top","Pop Rock"],[609,"The Final Countdown","Europe","Pop Rock"],[610,"It's Raining Men","The Weather Girls","Pop Rock"],[611,"Africa","Toto","Pop Rock"],[612,"I Want To Break Free","Queen","Pop Rock"],[613,"Footloose","Kenny Loggins","Pop Rock"],[614,"Blue Monday","New Order","Pop Rock"],[615,"Maniac","Michael Sembello","Pop Rock"],[616,"China Girl","David Bowie","Pop Rock"],[617,"Da Ya Think I'm Sexy?","Rod Stewart","Pop Rock"],[618,"Bad News","Moon Martin","Pop Rock"]
         ].map(s => ({
             id: s[0], 
@@ -201,7 +201,6 @@
             phase1Duration: 2 * 60 * 60 * 1000, 
             phase2Duration: 1 * 60 * 60 * 1000,
             sessionId: 'init',
-            privateSessionId: 'init',
             modal: null
         };
 
@@ -211,7 +210,6 @@
         let unsubscribePrivate = null;
 
         try {
-            // Ces variables sont fournies par l'environnement
             const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
             const firebaseConfig = JSON.parse(firebaseConfigStr);
             const app = initializeApp(firebaseConfig);
@@ -240,11 +238,9 @@
             });
         } catch(error) {
             console.error("Mode Hors-ligne (Firebase non configuré). L'application tournera en local.");
-            // Le DB restera undefined. On gère le mode sans serveur dans les fonctions.
         }
 
         function setupListeners() {
-            // 1. Écoute du Tableau de Bord Principal (Code, Minuteur, Total Votes)
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
             
             unsubscribePublic = onSnapshot(publicRef, (docSnap) => {
@@ -257,16 +253,16 @@
                     state.phase1Duration = data.phase1Duration || (2 * 60 * 60 * 1000);
                     state.phase2Duration = data.phase2Duration || (1 * 60 * 60 * 1000);
 
-                    // Mise à jour du score des chansons depuis le Cloud
                     const cloudVotes = data.songVotes || {};
                     state.songs.forEach(song => {
                         song.votes = cloudVotes[song.id] || 0;
                     });
 
                     checkPhase();
-                    render();
+                    
+                    // Force la vérification de session à chaque changement Cloud
+                    verifySessionAndLoadVotes();
                 } else {
-                    // Initialisation Cloud lors du premier lancement absolu
                     if (state.view === 'admin') {
                         setDoc(publicRef, {
                             sessionId: Date.now().toString(),
@@ -280,34 +276,70 @@
                 }
             }, (error) => console.error("Erreur lecture Cloud :", error));
 
-            // 2. Écoute des crédits privés de l'utilisateur (Pour bloquer à 30 max)
             const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
             
             unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
+                // On met à jour les votes du Cloud uniquement si la session correspond
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    state.privateSessionId = data.sessionId || 'init';
-                    state.userVotes = data.votes || {};
-                    state.totalUserVotes = data.total || 0;
-                } else {
-                    state.userVotes = {};
-                    state.totalUserVotes = 0;
+                    if (data.sessionId === state.sessionId) {
+                        state.userVotes = data.votes || {};
+                        state.totalUserVotes = data.total || 0;
+                    }
                 }
                 render();
             }, (error) => console.error("Erreur lecture locale :", error));
         }
-
         // --- FIN INTEGRATION FIREBASE ---
+
+        // Fonction magique : Vérifie si c'est une nouvelle soirée/tour et vide les crédits si besoin
+        function verifySessionAndLoadVotes() {
+            const localClientSession = localStorage.getItem('dj_client_session');
+            
+            // Si la session globale a changé, on vide les poches du téléphone
+            if (localClientSession !== state.sessionId) {
+                state.userVotes = {};
+                state.totalUserVotes = 0;
+                localStorage.setItem('dj_client_session', state.sessionId);
+                localStorage.removeItem('dj_userVotes');
+                console.log("Nouvelle session détectée, crédits remis à zéro !");
+            } else {
+                // Sinon on recharge les votes normaux
+                const savedUserVotes = localStorage.getItem('dj_userVotes');
+                if (savedUserVotes) {
+                    state.userVotes = JSON.parse(savedUserVotes);
+                    state.totalUserVotes = Object.values(state.userVotes).reduce((a, b) => a + b, 0);
+                } else { 
+                    state.userVotes = {}; 
+                    state.totalUserVotes = 0; 
+                }
+            }
+            render();
+        }
 
         function loadServerData() {
             try {
-                // Check if the code was passed in the URL (when scanning the dynamic QR code)
+                // Récupération de la session globale (soit de l'URL, soit du stockage)
                 const urlParams = new URLSearchParams(window.location.search);
-                const urlCode = urlParams.get('code');
+                const urlSession = urlParams.get('s');
                 
+                if (urlSession) {
+                    state.sessionId = urlSession;
+                    localStorage.setItem('dj_sessionId', urlSession);
+                } else {
+                    const savedSession = localStorage.getItem('dj_sessionId');
+                    if (savedSession) state.sessionId = savedSession;
+                    else state.sessionId = Date.now().toString();
+                }
+
+                // Vérification de la session pour vider ou charger les votes
+                verifySessionAndLoadVotes();
+
+                // Gestion du Mot de passe
+                const urlCode = urlParams.get('code');
                 if (urlCode) {
                     state.guestCode = urlCode.toUpperCase().trim();
-                    localStorage.setItem('dj_guestCode', state.guestCode); // save the new code locally
+                    localStorage.setItem('dj_guestCode', state.guestCode);
                 } else {
                     const savedCode = localStorage.getItem('dj_guestCode');
                     if (savedCode && savedCode.trim() !== '') {
@@ -317,6 +349,7 @@
                     }
                 }
 
+                // Chargement des chansons
                 const savedSongs = localStorage.getItem('dj_songs');
                 if (savedSongs) {
                     const parsedSongs = JSON.parse(savedSongs);
@@ -333,12 +366,7 @@
                     } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
                 } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
 
-                const savedUserVotes = localStorage.getItem('dj_userVotes');
-                if (savedUserVotes) {
-                    state.userVotes = JSON.parse(savedUserVotes);
-                    state.totalUserVotes = Object.values(state.userVotes).reduce((a, b) => a + b, 0);
-                } else { state.userVotes = {}; state.totalUserVotes = 0; }
-
+                // Chargement Minuteur
                 const savedStartTime = localStorage.getItem('dj_eventStartTime');
                 if (savedStartTime && savedStartTime !== 'null') { state.eventStartTime = parseInt(savedStartTime, 10); } 
                 else { state.eventStartTime = null; }
@@ -363,6 +391,7 @@
                 localStorage.setItem('dj_eventStartTime', state.eventStartTime || 'null');
                 localStorage.setItem('dj_phase1', state.phase1Duration);
                 localStorage.setItem('dj_phase2', state.phase2Duration);
+                localStorage.setItem('dj_sessionId', state.sessionId);
             } catch (error) { console.error("Erreur de sauvegarde", error); }
         }
 
@@ -401,7 +430,7 @@
         }
 
         window.addEventListener('storage', function(e) {
-            if (e.key === 'dj_songs' || e.key === 'dj_guestCode' || e.key === 'dj_eventStartTime' || e.key === 'dj_userVotes') {
+            if (e.key === 'dj_songs' || e.key === 'dj_guestCode' || e.key === 'dj_eventStartTime' || e.key === 'dj_sessionId') {
                 loadServerData(); checkPhase(); render(); 
             }
         });
@@ -440,7 +469,7 @@
                 state.view = 'user'; 
                 state.loginError = ''; 
                 
-                // Si on est en mode Hors ligne, on met à jour le code localement pour l'utilisateur
+                // Si on est en mode Hors ligne, on met à jour le code localement
                 if (!db) {
                     state.guestCode = input;
                     saveServerData();
@@ -539,21 +568,38 @@
             });
         }
 
+        // --- NOUVEAU BOUTON : AUTORISER NOUVEAU VOTE (Garde les scores) ---
+        window.allowReVote = function() {
+            window.showModal('confirm', "Nouveau Tour de Votes", "Cela va générer un nouveau QR Code. En le scannant, les invités recevront 30 nouveaux crédits !<br><br><strong class='text-magical-cyan'>Les scores actuels des chansons seront CONSERVÉS.</strong>", () => { 
+                // Change la session pour réinitialiser les téléphones
+                state.sessionId = Date.now().toString(); 
+                saveServerData(); 
+                verifySessionAndLoadVotes(); // Vide instantanément le téléphone local s'il teste
+                
+                if (db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    updateDoc(publicRef, { sessionId: state.sessionId }).catch(e=>console.log(e));
+                }
+                window.showModal('alert', 'Succès', '✅ C\'est prêt ! Affichez le QR Code sur l\'écran géant, les invités n\'ont plus qu\'à le scanner pour revoter.');
+            });
+        }
+
         window.resetVotes = function() {
             window.showModal('confirm', "Remise à zéro totale", "⚠️ Attention, cela va effacer absolument tous les votes, arrêter le minuteur et réinitialiser les crédits de tout le monde. Confirmer ?", () => { 
                 state.eventStartTime = null;
                 state.currentPhase = 0;
                 state.songs = JSON.parse(JSON.stringify(initialSongs)); 
-                state.userVotes = {}; 
-                state.totalUserVotes = 0;
                 state.selectedTheme = 'Tous';
                 state.searchQuery = '';
-                state.sessionId = Date.now().toString();
+                
+                // Change la session pour réinitialiser les téléphones
+                state.sessionId = Date.now().toString(); 
                 
                 localStorage.removeItem('dj_songs');
-                localStorage.removeItem('dj_userVotes');
                 localStorage.removeItem('dj_eventStartTime');
+                
                 saveServerData(); 
+                verifySessionAndLoadVotes(); // Vide instantanément le téléphone local s'il teste
                 
                 if (db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
@@ -567,7 +613,6 @@
                     }).catch(e=>console.log(e));
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
-                render();
             });
         }
 
@@ -590,14 +635,6 @@
 
         window.vote = function(id) {
             if (state.currentPhase === 3) { window.showModal('alert', 'Votes clôturés', 'Les votes sont terminés pour cette session ! Regardez l\'écran géant.'); return; }
-            
-            // Si le DJ a cliqué sur "Remettre à zéro", la session change. On vide les crédits locaux du smartphone.
-            if (state.privateSessionId !== state.sessionId) {
-                state.userVotes = {};
-                state.totalUserVotes = 0;
-                state.privateSessionId = state.sessionId;
-            }
-
             if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
@@ -1063,20 +1100,27 @@
                                 </div>
                             </div>
 
-                            <div class="neo-glass rounded-[2.5rem] p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-                                <div class="relative z-10 text-center md:text-left">
-                                    <h2 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">Détail des Votes DJ</h2>
-                                    <p class="text-white/70 font-medium text-lg">Interface de contrôle privée.</p>
-                                </div>
-                                <div class="relative z-10 flex flex-col sm:flex-row gap-6 items-center">
-                                    <div class="bg-black/50 rounded-[1.5rem] px-10 py-5 border border-white/10 shadow-inner text-center">
+                            <div class="neo-glass rounded-[2.5rem] p-8 mb-8 flex flex-col relative overflow-hidden">
+                                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+                                    <div class="relative z-10 text-left">
+                                        <h2 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">Gestion des Votes DJ</h2>
+                                        <p class="text-white/70 font-medium text-lg">Contrôle absolu sur la soirée.</p>
+                                    </div>
+                                    <div class="bg-black/50 rounded-[1.5rem] px-10 py-5 border border-white/10 shadow-inner text-center shrink-0 w-full md:w-auto relative z-10">
                                         <span class="block text-sm text-white/50 uppercase tracking-[0.2em] mb-1 font-bold">Total votes</span>
                                         <span class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink drop-shadow-md">${totalVotes}</span>
                                     </div>
-                                    <button onclick="resetVotes()" class="w-full sm:w-auto bg-white/5 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 font-bold py-5 px-8 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
-                                        <i class="ph-bold ph-trash text-2xl"></i> Remettre à zéro
+                                </div>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
+                                    <button onclick="allowReVote()" class="w-full bg-white/5 hover:bg-magical-cyan/20 text-magical-cyan hover:text-white border border-magical-cyan/30 hover:border-magical-cyan font-bold py-5 px-6 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+                                        <i class="ph-bold ph-arrows-clockwise text-2xl"></i> Nouveau Tour
+                                    </button>
+                                    <button onclick="resetVotes()" class="w-full bg-white/5 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 font-bold py-5 px-6 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                                        <i class="ph-bold ph-trash text-2xl"></i> Remise à zéro
                                     </button>
                                 </div>
+                                <p class="text-xs text-white/40 text-center mt-4 uppercase tracking-widest relative z-10">⚠️ Note: Les invités doivent flasher le nouveau QR Code pour récupérer 30 crédits.</p>
                             </div>
 
                             <!-- Classement des votes pour le DJ -->
