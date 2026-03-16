@@ -154,12 +154,13 @@
         // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
         // =========================================================================
         const MY_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCrcyE5HbYE-fjiWwonzVmng_zCvXaSk_E",
+            apiKey: "AIzaSyCrcyE5HbYE-fjiWwonzVmng_zCvXaSk", // <- La clé corrigée, sans erreur !
             authDomain: "laplaylistideale.firebaseapp.com",
             projectId: "laplaylistideale",
             storageBucket: "laplaylistideale.firebasestorage.app",
             messagingSenderId: "288987966838",
-            appId: "1:288987966838:web:12b48f1ae0acbfef8f6641"
+            appId: "1:288987966838:web:12b48f1ae0acbfef8f6641",
+            measurementId: "G-S96KY8T8CN"
         };
         // =========================================================================
 
@@ -244,10 +245,19 @@
                 isCloudActive = true;
 
                 const initAuth = async () => {
-                    if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
+                    try {
+                        if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Erreur d'authentification Firebase:", error);
+                        if (error.code === 'auth/operation-not-allowed') {
+                            setTimeout(() => {
+                                window.showModal('alert', 'Erreur Firebase', 'L\'authentification Anonyme n\'est pas activée. Vérifiez l\'Étape 3 du tutoriel dans Firebase.');
+                            }, 1000);
+                        }
                     }
                 };
                 initAuth();
@@ -298,7 +308,7 @@
                             phase1Duration: 2 * 60 * 60 * 1000,
                             phase2Duration: 1 * 60 * 60 * 1000,
                             songVotes: {}
-                        });
+                        }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
                     }
                 }
             }, (error) => console.error("Erreur lecture Cloud :", error));
@@ -530,7 +540,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, { guestCode: newCode }).catch(e=>console.log(e));
+                    setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Mot de passe modifié', 'Le mot de passe de la soirée est désormais : <br><br><strong class="text-4xl text-magical-cyan tracking-widest">' + newCode + '</strong>'); 
                 render();
@@ -551,11 +561,11 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, {
+                    setDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
                         eventStartTime: state.eventStartTime
-                    }).catch(e=>console.log(e));
+                    }, { merge: true }).catch(e=>console.error(e));
                 }
                 state.view = 'monitor'; 
                 checkPhase();
@@ -571,7 +581,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, { eventStartTime: null }).catch(e=>console.log(e));
+                    setDoc(publicRef, { eventStartTime: null }, { merge: true }).catch(e=>console.error(e));
                 }
                 render();
             });
@@ -584,9 +594,9 @@
 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, {
+                    setDoc(publicRef, {
                         eventStartTime: state.eventStartTime
-                    }).catch(e=>console.log(e));
+                    }, { merge: true }).catch(e=>console.error(e));
                 }
                 state.view = 'monitor';
                 checkPhase(); 
@@ -603,7 +613,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    updateDoc(publicRef, { sessionId: state.sessionId }).catch(e=>console.log(e));
+                    setDoc(publicRef, { sessionId: state.sessionId }, { merge: true }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Succès', '✅ C\'est prêt ! Affichez le QR Code sur l\'écran géant, les invités n\'ont plus qu\'à le scanner pour revoter.');
             });
@@ -627,6 +637,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    // On écrase le document en entier sans merge pour purger les votes
                     setDoc(publicRef, {
                         sessionId: state.sessionId, 
                         guestCode: state.guestCode,
@@ -634,7 +645,7 @@
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
                         songVotes: {}
-                    }).catch(e=>console.log(e));
+                    }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
             });
@@ -679,16 +690,14 @@
                     sessionId: state.sessionId,
                     votes: state.userVotes,
                     total: state.totalUserVotes
-                }).catch(e=>console.log(e));
+                }).catch(e=>console.error(e));
 
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                updateDoc(publicRef, {
-                    [`songVotes.${id}`]: increment(1)
-                }).catch(err => {
-                    if (err.code === 'not-found') {
-                        setDoc(publicRef, { songVotes: { [id]: 1 } }, { merge: true });
+                setDoc(publicRef, {
+                    songVotes: {
+                        [id]: increment(1)
                     }
-                });
+                }, { merge: true }).catch(err => console.error(err));
             }
 
             // 3. Vérification de la limite finale
