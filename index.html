@@ -146,7 +146,10 @@
 
     <script>
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
-        const QR_CODE_URL = "qrcode.png";
+        
+        // Génération Dynamique du QR Code pointant vers la bonne adresse Github
+        const APP_URL = "https://airfilmstudio-collab.github.io/la-playlist-ideal-V2/";
+        const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(APP_URL)}`;
 
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
