@@ -375,8 +375,22 @@
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
             const songIndex = state.songs.findIndex(s => s.id === id);
             if (songIndex !== -1) {
-                state.songs[songIndex].votes += 1; state.userVotes[id] = votesForSong + 1; state.totalUserVotes += 1;
-                saveServerData(); render();
+                state.songs[songIndex].votes += 1; 
+                state.userVotes[id] = votesForSong + 1; 
+                state.totalUserVotes += 1;
+                saveServerData(); 
+                
+                // --- Vérification finale (les 30 votes atteints) ---
+                if (state.totalUserVotes >= MAX_TOTAL_VOTES) {
+                    showModal('goodbye', 'Merci pour votre participation !', 'Vos 30 votes ont été enregistrés avec succès.<br><br>L\'application va se fermer pour laisser place à la musique !');
+                    
+                    // Au bout de 3 secondes, fermeture de l'app en redirigeant sur ton site web (Cocon sémantique !)
+                    setTimeout(() => {
+                        window.location.href = "https://www.universal-dj.com";
+                    }, 3000);
+                } else {
+                    render();
+                }
             }
         }
 
@@ -605,7 +619,7 @@
                 const isTimerStarted = state.eventStartTime !== null;
 
                 mainContent = `
-                    <div class="animate-fade-in pb-24 pt-28 max-w-7xl mx-auto px-4 w-full">
+                    <div class="animate-fade-in pb-32 pt-28 max-w-7xl mx-auto px-4 w-full">
                         ${isClosed ? `
                             <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
                                 <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
@@ -620,29 +634,10 @@
                             </div>
                         ` : ''}
 
-                        <div class="neo-glass rounded-[2rem] p-6 md:p-8 mb-10 relative overflow-hidden ${isClosed ? 'opacity-50 grayscale' : ''}">
-                            <div class="absolute bottom-0 left-0 h-2 bg-gradient-to-r from-magical-cyan to-magical-pink transition-all duration-500 ease-out shadow-[0_-5px_20px_rgba(255,0,122,0.8)]" style="width: ${progressPercent}%"></div>
-                            <div class="flex flex-col md:flex-row items-start md:items-center justify-between relative z-10 gap-6">
-                                <div>
-                                    <h3 class="text-white font-black text-3xl mb-1 flex items-center gap-3 tracking-tight text-glow-white">
-                                        <i class="ph-fill ph-ticket text-magical-pink text-4xl drop-shadow-[0_0_15px_rgba(255,0,122,0.8)]"></i> Vos crédits
-                                    </h3>
-                                    <p class="text-lg text-white/70 font-light">Vous pouvez voter <strong>${MAX_VOTES_PER_SONG} fois maximum</strong> par titre.</p>
-                                </div>
-                                <div class="text-right bg-black/60 px-8 py-5 rounded-[1.5rem] border border-white/10 w-full md:w-auto flex justify-between md:block items-center shadow-inner">
-                                    <span class="text-white/50 text-sm md:hidden font-bold uppercase tracking-widest">Restants :</span>
-                                    <div>
-                                        <span class="text-5xl font-black ${votesLeft === 0 ? 'text-red-500 text-glow-pink' : 'text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]'}">${votesLeft}</span>
-                                        <span class="text-white/40 font-black text-2xl"> / ${MAX_TOTAL_VOTES}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="mb-8 md:flex md:items-center md:justify-between space-y-6 md:space-y-0">
                             <div>
                                 <h2 class="text-4xl font-black text-white mb-1 tracking-tight text-glow-white">À vous de jouer !</h2>
-                                <p class="text-lg text-white/70 font-light">Cherchez vos titres favoris dans la liste.</p>
+                                <p class="text-lg text-white/70 font-light">Cherchez vos titres favoris (<strong>${MAX_VOTES_PER_SONG} votes max</strong> par titre).</p>
                             </div>
                             <div class="relative w-full md:w-96">
                                 <i class="ph-bold ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-2xl text-magical-cyan"></i>
@@ -709,6 +704,22 @@
                                 <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
                                 <p class="text-lg text-white/60 font-light">Essayez une autre recherche.</p>
                              </div>`}
+                             
+                        <!-- NOUVELLE BARRE FLOTTANTE POUR LE COMPTEUR DE VOTES -->
+                        <div class="fixed bottom-6 left-0 w-full px-4 z-50 pointer-events-none flex justify-center">
+                            <div class="neo-glass rounded-full px-6 py-4 flex items-center gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/20 backdrop-blur-xl pointer-events-auto relative overflow-hidden max-w-md w-full">
+                                <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-magical-cyan to-magical-pink transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
+                                <div class="flex items-center gap-3">
+                                    <i class="ph-fill ph-ticket text-magical-pink text-2xl drop-shadow-[0_0_10px_rgba(255,0,122,0.8)]"></i>
+                                    <span class="text-white font-bold tracking-widest uppercase text-xs sm:text-sm">Vos Crédits</span>
+                                </div>
+                                <div class="flex-1 flex justify-end items-baseline gap-1">
+                                    <span class="text-3xl font-black ${votesLeft === 0 ? 'text-red-500 text-glow-pink' : 'text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]'}">${votesLeft}</span>
+                                    <span class="text-white/40 font-bold text-sm">/ ${MAX_TOTAL_VOTES}</span>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 `;
             } 
@@ -827,7 +838,9 @@
                     <h3 class="text-3xl font-black text-white mb-6 text-glow-white">${state.modal.title}</h3>
                     <p class="text-white/80 font-medium mb-8 text-lg leading-relaxed">${state.modal.message}</p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        ${state.modal.type === 'confirm' ? `
+                        ${state.modal.type === 'goodbye' ? `
+                            <i class="ph-duotone ph-spinner-gap animate-spin text-5xl text-magical-cyan mx-auto mt-2 block drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
+                        ` : state.modal.type === 'confirm' ? `
                             <button onclick="closeModal()" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">Annuler</button>
                             <button onclick="confirmModal()" class="flex-1 btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Confirmer</button>
                         ` : `
