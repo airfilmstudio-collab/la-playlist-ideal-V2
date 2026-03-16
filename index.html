@@ -496,6 +496,7 @@
             const input = passEl.value.toUpperCase().trim();
             const correctCode = state.guestCode.toUpperCase().trim();
             
+            // Si le code est correct OU si on est en mode "Hors ligne" on force l'accès
             if (input === correctCode || !isCloudActive) { 
                 state.view = 'user'; 
                 state.loginError = ''; 
@@ -505,8 +506,13 @@
                     saveServerData();
                 }
                 
-                if (window.history && window.history.replaceState) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                // Nettoyage de l'URL sécurisé
+                try {
+                    if (window.history && window.history.replaceState && window.location.protocol !== 'blob:') {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+                } catch (err) {
+                    console.warn("Impossible de nettoyer l'URL dans cet environnement de test.", err);
                 }
             } 
             else { 
@@ -658,6 +664,7 @@
             render(); 
         }
         
+        // --- OPTIMISATION MOBILE : Recherche en temps réel sans recharger l'écran ---
         window.handleSearch = function(event) { 
             state.searchQuery = event.target.value.toLowerCase(); 
             const cards = document.querySelectorAll('.song-item-card');
@@ -938,6 +945,7 @@
                 const isScrolled = window.scrollY > 20;
                 const navScrolledClass = isScrolled ? 'glass-scrolled-nav' : '';
                 const panelScrolledClass = isScrolled ? 'glass-scrolled-panel' : '';
+                const isTimerActive = state.eventStartTime !== null && state.currentPhase > 0 && state.currentPhase < 3;
 
                 const headerHTML = `
                     <div class="fixed top-4 left-0 w-full z-50 px-2 sm:px-4 md:px-8 pointer-events-none">
@@ -947,27 +955,41 @@
                                 ${state.view === 'admin' ? '<h1 class="text-lg md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
                             </button>
                             
-                            <div class="flex items-center gap-3 sm:gap-4 md:gap-6">
-                                <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
-                                    <i class="ph-bold ph-globe text-lg sm:text-xl md:text-2xl"></i>
-                                </a>
-                                <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
-                                    <i class="ph-fill ph-facebook-logo text-lg sm:text-xl md:text-2xl"></i>
-                                </a>
-                                <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
-                                    <i class="ph-fill ph-instagram-logo text-lg sm:text-xl md:text-2xl"></i>
-                                </a>
-                                <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
-                                    <i class="ph-fill ph-linkedin-logo text-lg sm:text-xl md:text-2xl"></i>
-                                </a>
-                                <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
-                                    <i class="ph-fill ph-map-pin text-lg sm:text-xl md:text-2xl"></i>
-                                </a>
-                            </div>
+                            <div class="flex items-center gap-2 sm:gap-4 md:gap-6">
+                                ${isTimerActive ? `
+                                    <div class="flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
+                                        <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-sm sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
+                                        <span class="text-xs sm:text-sm font-black tabular-nums tracking-widest text-magical-cyan global-timer-display text-glow-cyan">--:--:--</span>
+                                    </div>
+                                ` : state.currentPhase === 3 ? `
+                                    <div class="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-magical-pink/40 shadow-inner">
+                                        <i class="ph-fill ph-check-circle text-magical-pink text-sm sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-xs sm:text-sm font-black tracking-widest text-magical-pink text-glow-pink uppercase">Clôturé</span>
+                                    </div>
+                                ` : ''}
 
-                            <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-3 sm:px-4 md:px-6 py-2 md:py-2.5 rounded-full text-xs sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider">
-                                <i class="ph-bold ph-sign-out text-base sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
-                            </button>
+                                <div class="hidden md:flex items-center gap-3 md:gap-4 lg:gap-6">
+                                    <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
+                                        <i class="ph-bold ph-globe text-lg sm:text-xl md:text-2xl"></i>
+                                    </a>
+                                    <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
+                                        <i class="ph-fill ph-facebook-logo text-lg sm:text-xl md:text-2xl"></i>
+                                    </a>
+                                    <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
+                                        <i class="ph-fill ph-instagram-logo text-lg sm:text-xl md:text-2xl"></i>
+                                    </a>
+                                    <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
+                                        <i class="ph-fill ph-linkedin-logo text-lg sm:text-xl md:text-2xl"></i>
+                                    </a>
+                                    <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
+                                        <i class="ph-fill ph-map-pin text-lg sm:text-xl md:text-2xl"></i>
+                                    </a>
+                                </div>
+
+                                <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-3 sm:px-4 md:px-6 py-2 md:py-2.5 rounded-full text-xs sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider">
+                                    <i class="ph-bold ph-sign-out text-base sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
+                                </button>
+                            </div>
                         </nav>
                     </div>
                 `;
@@ -995,13 +1017,6 @@
                                 <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
                                     <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
                                     <p class="text-white/90 text-base md:text-lg mt-2 font-medium">La playlist idéale est prête, regardez l'écran géant !</p>
-                                </div>
-                            ` : isTimerStarted ? `
-                                <div class="neo-glass border-magical-cyan/40 rounded-3xl p-5 mb-8 shadow-[0_0_30px_rgba(0,240,255,0.2)] text-center flex flex-col items-center justify-center animate-pulse">
-                                    <span class="text-magical-cyan font-bold text-sm md:text-base uppercase tracking-widest mb-1 flex items-center gap-2 text-glow-cyan">
-                                        <i class="ph-fill ph-timer text-xl"></i> Temps restant pour voter
-                                    </span>
-                                    <span class="text-white font-black text-5xl md:text-6xl tabular-nums tracking-widest global-timer-display text-glow-white">--:--:--</span>
                                 </div>
                             ` : ''}
 
