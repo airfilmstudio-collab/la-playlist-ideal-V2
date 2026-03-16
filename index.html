@@ -300,16 +300,15 @@
                     checkPhase();
                     verifySessionAndLoadVotes();
                 } else {
-                    if (state.view === 'admin') {
-                        setDoc(publicRef, {
-                            sessionId: Date.now().toString(),
-                            guestCode: 'FIESTA',
-                            eventStartTime: null,
-                            phase1Duration: 2 * 60 * 60 * 1000,
-                            phase2Duration: 1 * 60 * 60 * 1000,
-                            songVotes: {}
-                        }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
-                    }
+                    // Création de la DB si elle n'existe pas encore (Garantie Anti-crash)
+                    setDoc(publicRef, {
+                        sessionId: Date.now().toString(),
+                        guestCode: state.guestCode || 'FIESTA',
+                        eventStartTime: null,
+                        phase1Duration: 2 * 60 * 60 * 1000,
+                        phase2Duration: 1 * 60 * 60 * 1000,
+                        songVotes: {}
+                    }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
                 }
             }, (error) => console.error("Erreur lecture Cloud :", error));
 
@@ -338,7 +337,6 @@
                 state.totalUserVotes = 0;
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
-                console.log("Nouvelle session détectée, crédits remis à zéro !");
             } else {
                 // Sinon on recharge les votes normaux
                 const savedUserVotes = localStorage.getItem('dj_userVotes');
@@ -500,18 +498,16 @@
             const input = passEl.value.toUpperCase().trim();
             const correctCode = state.guestCode.toUpperCase().trim();
             
-            // Si le code est correct OU si on est en mode "Hors ligne" (pas de Firebase configuré) on force l'accès
+            // Si le code est correct OU si on est en mode "Hors ligne" on force l'accès
             if (input === correctCode || !isCloudActive) { 
                 state.view = 'user'; 
                 state.loginError = ''; 
                 
-                // Si on est en mode Hors ligne, on met à jour le code localement
                 if (!isCloudActive) {
                     state.guestCode = input;
                     saveServerData();
                 }
                 
-                // Nettoyage de l'URL
                 if (window.history && window.history.replaceState) {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
@@ -540,7 +536,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
+                    updateDoc(publicRef, { guestCode: newCode }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Mot de passe modifié', 'Le mot de passe de la soirée est désormais : <br><br><strong class="text-4xl text-magical-cyan tracking-widest">' + newCode + '</strong>'); 
                 render();
@@ -561,11 +557,11 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, {
+                    updateDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
                         eventStartTime: state.eventStartTime
-                    }, { merge: true }).catch(e=>console.error(e));
+                    }).catch(e=>console.error(e));
                 }
                 state.view = 'monitor'; 
                 checkPhase();
@@ -581,7 +577,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { eventStartTime: null }, { merge: true }).catch(e=>console.error(e));
+                    updateDoc(publicRef, { eventStartTime: null }).catch(e=>console.error(e));
                 }
                 render();
             });
@@ -594,9 +590,9 @@
 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, {
+                    updateDoc(publicRef, {
                         eventStartTime: state.eventStartTime
-                    }, { merge: true }).catch(e=>console.error(e));
+                    }).catch(e=>console.error(e));
                 }
                 state.view = 'monitor';
                 checkPhase(); 
@@ -613,7 +609,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { sessionId: state.sessionId }, { merge: true }).catch(e=>console.error(e));
+                    updateDoc(publicRef, { sessionId: state.sessionId }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Succès', '✅ C\'est prêt ! Affichez le QR Code sur l\'écran géant, les invités n\'ont plus qu\'à le scanner pour revoter.');
             });
@@ -645,7 +641,12 @@
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
                         songVotes: {}
-                    }).catch(e=>console.error(e));
+                    }).catch(e => {
+                        console.error(e);
+                        if (e.code === 'permission-denied') {
+                            window.showModal('alert', 'Sécurité Firestore', 'Opération bloquée. Avez-vous bien choisi le "Mode Test" à l\'étape 4 ?');
+                        }
+                    });
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
             });
@@ -700,7 +701,12 @@
             render();
 
             // 2. Envoi sur le Cloud (En tâche de fond)
-            if (isCloudActive && db && userId) {
+            if (isCloudActive && db) {
+                if (!userId) {
+                    window.showModal('alert', 'Erreur de Connexion', 'La connexion au serveur est impossible. L\'Authentification n\'est pas active. (Vérifiez l\'étape 3 du tuto).');
+                    return;
+                }
+
                 const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
                 setDoc(privateRef, {
                     sessionId: state.sessionId,
@@ -709,11 +715,17 @@
                 }).catch(e=>console.error(e));
 
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                setDoc(publicRef, {
-                    songVotes: {
-                        [id]: increment(1)
+                updateDoc(publicRef, {
+                    [`songVotes.${id}`]: increment(1)
+                }).catch(err => {
+                    console.error("Erreur PublicRef:", err);
+                    if (err.code === 'permission-denied') {
+                        window.showModal('alert', 'Sécurité Firestore', 'Vos votes sont bloqués par Firebase. Avez-vous bien choisi le "Mode Test" à l\'étape 4 ?');
+                    } else if (err.code === 'not-found') {
+                        // Fallback sécurité
+                        setDoc(publicRef, { songVotes: { [id]: 1 } }, { merge: true });
                     }
-                }, { merge: true }).catch(err => console.error(err));
+                });
             }
 
             // 3. Vérification de la limite finale
@@ -1100,8 +1112,8 @@
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                                 <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
                                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
-                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
-                                    <span class="text-xs font-bold ${isCloudActive ? 'text-magical-cyan' : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? 'Cloud Actif' : 'Mode Local'}</span>
+                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? (userId ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_#EF4444] animate-pulse') : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
+                                    <span class="text-xs font-bold ${isCloudActive ? (userId ? 'text-magical-cyan' : 'text-red-500') : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? (userId ? 'Cloud Actif' : 'Erreur Auth (Étape 3)') : 'Mode Local'}</span>
                                 </div>
                             </div>
                             
