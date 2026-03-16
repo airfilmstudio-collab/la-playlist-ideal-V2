@@ -510,10 +510,12 @@
                 try {
                     if (window.history && window.history.replaceState) {
                         const currentUrl = new URL(window.location.href);
+                        // On évite les erreurs de sécurité dans les iframes de test
                         if (currentUrl.protocol !== 'blob:') {
                             currentUrl.searchParams.delete('code');
                             currentUrl.searchParams.delete('s');
-                            window.history.replaceState({}, document.title, currentUrl.toString());
+                            const newPath = currentUrl.pathname + currentUrl.search;
+                            window.history.replaceState({}, document.title, newPath);
                         }
                     }
                 } catch (e) {
@@ -960,13 +962,36 @@
 
                 const headerHTML = `
                     <div class="fixed top-4 left-0 w-full z-50 px-2 sm:px-4 md:px-8 pointer-events-none">
-                        <nav id="main-nav" class="max-w-7xl mx-auto neo-glass rounded-full px-3 sm:px-4 py-2.5 sm:py-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto w-full transition-all duration-300 ${navScrolledClass}">
-                            <button onclick="${state.view === 'admin' ? "goTo('admin')" : "window.scrollTo({top: 0, behavior: 'smooth'})"}" class="flex items-center gap-2 sm:gap-4 hover:opacity-80 transition-opacity focus:outline-none text-left">
-                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-7 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
-                                ${state.view === 'admin' ? '<h1 class="text-lg md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
-                            </button>
+                        <nav id="main-nav" class="max-w-7xl mx-auto neo-glass rounded-full px-2 sm:px-4 py-2 sm:py-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto w-full transition-all duration-300 ${navScrolledClass}">
                             
-                            <div class="flex items-center gap-1.5 sm:gap-3 lg:gap-6">
+                            <!-- LEFT: Logo + Socials -->
+                            <div class="flex items-center gap-2 sm:gap-6 overflow-hidden">
+                                <button onclick="${state.view === 'admin' ? "goTo('admin')" : "window.scrollTo({top: 0, behavior: 'smooth'})"}" class="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none text-left shrink-0">
+                                    <img src="${LOGO_URL}" alt="Universal DJ" class="h-6 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
+                                    ${state.view === 'admin' ? '<h1 class="text-sm md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
+                                </button>
+                                
+                                <div class="flex items-center gap-1.5 sm:gap-3 border-l border-white/10 pl-2 sm:pl-4">
+                                    <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
+                                        <i class="ph-bold ph-globe text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
+                                        <i class="ph-fill ph-facebook-logo text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
+                                        <i class="ph-fill ph-instagram-logo text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
+                                        <i class="ph-fill ph-linkedin-logo text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
+                                        <i class="ph-fill ph-map-pin text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <!-- RIGHT: Timer + Quit -->
+                            <div class="flex items-center gap-1.5 sm:gap-4 shrink-0">
                                 ${isTimerActive ? `
                                     <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
                                         <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
@@ -979,20 +1004,8 @@
                                     </div>
                                 ` : ''}
 
-                                <div class="flex items-center gap-1 sm:gap-3 md:gap-4">
-                                    <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
-                                        <i class="ph-bold ph-globe text-sm sm:text-xl md:text-2xl"></i>
-                                    </a>
-                                    <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
-                                        <i class="ph-fill ph-facebook-logo text-sm sm:text-xl md:text-2xl"></i>
-                                    </a>
-                                    <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
-                                        <i class="ph-fill ph-instagram-logo text-sm sm:text-xl md:text-2xl"></i>
-                                    </a>
-                                </div>
-
-                                <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 rounded-full text-[10px] sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider ml-1 sm:ml-0">
-                                    <i class="ph-bold ph-sign-out text-sm sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
+                                <button onclick="goTo('login')" class="flex shrink-0 items-center gap-1.5 sm:gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-[9px] sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider ml-1 sm:ml-0">
+                                    <i class="ph-bold ph-sign-out text-xs sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
                                 </button>
                             </div>
                         </nav>
