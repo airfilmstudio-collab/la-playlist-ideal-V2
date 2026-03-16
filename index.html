@@ -27,22 +27,16 @@
         }
     </script>
 
-    <!-- Phosphor Icons pour les icônes -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Phosphor Icons pour les icônes (en defer pour ne pas bloquer le chargement) -->
+    <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     
     <style>
         /* Masquer la scrollbar pour un look d'app native */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        body { background-color: #050212; }
-
-        /* Texture Grain / Bruit pour le côté Premium */
-        .noise-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none;
-            z-index: 100; opacity: 0.03;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-        }
+        /* Fallbacks de sécurité pour éviter la page blanche au chargement */
+        html, body { background-color: #050212; color: #ffffff; }
 
         /* Animations fluides d'apparition */
         .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -141,9 +135,8 @@
 </head>
 <body class="text-slate-100 font-sans selection:bg-magical-pink/50 min-h-screen relative overflow-x-hidden">
 
-    <!-- GRAIN PREMIUM & LUMIERES -->
-    <div class="noise-overlay"></div>
-    <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+    <!-- LUMIERES HOLOGRAPHIQUES (GPU-Safe) -->
+    <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#050212]">
         <div class="orb orb-pink"></div><div class="orb orb-cyan"></div>
         <div class="orb orb-purple"></div><div class="orb orb-gold"></div>
     </div>
@@ -153,7 +146,7 @@
 
     <script>
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
-        const QR_CODE_URL = "qrcode.png"; // <-- Ton fichier QR code fixe
+        const QR_CODE_URL = "qrcode.png";
 
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
@@ -181,7 +174,7 @@
             userVotes: {}, totalUserVotes: 0, loginError: '', guestCode: 'FIESTA',
             eventStartTime: null, currentPhase: 0,
             phase1Duration: 2 * 60 * 60 * 1000, phase2Duration: 1 * 60 * 60 * 1000,
-            modal: null // <-- Ajout du système de fenêtre pop-up
+            modal: null
         };
 
         function loadServerData() {
@@ -280,7 +273,6 @@
 
         loadServerData(); setInterval(checkPhase, 1000);
 
-        // --- NOUVEAU SYSTÈME DE POP-UP (Remplace alert() et confirm() qui bloquaient) ---
         function showModal(type, title, message, onConfirmCallback = null) {
             state.modal = { type, title, message, onConfirmCallback };
             render();
@@ -297,7 +289,6 @@
             }
             closeModal();
         }
-        // --------------------------------------------------------------------------------
 
         function checkGuestLogin(event) {
             event.preventDefault();
@@ -352,10 +343,9 @@
 
         function forceEndAndShowMonitor() {
             showModal('confirm', "Clôturer et Résultats", "⚠️ Voulez-vous clôturer définitivement les votes et afficher le classement final sur l'écran géant ?", () => {
-                // Astuce : on simule que le temps total est écoulé pour forcer le passage en Phase 3
                 state.eventStartTime = Date.now() - (state.phase1Duration + state.phase2Duration + 5000);
                 saveServerData();
-                checkPhase(); // Va automatiquement verrouiller les votes et passer en Phase 3
+                checkPhase(); 
                 state.view = 'monitor';
                 render();
             });
@@ -371,7 +361,6 @@
                 state.selectedTheme = 'Tous';
                 state.searchQuery = '';
                 
-                // On vide physiquement le cache pour forcer la remise à plat
                 localStorage.removeItem('dj_songs');
                 localStorage.removeItem('dj_userVotes');
                 localStorage.removeItem('dj_eventStartTime');
@@ -410,11 +399,9 @@
                 state.totalUserVotes += 1;
                 saveServerData(); 
                 
-                // --- Vérification finale (les 30 votes atteints) ---
                 if (state.totalUserVotes >= MAX_TOTAL_VOTES) {
                     showModal('goodbye', 'Merci pour votre participation !', 'Vos 30 votes ont été enregistrés avec succès.<br><br>L\'application va se fermer pour laisser place à la musique !');
                     
-                    // Au bout de 3 secondes, fermeture de l'app en redirigeant sur ton site web (Cocon sémantique !)
                     setTimeout(() => {
                         window.location.href = "https://www.universal-dj.com/bar-a-vinyles-normandie/";
                     }, 3000);
@@ -428,8 +415,11 @@
             const root = document.getElementById('root');
             if (!root) return;
             
+            let htmlToRender = '';
+
+            // 1. VUE QR CODE GEANT
             if (state.view === 'qrcode' && state.currentPhase !== 1) {
-                root.innerHTML = `
+                htmlToRender = `
                     <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
                         <button onclick="toggleQRCode()" class="absolute top-6 right-6 md:top-10 md:right-10 text-white/50 hover:text-white z-20 neo-glass p-3 rounded-full hover:bg-white/10 transition-all">
                             <i class="ph-bold ph-x text-2xl"></i>
@@ -456,12 +446,11 @@
                         </div>
                     </div>
                 `;
-                return;
-            }
-
-            if (state.view === 'monitor' || (state.view === 'qrcode' && state.currentPhase === 1)) {
+            } 
+            // 2. VUE ECRAN GEANT (MONITOR)
+            else if (state.view === 'monitor' || (state.view === 'qrcode' && state.currentPhase === 1)) {
                 if (state.currentPhase === 1) {
-                    root.innerHTML = `
+                    htmlToRender = `
                         <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
                             <button onclick="goTo('admin')" class="absolute top-6 right-6 text-white/0 hover:text-white/50 z-50 p-3 rounded-full hover:bg-white/10 transition-colors">
                                 <i class="ph-bold ph-x text-2xl"></i>
@@ -491,85 +480,83 @@
                             </div>
                         </div>
                     `;
-                    return;
+                } else {
+                    const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
+                    htmlToRender = `
+                        <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden animate-fade-in">
+                            <button onclick="goTo('admin')" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-white/10">
+                                <i class="ph-bold ph-x text-2xl"></i>
+                            </button>
+                            <div class="relative z-10 flex justify-between items-center mb-6 px-2">
+                                <div class="flex items-center gap-6">
+                                    <img src="${LOGO_URL}" alt="Universal DJ" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                    <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
+                                        VOTRE PLAYLIST IDÉALE
+                                    </h1>
+                                </div>
+                                <div class="flex items-center gap-6">
+                                    ${state.currentPhase === 2 ? `
+                                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
+                                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
+                                            <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
+                                        </div>
+                                    ` : state.currentPhase === 3 ? `
+                                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
+                                        </div>
+                                    ` : ''}
+                                    ${state.currentPhase === 2 ? `
+                                    <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
+                                        <div class="bg-white p-2 rounded-2xl">
+                                            <img src="${QR_CODE_URL}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
+                                        </div>
+                                        <div class="flex flex-col justify-center">
+                                            <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
+                                            <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4">
+                                ${top40Songs.length > 0 ? `
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
+                                        ${top40Songs.map((song, index) => {
+                                            const isTop3 = index < 3;
+                                            let rankStyle = "text-white/40 text-xl font-bold"; let boxStyle = "neo-card bg-white/[0.01]";
+                                            if (index === 0) { rankStyle = "text-magical-gold text-2xl sm:text-3xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-magical-gold/20 to-transparent border-magical-gold/40 shadow-[0_0_20px_rgba(255,215,0,0.3)]"; }
+                                            else if (index === 1) { rankStyle = "text-slate-300 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-white/10 to-transparent border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]"; }
+                                            else if (index === 2) { rankStyle = "text-orange-500 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-orange-500/20 to-transparent border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"; }
+                                            return `
+                                                <div class="flex items-center ${boxStyle} rounded-2xl px-3 sm:px-4 overflow-hidden h-full">
+                                                    <div class="w-8 sm:w-10 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
+                                                    <div class="flex-1 min-w-0 px-2 sm:px-4 border-l border-white/10 ml-2 sm:ml-3 py-1">
+                                                        <div class="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
+                                                        <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
+                                                    </div>
+                                                    <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 border border-white/10 shadow-inner">
+                                                        <span class="text-lg sm:text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                ` : `
+                                    <div class="flex flex-col items-center justify-center h-full text-center">
+                                        <i class="ph-duotone ph-disc text-9xl text-magical-pink/50 mb-6 animate-spin-slow" style="animation-duration: 4s;"></i>
+                                        <h3 class="text-4xl font-bold text-white mb-3 text-glow-white">En attente des votes...</h3>
+                                        <p class="text-2xl text-white/60 font-light">La playlist idéale se prépare !</p>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    `;
                 }
-
-                const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
-                root.innerHTML = `
-                    <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden animate-fade-in">
-                        <button onclick="goTo('admin')" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-white/10">
-                            <i class="ph-bold ph-x text-2xl"></i>
-                        </button>
-                        <div class="relative z-10 flex justify-between items-center mb-6 px-2">
-                            <div class="flex items-center gap-6">
-                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
-                                <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
-                                    VOTRE PLAYLIST IDÉALE
-                                </h1>
-                            </div>
-                            <div class="flex items-center gap-6">
-                                ${state.currentPhase === 2 ? `
-                                    <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
-                                        <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
-                                        <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
-                                    </div>
-                                ` : state.currentPhase === 3 ? `
-                                    <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
-                                        <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
-                                    </div>
-                                ` : ''}
-                                ${state.currentPhase === 2 ? `
-                                <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
-                                    <div class="bg-white p-2 rounded-2xl">
-                                        <img src="${QR_CODE_URL}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
-                                    </div>
-                                    <div class="flex flex-col justify-center">
-                                        <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
-                                        <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                        <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4">
-                            ${top40Songs.length > 0 ? `
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
-                                    ${top40Songs.map((song, index) => {
-                                        const isTop3 = index < 3;
-                                        let rankStyle = "text-white/40 text-xl font-bold"; let boxStyle = "neo-card bg-white/[0.01]";
-                                        if (index === 0) { rankStyle = "text-magical-gold text-2xl sm:text-3xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-magical-gold/20 to-transparent border-magical-gold/40 shadow-[0_0_20px_rgba(255,215,0,0.3)]"; }
-                                        else if (index === 1) { rankStyle = "text-slate-300 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-white/10 to-transparent border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]"; }
-                                        else if (index === 2) { rankStyle = "text-orange-500 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-orange-500/20 to-transparent border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"; }
-                                        return `
-                                            <div class="flex items-center ${boxStyle} rounded-2xl px-3 sm:px-4 overflow-hidden h-full">
-                                                <div class="w-8 sm:w-10 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
-                                                <div class="flex-1 min-w-0 px-2 sm:px-4 border-l border-white/10 ml-2 sm:ml-3 py-1">
-                                                    <div class="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
-                                                    <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
-                                                </div>
-                                                <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 border border-white/10 shadow-inner">
-                                                    <span class="text-lg sm:text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            ` : `
-                                <div class="flex flex-col items-center justify-center h-full text-center">
-                                    <i class="ph-duotone ph-disc text-9xl text-magical-pink/50 mb-6 animate-spin-slow" style="animation-duration: 4s;"></i>
-                                    <h3 class="text-4xl font-bold text-white mb-3 text-glow-white">En attente des votes...</h3>
-                                    <p class="text-2xl text-white/60 font-light">La playlist idéale se prépare !</p>
-                                </div>
-                            `}
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            if (state.view === 'login' || state.view === 'adminLogin') {
+            } 
+            // 3. VUES DE CONNEXION
+            else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
-                root.innerHTML = `
+                htmlToRender = `
                     <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
                         <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative z-10 text-center border-t-magical-pink/50">
                             <div class="mb-8 relative inline-block">
@@ -596,339 +583,340 @@
                         </div>
                     </div>
                 `;
-                return;
-            }
+            } 
+            // 4. VUES UTILISATEUR & ADMIN PRINCIPALES
+            else {
+                const isScrolled = window.scrollY > 20;
+                const navScrolledClass = isScrolled ? 'glass-scrolled-nav' : '';
+                const panelScrolledClass = isScrolled ? 'glass-scrolled-panel' : '';
 
-            // Détection du scroll pour injecter la classe dès le rendu si on est déjà descendu
-            const isScrolled = window.scrollY > 20;
-            const navScrolledClass = isScrolled ? 'glass-scrolled-nav' : '';
-            const panelScrolledClass = isScrolled ? 'glass-scrolled-panel' : '';
+                const headerHTML = `
+                    <div class="fixed top-4 left-0 w-full z-50 animate-fade-in px-2 sm:px-4 md:px-8 pointer-events-none">
+                        <nav id="main-nav" class="max-w-7xl mx-auto neo-glass rounded-full px-3 sm:px-4 py-2.5 sm:py-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto w-full transition-all duration-300 ${navScrolledClass}">
+                            <button onclick="${state.view === 'admin' ? "goTo('admin')" : "window.scrollTo({top: 0, behavior: 'smooth'})"}" class="flex items-center gap-2 sm:gap-4 hover:opacity-80 transition-opacity focus:outline-none text-left">
+                                <img src="${LOGO_URL}" alt="Universal DJ" class="h-7 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
+                                ${state.view === 'admin' ? '<h1 class="text-lg md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
+                            </button>
+                            
+                            <div class="flex items-center gap-3 sm:gap-4 md:gap-6">
+                                <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
+                                    <i class="ph-bold ph-globe text-lg sm:text-xl md:text-2xl"></i>
+                                </a>
+                                <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
+                                    <i class="ph-fill ph-facebook-logo text-lg sm:text-xl md:text-2xl"></i>
+                                </a>
+                                <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
+                                    <i class="ph-fill ph-instagram-logo text-lg sm:text-xl md:text-2xl"></i>
+                                </a>
+                                <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
+                                    <i class="ph-fill ph-linkedin-logo text-lg sm:text-xl md:text-2xl"></i>
+                                </a>
+                                <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
+                                    <i class="ph-fill ph-map-pin text-lg sm:text-xl md:text-2xl"></i>
+                                </a>
+                            </div>
 
-            const headerHTML = `
-                <div class="fixed top-4 left-0 w-full z-50 animate-fade-in px-2 sm:px-4 md:px-8 pointer-events-none">
-                    <nav id="main-nav" class="max-w-7xl mx-auto neo-glass rounded-full px-3 sm:px-4 py-2.5 sm:py-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto w-full transition-all duration-300 ${navScrolledClass}">
-                        <button onclick="${state.view === 'admin' ? "goTo('admin')" : "window.scrollTo({top: 0, behavior: 'smooth'})"}" class="flex items-center gap-2 sm:gap-4 hover:opacity-80 transition-opacity focus:outline-none text-left">
-                            <img src="${LOGO_URL}" alt="Universal DJ" class="h-7 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
-                            ${state.view === 'admin' ? '<h1 class="text-lg md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
-                        </button>
-                        
-                        <div class="flex items-center gap-3 sm:gap-4 md:gap-6">
-                            <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
-                                <i class="ph-bold ph-globe text-lg sm:text-xl md:text-2xl"></i>
-                            </a>
-                            <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
-                                <i class="ph-fill ph-facebook-logo text-lg sm:text-xl md:text-2xl"></i>
-                            </a>
-                            <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
-                                <i class="ph-fill ph-instagram-logo text-lg sm:text-xl md:text-2xl"></i>
-                            </a>
-                            <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
-                                <i class="ph-fill ph-linkedin-logo text-lg sm:text-xl md:text-2xl"></i>
-                            </a>
-                            <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
-                                <i class="ph-fill ph-map-pin text-lg sm:text-xl md:text-2xl"></i>
-                            </a>
+                            <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-3 sm:px-4 md:px-6 py-2 md:py-2.5 rounded-full text-xs sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider">
+                                <i class="ph-bold ph-sign-out text-base sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
+                            </button>
+                        </nav>
+                    </div>
+                `;
+
+                let mainContent = '';
+
+                if (state.view === 'user') {
+                    const searchLower = (state.searchQuery || '').toLowerCase();
+                    const filteredSongs = state.songs.filter(song => {
+                        const matchTheme = state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
+                        const matchSearch = (song.title || '').toLowerCase().includes(searchLower) || (song.artist || '').toLowerCase().includes(searchLower);
+                        return matchTheme && matchSearch;
+                    });
+
+                    const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
+                    const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
+                    const progressPercent = (state.totalUserVotes / MAX_TOTAL_VOTES) * 100;
+                    const isClosed = state.currentPhase === 3;
+                    const isTimerStarted = state.eventStartTime !== null;
+
+                    mainContent = `
+                        <div class="animate-fade-in pb-32 pt-28 max-w-7xl mx-auto px-4 w-full">
+                            ${isClosed ? `
+                                <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
+                                    <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
+                                    <p class="text-white/90 text-base md:text-lg mt-2 font-medium">La playlist idéale est prête, regardez l'écran géant !</p>
+                                </div>
+                            ` : isTimerStarted ? `
+                                <div class="neo-glass border-magical-cyan/40 rounded-3xl p-5 mb-8 shadow-[0_0_30px_rgba(0,240,255,0.2)] text-center flex flex-col items-center justify-center animate-pulse">
+                                    <span class="text-magical-cyan font-bold text-sm md:text-base uppercase tracking-widest mb-1 flex items-center gap-2 text-glow-cyan">
+                                        <i class="ph-fill ph-timer text-xl"></i> Temps restant pour voter
+                                    </span>
+                                    <span class="text-white font-black text-5xl md:text-6xl tabular-nums tracking-widest global-timer-display text-glow-white">--:--:--</span>
+                                </div>
+                            ` : ''}
+
+                            <!-- ZONE STICKY -->
+                            <div id="sticky-control-panel" class="sticky top-20 sm:top-24 z-40 neo-glass bg-black/40 p-4 sm:p-6 rounded-[2rem] mb-8 shadow-[0_20px_40px_rgba(0,0,0,0.6)] border-t border-t-white/20 backdrop-blur-2xl -mx-2 sm:mx-0 transition-all duration-300 ${panelScrolledClass}">
+                                <div class="md:flex md:items-center md:justify-between space-y-4 md:space-y-0 mb-4 sm:mb-6">
+                                    <div>
+                                        <div class="flex flex-wrap items-center gap-3 sm:gap-4 mb-1">
+                                            <h2 class="text-3xl sm:text-4xl font-black text-white tracking-tight text-glow-white">À vous de jouer !</h2>
+                                            <div class="neo-glass px-4 py-1.5 rounded-full flex items-center gap-2 border-white/20 bg-black/40">
+                                                <div class="w-2.5 h-2.5 rounded-full ${votesLeft > 0 ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-magical-pink shadow-[0_0_8px_#FF007A]'}"></div>
+                                                <span class="text-sm font-bold ${votesLeft === 0 ? 'text-magical-pink' : 'text-white'} uppercase tracking-widest mt-0.5">${votesLeft} Crédit${votesLeft > 1 ? 's' : ''}</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm sm:text-lg text-white/70 font-light mt-2 hidden sm:block">Cherchez vos titres favoris (<strong>${MAX_VOTES_PER_SONG} votes max</strong> par titre).</p>
+                                    </div>
+                                    <div class="relative w-full md:w-96 shrink-0">
+                                        <i class="ph-bold ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-xl sm:text-2xl text-magical-cyan"></i>
+                                        <input id="searchInput" type="text" placeholder="Rechercher un artiste, titre..." 
+                                            value="${(state.searchQuery || '').replace(/"/g, '&quot;')}" oninput="handleSearch(event)"
+                                            class="w-full bg-black/60 backdrop-blur-xl border border-white/20 rounded-full py-3 sm:py-4 pl-12 sm:pl-14 pr-6 text-sm sm:text-lg text-white focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/50 transition-all font-medium placeholder:text-white/30 shadow-inner">
+                                    </div>
+                                </div>
+
+                                <div id="theme-scroll-container" class="flex overflow-x-auto gap-2 sm:gap-3 no-scrollbar pb-2 -mx-2 px-2 sm:-mx-4 sm:px-4">
+                                    ${themes.map(theme => `
+                                        <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-6 py-2.5 sm:px-8 sm:py-3 rounded-full text-sm sm:text-base font-bold transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-gradient-to-r from-magical-purple/40 to-magical-pink/40 border-magical-pink text-white shadow-[0_0_20px_rgba(255,0,122,0.4)]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/20 hover:text-white hover:border-white/30'}">
+                                            ${theme}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <!-- FIN ZONE STICKY -->
+
+                            ${filteredSongs.length > 0 ? `
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
+                                    ${filteredSongs.map(song => {
+                                        const votesForThisSong = state.userVotes[song.id] || 0;
+                                        const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
+                                        const isTotalMaxed = state.totalUserVotes >= MAX_TOTAL_VOTES;
+                                        const isDisabled = isSongMaxed || isTotalMaxed || isClosed;
+                                        
+                                        let btnClasses = ""; let btnText = "Voter"; let iconColor = "";
+
+                                        if (isClosed) {
+                                            btnClasses = "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed";
+                                            btnText = votesForThisSong > 0 ? "Voté" : "Fermé";
+                                            iconColor = votesForThisSong > 0 ? "text-white/40" : "text-white/20";
+                                        } else if (isSongMaxed) {
+                                            btnClasses = "bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 cursor-default shadow-[0_0_15px_rgba(0,240,255,0.3)]";
+                                            btnText = "Max (2/2)"; iconColor = "text-magical-cyan";
+                                        } else if (votesForThisSong === 1) {
+                                            btnClasses = isDisabled ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" : "bg-magical-pink/20 text-white border border-magical-pink/50 hover:bg-magical-pink hover:shadow-[0_0_20px_rgba(255,0,122,0.5)]";
+                                            btnText = "Voté (1/2)"; iconColor = "text-white";
+                                        } else {
+                                            btnClasses = isDisabled ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" : "btn-liquid border-transparent";
+                                            btnText = "Voter"; iconColor = "";
+                                        }
+
+                                        return `
+                                            <div class="neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3.5 sm:p-5 flex items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}">
+                                                <div class="flex items-center gap-3 sm:gap-5 overflow-hidden flex-1 pr-1">
+                                                    <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
+                                                        <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-xl sm:text-2xl transition-all"></i>
+                                                    </div>
+                                                    <div class="min-w-0 flex-1">
+                                                        <h3 class="font-bold text-white text-base sm:text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
+                                                        <p class="text-xs sm:text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
+                                                    </div>
+                                                </div>
+                                                <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-1 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest transition-all ${btnClasses}">
+                                                    <i class="ph-fill ph-heart ${iconColor} text-sm sm:text-xl"></i>
+                                                    ${btnText}
+                                                </button>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : `<div class="text-center py-32 neo-glass rounded-[3rem]">
+                                    <i class="ph-duotone ph-music-notes text-8xl text-magical-cyan/40 mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                    <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
+                                    <p class="text-lg text-white/60 font-light">Essayez une autre recherche.</p>
+                                 </div>`}
+                                 
+                            <!-- BARRE FLOTTANTE POUR LE COMPTEUR DE VOTES -->
+                            <div class="fixed bottom-4 sm:bottom-6 left-0 w-full px-4 z-[60] pointer-events-none flex justify-center pb-safe animate-fade-in" style="animation-delay: 0.2s">
+                                <div class="neo-glass rounded-full px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/20 backdrop-blur-xl pointer-events-auto relative overflow-hidden max-w-md w-full">
+                                    <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-magical-cyan to-magical-pink transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
+                                    <div class="flex items-center gap-2 sm:gap-3">
+                                        <i class="ph-fill ph-ticket text-magical-pink text-xl sm:text-2xl drop-shadow-[0_0_10px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-white font-bold tracking-widest uppercase text-[10px] sm:text-sm">Vos Crédits</span>
+                                    </div>
+                                    <div class="flex items-baseline gap-1">
+                                        <span class="text-2xl sm:text-3xl font-black ${votesLeft === 0 ? 'text-red-500 text-glow-pink' : 'text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]'}">${votesLeft}</span>
+                                        <span class="text-white/40 font-bold text-xs sm:text-sm">/ ${MAX_TOTAL_VOTES}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                    `;
+                } 
+                else if (state.view === 'admin') {
+                    const rankedSongs = [...state.songs].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+                    const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
 
-                        <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-3 sm:px-4 md:px-6 py-2 md:py-2.5 rounded-full text-xs sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider">
-                            <i class="ph-bold ph-sign-out text-base sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
-                        </button>
-                    </nav>
-                </div>
-            `;
-
-            let mainContent = '';
-
-            if (state.view === 'user') {
-                const searchLower = (state.searchQuery || '').toLowerCase();
-                const filteredSongs = state.songs.filter(song => {
-                    const matchTheme = state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
-                    const matchSearch = (song.title || '').toLowerCase().includes(searchLower) || (song.artist || '').toLowerCase().includes(searchLower);
-                    return matchTheme && matchSearch;
-                });
-
-                const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
-                const votesLeft = MAX_TOTAL_VOTES - state.totalUserVotes;
-                const progressPercent = (state.totalUserVotes / MAX_TOTAL_VOTES) * 100;
-                const isClosed = state.currentPhase === 3;
-                const isTimerStarted = state.eventStartTime !== null;
-
-                mainContent = `
-                    <div class="animate-fade-in pb-32 pt-28 max-w-7xl mx-auto px-4 w-full">
-                        ${isClosed ? `
-                            <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
-                                <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
-                                <p class="text-white/90 text-base md:text-lg mt-2 font-medium">La playlist idéale est prête, regardez l'écran géant !</p>
+                    mainContent = `
+                        <div class="animate-fade-in max-w-5xl mx-auto pb-24 pt-28 px-4 w-full">
+                            <div class="neo-glass border-t-magical-pink/50 rounded-[2.5rem] p-8 md:p-10 mb-8 relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                                <h3 class="text-3xl font-black text-white mb-2 flex items-center gap-4 tracking-tight relative z-10 text-glow-white">
+                                    <i class="ph-fill ph-timer text-magical-pink text-4xl drop-shadow-[0_0_15px_rgba(255,0,122,0.8)]"></i> Minuteurs Automatiques
+                                </h3>
+                                <p class="text-white/70 text-lg mb-8 font-light relative z-10">Automatise l'écran géant : Affichage du QR Code, puis du Top 40, puis clôture définitive.</p>
+                                <div class="flex flex-col md:flex-row gap-6 items-center justify-between bg-black/50 p-8 rounded-[2rem] border border-white/10 relative z-10 shadow-inner backdrop-blur-md">
+                                    <div class="w-full md:w-auto">
+                                        <span class="block text-sm text-white/50 font-bold mb-2 uppercase tracking-widest">Statut actuel :</span>
+                                        ${state.currentPhase === 0 ? '<span class="text-white/60 font-black text-2xl">Non démarré</span>' :
+                                          state.currentPhase === 1 ? '<span class="text-magical-cyan font-black text-2xl flex items-center gap-3 text-glow-cyan"><i class="ph-bold ph-spinner animate-spin"></i> Phase 1 : QR Code (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
+                                          state.currentPhase === 2 ? '<span class="text-magical-gold font-black text-2xl flex items-center gap-3 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]"><i class="ph-bold ph-spinner animate-spin"></i> Phase 2 : Top 40 (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
+                                          '<span class="text-magical-pink font-black text-2xl flex items-center gap-3 text-glow-pink"><i class="ph-fill ph-check-circle"></i> Clôturé définitivement</span>'}
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3 mt-4 md:mt-0">
+                                        ${state.currentPhase === 0 ? 
+                                            `<button onclick="startEventTimer('3H')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
+                                                <i class="ph-fill ph-play-circle text-xl"></i> 3H
+                                            </button>
+                                            <button onclick="startEventTimer('1H')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
+                                                <i class="ph-fill ph-play-circle text-xl"></i> 1H
+                                            </button>
+                                            <button onclick="startEventTimer('30M')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
+                                                <i class="ph-fill ph-play-circle text-xl"></i> 30 Min
+                                            </button>` : 
+                                            `<button onclick="stopEventTimer()" class="w-full md:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-10 rounded-2xl transition-all flex items-center justify-center gap-3 text-xl tracking-widest uppercase hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                                                <i class="ph-bold ph-stop"></i> Arrêter / Annuler
+                                            </button>`}
+                                    </div>
+                                </div>
                             </div>
-                        ` : isTimerStarted ? `
-                            <div class="neo-glass border-magical-cyan/40 rounded-3xl p-5 mb-8 shadow-[0_0_30px_rgba(0,240,255,0.2)] text-center flex flex-col items-center justify-center animate-pulse">
-                                <span class="text-magical-cyan font-bold text-sm md:text-base uppercase tracking-widest mb-1 flex items-center gap-2 text-glow-cyan">
-                                    <i class="ph-fill ph-timer text-xl"></i> Temps restant pour voter
-                                </span>
-                                <span class="text-white font-black text-5xl md:text-6xl tabular-nums tracking-widest global-timer-display text-glow-white">--:--:--</span>
-                            </div>
-                        ` : ''}
 
-                        <!-- ZONE "À VOUS DE JOUER" ET RECHERCHE ET THEMES (Rendue Sticky/Fixe au scroll) -->
-                        <div id="sticky-control-panel" class="sticky top-20 sm:top-24 z-40 neo-glass bg-black/40 p-4 sm:p-6 rounded-[2rem] mb-8 shadow-[0_20px_40px_rgba(0,0,0,0.6)] border-t border-t-white/20 backdrop-blur-2xl -mx-2 sm:mx-0 transition-all duration-300 ${panelScrolledClass}">
-                            <div class="md:flex md:items-center md:justify-between space-y-4 md:space-y-0 mb-4 sm:mb-6">
-                                <div>
-                                    <div class="flex flex-wrap items-center gap-3 sm:gap-4 mb-1">
-                                        <h2 class="text-3xl sm:text-4xl font-black text-white tracking-tight text-glow-white">À vous de jouer !</h2>
-                                        <div class="neo-glass px-4 py-1.5 rounded-full flex items-center gap-2 border-white/20 bg-black/40">
-                                            <div class="w-2.5 h-2.5 rounded-full ${votesLeft > 0 ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-magical-pink shadow-[0_0_8px_#FF007A]'}"></div>
-                                            <span class="text-sm font-bold ${votesLeft === 0 ? 'text-magical-pink' : 'text-white'} uppercase tracking-widest mt-0.5">${votesLeft} Crédit${votesLeft > 1 ? 's' : ''}</span>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                                <div class="neo-glass rounded-[2.5rem] p-8 relative overflow-hidden">
+                                    <h3 class="text-2xl font-black text-white mb-2 flex items-center gap-3 tracking-tight text-glow-white">
+                                        <i class="ph-fill ph-monitor-play text-magical-cyan text-3xl drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i> Écrans Publics
+                                    </h3>
+                                    <p class="text-white/70 text-base mb-8 font-light">Contrôle l'affichage sur vidéoprojecteur/TV.</p>
+                                    <div class="flex flex-col gap-4">
+                                        <button onclick="forceEndAndShowMonitor()" class="w-full btn-liquid font-black px-6 py-5 rounded-2xl flex items-center justify-center gap-3 text-lg uppercase tracking-widest border-transparent shadow-[0_0_20px_rgba(255,0,122,0.4)] hover:shadow-[0_0_30px_rgba(255,0,122,0.6)]">
+                                            <i class="ph-bold ph-monitor text-2xl"></i> Clôturer & Résultat
+                                        </button>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <button onclick="toggleMonitor()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                                <i class="ph-bold ph-eye text-lg"></i> Monitor Direct
+                                            </button>
+                                            <button onclick="toggleQRCode()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                                <i class="ph-bold ph-qr-code text-lg"></i> QR Code Direct
+                                            </button>
                                         </div>
                                     </div>
-                                    <p class="text-sm sm:text-lg text-white/70 font-light mt-2 hidden sm:block">Cherchez vos titres favoris (<strong>${MAX_VOTES_PER_SONG} votes max</strong> par titre).</p>
                                 </div>
-                                <div class="relative w-full md:w-96 shrink-0">
-                                    <i class="ph-bold ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-xl sm:text-2xl text-magical-cyan"></i>
-                                    <input id="searchInput" type="text" placeholder="Rechercher un artiste, titre..." 
-                                        value="${(state.searchQuery || '').replace(/"/g, '&quot;')}" oninput="handleSearch(event)"
-                                        class="w-full bg-black/60 backdrop-blur-xl border border-white/20 rounded-full py-3 sm:py-4 pl-12 sm:pl-14 pr-6 text-sm sm:text-lg text-white focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/50 transition-all font-medium placeholder:text-white/30 shadow-inner">
+
+                                <div class="neo-glass rounded-[2.5rem] p-8 flex flex-col justify-center">
+                                    <h3 class="text-2xl font-black text-white mb-6 flex items-center gap-3 text-glow-white">
+                                        <i class="ph-fill ph-lock-key text-white/50 text-3xl"></i> Mot de passe
+                                    </h3>
+                                    <div class="flex flex-col sm:flex-row gap-4 items-center">
+                                        <input id="newGuestCode" type="text" value="${state.guestCode}" 
+                                            class="w-full bg-black/60 border border-white/20 rounded-2xl py-5 px-6 text-white uppercase tracking-[0.2em] font-black text-2xl focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all text-center sm:text-left shadow-inner">
+                                        <button onclick="updateGuestCode()" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-5 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                            Mettre à jour
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- THEMES INTÉGRÉS DANS LA ZONE STICKY -->
-                            <div id="theme-scroll-container" class="flex overflow-x-auto gap-2 sm:gap-3 no-scrollbar pb-2 -mx-2 px-2 sm:-mx-4 sm:px-4">
-                                ${themes.map(theme => `
-                                    <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-6 py-2.5 sm:px-8 sm:py-3 rounded-full text-sm sm:text-base font-bold transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-gradient-to-r from-magical-purple/40 to-magical-pink/40 border-magical-pink text-white shadow-[0_0_20px_rgba(255,0,122,0.4)]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/20 hover:text-white hover:border-white/30'}">
-                                        ${theme}
+                            <div class="neo-glass rounded-[2.5rem] p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                                <div class="relative z-10 text-center md:text-left">
+                                    <h2 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">Détail des Votes DJ</h2>
+                                    <p class="text-white/70 font-medium text-lg">Interface de contrôle privée.</p>
+                                </div>
+                                <div class="relative z-10 flex flex-col sm:flex-row gap-6 items-center">
+                                    <div class="bg-black/50 rounded-[1.5rem] px-10 py-5 border border-white/10 shadow-inner text-center">
+                                        <span class="block text-sm text-white/50 uppercase tracking-[0.2em] mb-1 font-bold">Total votes</span>
+                                        <span class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink drop-shadow-md">${totalVotes}</span>
+                                    </div>
+                                    <button onclick="resetVotes()" class="w-full sm:w-auto bg-white/5 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 font-bold py-5 px-8 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                                        <i class="ph-bold ph-trash text-2xl"></i> Remettre à zéro
                                     </button>
+                                </div>
+                            </div>
+
+                            <!-- Classement des votes pour le DJ -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                ${rankedSongs.filter(s => s.votes > 0).map((song, index) => `
+                                    <div class="neo-card rounded-[1.5rem] p-5 flex items-center justify-between">
+                                        <div class="flex items-center gap-4 min-w-0 pr-4">
+                                            <div class="w-12 h-12 shrink-0 rounded-xl bg-black/60 flex items-center justify-center font-black text-xl border border-white/10 ${index < 3 ? 'text-magical-gold shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-white/50'}">
+                                                ${index + 1}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <h4 class="font-bold text-white text-lg tracking-wide truncate">${song.title}</h4>
+                                                <p class="text-sm font-light text-white/60 truncate">${song.artist}</p>
+                                            </div>
+                                        </div>
+                                        <div class="bg-black/50 px-5 py-2.5 rounded-xl border border-white/10 shrink-0">
+                                            <span class="text-2xl font-black text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">${song.votes}</span>
+                                        </div>
+                                    </div>
                                 `).join('')}
                             </div>
                         </div>
-                        <!-- FIN ZONE STICKY -->
+                    `;
+                }
 
-                        ${filteredSongs.length > 0 ? `
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
-                                ${filteredSongs.map(song => {
-                                    const votesForThisSong = state.userVotes[song.id] || 0;
-                                    const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
-                                    const isTotalMaxed = state.totalUserVotes >= MAX_TOTAL_VOTES;
-                                    const isDisabled = isSongMaxed || isTotalMaxed || isClosed;
-                                    
-                                    let btnClasses = ""; let btnText = "Voter"; let iconColor = "";
+                htmlToRender = headerHTML + mainContent;
+            }
 
-                                    if (isClosed) {
-                                        btnClasses = "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed";
-                                        btnText = votesForThisSong > 0 ? "Voté" : "Fermé";
-                                        iconColor = votesForThisSong > 0 ? "text-white/40" : "text-white/20";
-                                    } else if (isSongMaxed) {
-                                        btnClasses = "bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 cursor-default shadow-[0_0_15px_rgba(0,240,255,0.3)]";
-                                        btnText = "Max (2/2)"; iconColor = "text-magical-cyan";
-                                    } else if (votesForThisSong === 1) {
-                                        btnClasses = isDisabled ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" : "bg-magical-pink/20 text-white border border-magical-pink/50 hover:bg-magical-pink hover:shadow-[0_0_20px_rgba(255,0,122,0.5)]";
-                                        btnText = "Voté (1/2)"; iconColor = "text-white";
-                                    } else {
-                                        btnClasses = isDisabled ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" : "btn-liquid border-transparent";
-                                        btnText = "Voter"; iconColor = "";
-                                    }
-
-                                    return `
-                                        <div class="neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3.5 sm:p-5 flex items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}">
-                                            <div class="flex items-center gap-3 sm:gap-5 overflow-hidden flex-1 pr-1">
-                                                <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
-                                                    <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-xl sm:text-2xl transition-all"></i>
-                                                </div>
-                                                <div class="min-w-0 flex-1">
-                                                    <h3 class="font-bold text-white text-base sm:text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
-                                                    <p class="text-xs sm:text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
-                                                </div>
-                                            </div>
-                                            <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-1 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest transition-all ${btnClasses}">
-                                                <i class="ph-fill ph-heart ${iconColor} text-sm sm:text-xl"></i>
-                                                ${btnText}
-                                            </button>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        ` : `<div class="text-center py-32 neo-glass rounded-[3rem]">
-                                <i class="ph-duotone ph-music-notes text-8xl text-magical-cyan/40 mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
-                                <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
-                                <p class="text-lg text-white/60 font-light">Essayez une autre recherche.</p>
-                             </div>`}
-                    </div> <!-- Fermeture du conteneur principal ICI -->
-                             
-                    <!-- BARRE FLOTTANTE POUR LE COMPTEUR DE VOTES -->
-                    <div class="fixed bottom-4 sm:bottom-6 left-0 w-full px-4 z-[60] pointer-events-none flex justify-center pb-safe animate-fade-in" style="animation-delay: 0.2s">
-                        <div class="neo-glass rounded-full px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/20 backdrop-blur-xl pointer-events-auto relative overflow-hidden max-w-md w-full">
-                            <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-magical-cyan to-magical-pink transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
-                            <div class="flex items-center gap-2 sm:gap-3">
-                                <i class="ph-fill ph-ticket text-magical-pink text-xl sm:text-2xl drop-shadow-[0_0_10px_rgba(255,0,122,0.8)]"></i>
-                                <span class="text-white font-bold tracking-widest uppercase text-[10px] sm:text-sm">Vos Crédits</span>
-                            </div>
-                            <div class="flex items-baseline gap-1">
-                                <span class="text-2xl sm:text-3xl font-black ${votesLeft === 0 ? 'text-red-500 text-glow-pink' : 'text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]'}">${votesLeft}</span>
-                                <span class="text-white/40 font-bold text-xs sm:text-sm">/ ${MAX_TOTAL_VOTES}</span>
+            // --- RENDU DU POP-UP DESIGN ---
+            let modalHTML = '';
+            if (state.modal) {
+                modalHTML = `
+                    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+                        <div class="neo-glass p-8 md:p-10 rounded-[2.5rem] w-full max-w-lg text-center border-t border-t-magical-pink/50 shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+                            <h3 class="text-3xl font-black text-white mb-6 text-glow-white">${state.modal.title}</h3>
+                            <p class="text-white/80 font-medium mb-8 text-lg leading-relaxed">${state.modal.message}</p>
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                ${state.modal.type === 'goodbye' ? `
+                                    <i class="ph-duotone ph-spinner-gap animate-spin text-5xl text-magical-cyan mx-auto mt-2 block drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
+                                ` : state.modal.type === 'confirm' ? `
+                                    <button onclick="closeModal()" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">Annuler</button>
+                                    <button onclick="confirmModal()" class="flex-1 btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Confirmer</button>
+                                ` : `
+                                    <button onclick="closeModal()" class="w-full sm:w-2/3 mx-auto btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Compris</button>
+                                `}
                             </div>
                         </div>
                     </div>
                 `;
-            } 
-            else if (state.view === 'admin') {
-                const rankedSongs = [...state.songs].sort((a, b) => (b.votes || 0) - (a.votes || 0));
-                const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
+            }
 
-                mainContent = `
-                    <div class="animate-fade-in max-w-5xl mx-auto pb-24 pt-28 px-4 w-full">
-                        <div class="neo-glass border-t-magical-pink/50 rounded-[2.5rem] p-8 md:p-10 mb-8 relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                            <h3 class="text-3xl font-black text-white mb-2 flex items-center gap-4 tracking-tight relative z-10 text-glow-white">
-                                <i class="ph-fill ph-timer text-magical-pink text-4xl drop-shadow-[0_0_15px_rgba(255,0,122,0.8)]"></i> Minuteurs Automatiques
-                            </h3>
-                            <p class="text-white/70 text-lg mb-8 font-light relative z-10">Automatise l'écran géant : Affichage du QR Code, puis du Top 40, puis clôture définitive.</p>
-                            <div class="flex flex-col md:flex-row gap-6 items-center justify-between bg-black/50 p-8 rounded-[2rem] border border-white/10 relative z-10 shadow-inner backdrop-blur-md">
-                                <div class="w-full md:w-auto">
-                                    <span class="block text-sm text-white/50 font-bold mb-2 uppercase tracking-widest">Statut actuel :</span>
-                                    ${state.currentPhase === 0 ? '<span class="text-white/60 font-black text-2xl">Non démarré</span>' :
-                                      state.currentPhase === 1 ? '<span class="text-magical-cyan font-black text-2xl flex items-center gap-3 text-glow-cyan"><i class="ph-bold ph-spinner animate-spin"></i> Phase 1 : QR Code (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
-                                      state.currentPhase === 2 ? '<span class="text-magical-gold font-black text-2xl flex items-center gap-3 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]"><i class="ph-bold ph-spinner animate-spin"></i> Phase 2 : Top 40 (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
-                                      '<span class="text-magical-pink font-black text-2xl flex items-center gap-3 text-glow-pink"><i class="ph-fill ph-check-circle"></i> Clôturé définitivement</span>'}
-                                </div>
-                                <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3 mt-4 md:mt-0">
-                                    ${state.currentPhase === 0 ? 
-                                        `<button onclick="startEventTimer('3H')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
-                                            <i class="ph-fill ph-play-circle text-xl"></i> 3H
-                                        </button>
-                                        <button onclick="startEventTimer('1H')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
-                                            <i class="ph-fill ph-play-circle text-xl"></i> 1H
-                                        </button>
-                                        <button onclick="startEventTimer('30M')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
-                                            <i class="ph-fill ph-play-circle text-xl"></i> 30 Min
-                                        </button>` : 
-                                        `<button onclick="stopEventTimer()" class="w-full md:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-10 rounded-2xl transition-all flex items-center justify-center gap-3 text-xl tracking-widest uppercase hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                                            <i class="ph-bold ph-stop"></i> Arrêter / Annuler
-                                        </button>`}
-                                </div>
-                            </div>
-                        </div>
+            root.innerHTML = htmlToRender + modalHTML;
 
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                            <div class="neo-glass rounded-[2.5rem] p-8 relative overflow-hidden">
-                                <h3 class="text-2xl font-black text-white mb-2 flex items-center gap-3 tracking-tight text-glow-white">
-                                    <i class="ph-fill ph-monitor-play text-magical-cyan text-3xl drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i> Écrans Publics
-                                </h3>
-                                <p class="text-white/70 text-base mb-8 font-light">Contrôle l'affichage sur vidéoprojecteur/TV.</p>
-                                <div class="flex flex-col gap-4">
-                                    <button onclick="forceEndAndShowMonitor()" class="w-full btn-liquid font-black px-6 py-5 rounded-2xl flex items-center justify-center gap-3 text-lg uppercase tracking-widest border-transparent shadow-[0_0_20px_rgba(255,0,122,0.4)] hover:shadow-[0_0_30px_rgba(255,0,122,0.6)]">
-                                        <i class="ph-bold ph-monitor text-2xl"></i> Clôturer & Résultat
-                                    </button>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <button onclick="toggleMonitor()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                                            <i class="ph-bold ph-eye text-lg"></i> Monitor Direct
-                                        </button>
-                                        <button onclick="toggleQRCode()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                                            <i class="ph-bold ph-qr-code text-lg"></i> QR Code Direct
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="neo-glass rounded-[2.5rem] p-8 flex flex-col justify-center">
-                                <h3 class="text-2xl font-black text-white mb-6 flex items-center gap-3 text-glow-white">
-                                    <i class="ph-fill ph-lock-key text-white/50 text-3xl"></i> Mot de passe
-                                </h3>
-                                <div class="flex flex-col sm:flex-row gap-4 items-center">
-                                    <input id="newGuestCode" type="text" value="${state.guestCode}" 
-                                        class="w-full bg-black/60 border border-white/20 rounded-2xl py-5 px-6 text-white uppercase tracking-[0.2em] font-black text-2xl focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all text-center sm:text-left shadow-inner">
-                                    <button onclick="updateGuestCode()" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-5 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                                        Mettre à jour
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="neo-glass rounded-[2.5rem] p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-                            <div class="relative z-10 text-center md:text-left">
-                                <h2 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">Détail des Votes DJ</h2>
-                                <p class="text-white/70 font-medium text-lg">Interface de contrôle privée.</p>
-                            </div>
-                            <div class="relative z-10 flex flex-col sm:flex-row gap-6 items-center">
-                                <div class="bg-black/50 rounded-[1.5rem] px-10 py-5 border border-white/10 shadow-inner text-center">
-                                    <span class="block text-sm text-white/50 uppercase tracking-[0.2em] mb-1 font-bold">Total votes</span>
-                                    <span class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink drop-shadow-md">${totalVotes}</span>
-                                </div>
-                                <button onclick="resetVotes()" class="w-full sm:w-auto bg-white/5 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 font-bold py-5 px-8 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
-                                    <i class="ph-bold ph-trash text-2xl"></i> Remettre à zéro
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Classement des votes pour le DJ -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            ${rankedSongs.filter(s => s.votes > 0).map((song, index) => `
-                                <div class="neo-card rounded-[1.5rem] p-5 flex items-center justify-between">
-                                    <div class="flex items-center gap-4 min-w-0 pr-4">
-                                        <div class="w-12 h-12 shrink-0 rounded-xl bg-black/60 flex items-center justify-center font-black text-xl border border-white/10 ${index < 3 ? 'text-magical-gold shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-white/50'}">
-                                            ${index + 1}
-                                        </div>
-                                        <div class="min-w-0">
-                                            <h4 class="font-bold text-white text-lg tracking-wide truncate">${song.title}</h4>
-                                            <p class="text-sm font-light text-white/60 truncate">${song.artist}</p>
-                                        </div>
-                                    </div>
-                                    <div class="bg-black/50 px-5 py-2.5 rounded-xl border border-white/10 shrink-0">
-                                <span class="text-2xl font-black text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">${song.votes}</span>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-
-    // --- RENDU DU POP-UP DESIGN ---
-    let modalHTML = '';
-    if (state.modal) {
-        modalHTML = `
-            <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-                <div class="neo-glass p-8 md:p-10 rounded-[2.5rem] w-full max-w-lg text-center border-t border-t-magical-pink/50 shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-                    <h3 class="text-3xl font-black text-white mb-6 text-glow-white">${state.modal.title}</h3>
-                    <p class="text-white/80 font-medium mb-8 text-lg leading-relaxed">${state.modal.message}</p>
-                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        ${state.modal.type === 'goodbye' ? `
-                            <i class="ph-duotone ph-spinner-gap animate-spin text-5xl text-magical-cyan mx-auto mt-2 block drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
-                        ` : state.modal.type === 'confirm' ? `
-                            <button onclick="closeModal()" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">Annuler</button>
-                            <button onclick="confirmModal()" class="flex-1 btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Confirmer</button>
-                        ` : `
-                            <button onclick="closeModal()" class="w-full sm:w-2/3 mx-auto btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Compris</button>
-                        `}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    root.innerHTML = headerHTML + mainContent + modalHTML;
-
-    // Restaure la position de défilement des thèmes sur mobile
-    if (state.view === 'user') {
-        const container = document.getElementById('theme-scroll-container');
-        if (container && state.themeScrollPos !== undefined) {
-            container.scrollLeft = state.themeScrollPos;
+            // Restaure la position de défilement des thèmes sur mobile
+            if (state.view === 'user') {
+                const container = document.getElementById('theme-scroll-container');
+                if (container && state.themeScrollPos !== undefined) {
+                    container.scrollLeft = state.themeScrollPos;
+                }
+            }
         }
-    }
-}
 
-// Gestionnaire global pour opacifier le menu et la barre de recherche au scroll
-window.addEventListener('scroll', () => {
-    const panel = document.getElementById('sticky-control-panel');
-    const nav = document.getElementById('main-nav');
-    
-    if (window.scrollY > 20) {
-        if (panel) panel.classList.add('glass-scrolled-panel');
-        if (nav) nav.classList.add('glass-scrolled-nav');
-    } else {
-        if (panel) panel.classList.remove('glass-scrolled-panel');
-        if (nav) nav.classList.remove('glass-scrolled-nav');
-    }
-}, { passive: true });
+        // Gestionnaire global pour opacifier le menu et la barre de recherche au scroll
+        window.addEventListener('scroll', () => {
+            const panel = document.getElementById('sticky-control-panel');
+            const nav = document.getElementById('main-nav');
+            
+            if (window.scrollY > 20) {
+                if (panel) panel.classList.add('glass-scrolled-panel');
+                if (nav) nav.classList.add('glass-scrolled-nav');
+            } else {
+                if (panel) panel.classList.remove('glass-scrolled-panel');
+                if (nav) nav.classList.remove('glass-scrolled-nav');
+            }
+        }, { passive: true });
 
-// Initialisation de l'affichage
-render();
+        // Initialisation de l'affichage
+        render();
     </script>
 </body>
 </html>
