@@ -506,13 +506,18 @@
                     saveServerData();
                 }
                 
-                // Nettoyage de l'URL sécurisé
+                // Nettoyage de l'URL ultra-sécurisé (anti-crash)
                 try {
-                    if (window.history && window.history.replaceState && window.location.protocol !== 'blob:') {
-                        window.history.replaceState({}, document.title, window.location.pathname);
+                    if (window.history && window.history.replaceState) {
+                        const currentUrl = new URL(window.location.href);
+                        if (currentUrl.protocol !== 'blob:') {
+                            currentUrl.searchParams.delete('code');
+                            currentUrl.searchParams.delete('s');
+                            window.history.replaceState({}, document.title, currentUrl.toString());
+                        }
                     }
                 } catch (err) {
-                    console.warn("Impossible de nettoyer l'URL dans cet environnement de test.", err);
+                    console.warn("Nettoyage d'URL ignoré (environnement de test).");
                 }
             } 
             else { 
@@ -955,39 +960,33 @@
                                 ${state.view === 'admin' ? '<h1 class="text-lg md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
                             </button>
                             
-                            <div class="flex items-center gap-2 sm:gap-4 md:gap-6">
+                            <div class="flex items-center gap-1.5 sm:gap-3 lg:gap-6">
                                 ${isTimerActive ? `
-                                    <div class="flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
-                                        <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-sm sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
-                                        <span class="text-xs sm:text-sm font-black tabular-nums tracking-widest text-magical-cyan global-timer-display text-glow-cyan">--:--:--</span>
+                                    <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
+                                        <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
+                                        <span class="text-[10px] sm:text-sm font-black tabular-nums tracking-widest text-magical-cyan global-timer-display text-glow-cyan">--:--:--</span>
                                     </div>
                                 ` : state.currentPhase === 3 ? `
-                                    <div class="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-magical-pink/40 shadow-inner">
-                                        <i class="ph-fill ph-check-circle text-magical-pink text-sm sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
-                                        <span class="text-xs sm:text-sm font-black tracking-widest text-magical-pink text-glow-pink uppercase">Clôturé</span>
+                                    <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-pink/40 shadow-inner">
+                                        <i class="ph-fill ph-check-circle text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-[10px] sm:text-sm font-black tracking-widest text-magical-pink text-glow-pink uppercase">Clôturé</span>
                                     </div>
                                 ` : ''}
 
-                                <div class="hidden md:flex items-center gap-3 md:gap-4 lg:gap-6">
+                                <div class="flex items-center gap-1 sm:gap-3 md:gap-4">
                                     <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
-                                        <i class="ph-bold ph-globe text-lg sm:text-xl md:text-2xl"></i>
+                                        <i class="ph-bold ph-globe text-sm sm:text-xl md:text-2xl"></i>
                                     </a>
                                     <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
-                                        <i class="ph-fill ph-facebook-logo text-lg sm:text-xl md:text-2xl"></i>
+                                        <i class="ph-fill ph-facebook-logo text-sm sm:text-xl md:text-2xl"></i>
                                     </a>
                                     <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
-                                        <i class="ph-fill ph-instagram-logo text-lg sm:text-xl md:text-2xl"></i>
-                                    </a>
-                                    <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
-                                        <i class="ph-fill ph-linkedin-logo text-lg sm:text-xl md:text-2xl"></i>
-                                    </a>
-                                    <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
-                                        <i class="ph-fill ph-map-pin text-lg sm:text-xl md:text-2xl"></i>
+                                        <i class="ph-fill ph-instagram-logo text-sm sm:text-xl md:text-2xl"></i>
                                     </a>
                                 </div>
 
-                                <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-3 sm:px-4 md:px-6 py-2 md:py-2.5 rounded-full text-xs sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider">
-                                    <i class="ph-bold ph-sign-out text-base sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
+                                <button onclick="goTo('login')" class="flex shrink-0 items-center gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2.5 rounded-full text-[10px] sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider ml-1 sm:ml-0">
+                                    <i class="ph-bold ph-sign-out text-sm sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
                                 </button>
                             </div>
                         </nav>
@@ -1006,13 +1005,11 @@
 
                     const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
                     const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
-                    const progressPercent = (state.totalUserVotes / MAX_TOTAL_VOTES) * 100;
                     const isClosed = state.currentPhase === 3;
-                    const isTimerStarted = state.eventStartTime !== null;
 
                     mainContent = `
                         <!-- RETRAIT DU ANIMATE-FADE-IN POUR RÉSOUDRE LA LENTEUR DE CLICS SUR MOBILE -->
-                        <div id="user-view-container" class="pb-32 pt-28 max-w-7xl mx-auto px-4 w-full">
+                        <div id="user-view-container" class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
                             ${isClosed ? `
                                 <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
                                     <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
@@ -1021,38 +1018,38 @@
                             ` : ''}
 
                             <!-- ZONE STICKY -->
-                            <div id="sticky-control-panel" class="sticky top-20 sm:top-24 z-40 neo-glass bg-black/40 p-4 sm:p-6 rounded-[2rem] mb-8 shadow-[0_20px_40px_rgba(0,0,0,0.6)] border-t border-t-white/20 backdrop-blur-2xl -mx-2 sm:mx-0 transition-all duration-300 ${panelScrolledClass}">
-                                <div class="md:flex md:items-center md:justify-between space-y-4 md:space-y-0 mb-4 sm:mb-6">
-                                    <div>
-                                        <div class="flex flex-wrap items-center gap-3 sm:gap-4 mb-1">
-                                            <h2 class="text-3xl sm:text-4xl font-black text-white tracking-tight text-glow-white">À vous de jouer !</h2>
-                                            <div class="neo-glass px-4 py-1.5 rounded-full flex items-center gap-2 border-white/20 bg-black/40">
-                                                <div class="w-2.5 h-2.5 rounded-full ${votesLeft > 0 ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-magical-pink shadow-[0_0_8px_#FF007A]'}"></div>
-                                                <span class="text-sm font-bold ${votesLeft === 0 ? 'text-magical-pink' : 'text-white'} uppercase tracking-widest mt-0.5">${votesLeft} Crédit${votesLeft > 1 ? 's' : ''}</span>
+                            <div id="sticky-control-panel" class="sticky top-16 sm:top-24 z-40 neo-glass bg-black/40 p-3 sm:p-6 rounded-[2rem] mb-6 sm:mb-8 shadow-[0_20px_40px_rgba(0,0,0,0.6)] border-t border-t-white/20 backdrop-blur-2xl -mx-2 sm:mx-0 transition-all duration-300 ${panelScrolledClass}">
+                                <div class="flex flex-col gap-3 sm:gap-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2 sm:gap-4">
+                                            <h2 class="text-sm sm:text-xl font-bold text-white/90 uppercase tracking-widest text-glow-white">À vous de jouer</h2>
+                                            <div class="px-2 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-white/10 border border-white/20 flex items-center gap-1.5 sm:gap-2 shadow-inner">
+                                                <i class="ph-fill ph-ticket ${votesLeft === 0 ? 'text-magical-pink' : 'text-magical-cyan'} text-[10px] sm:text-base"></i>
+                                                <span class="text-xs sm:text-sm font-black ${votesLeft === 0 ? 'text-magical-pink text-glow-pink' : 'text-white'}">${votesLeft} <span class="hidden sm:inline">Crédits</span><span class="sm:hidden">/ ${MAX_TOTAL_VOTES}</span></span>
                                             </div>
                                         </div>
-                                        <p class="text-sm sm:text-lg text-white/70 font-light mt-2 hidden sm:block">Cherchez vos titres favoris (<strong>${MAX_VOTES_PER_SONG} votes max</strong> par titre).</p>
                                     </div>
-                                    <div class="relative w-full md:w-96 shrink-0">
-                                        <i class="ph-bold ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-xl sm:text-2xl text-magical-cyan"></i>
-                                        <input id="searchInput" type="text" placeholder="Rechercher un artiste, titre..." 
-                                            value="${(state.searchQuery || '').replace(/"/g, '&quot;')}" oninput="handleSearch(event)"
-                                            class="w-full bg-black/60 backdrop-blur-xl border border-white/20 rounded-full py-3 sm:py-4 pl-12 sm:pl-14 pr-6 text-sm sm:text-lg text-white focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/50 transition-all font-medium placeholder:text-white/30 shadow-inner">
-                                    </div>
-                                </div>
 
-                                <div id="theme-scroll-container" class="flex overflow-x-auto gap-2 sm:gap-3 no-scrollbar pb-2 -mx-2 px-2 sm:-mx-4 sm:px-4">
-                                    ${themes.map(theme => `
-                                        <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-6 py-2.5 sm:px-8 sm:py-3 rounded-full text-sm sm:text-base font-bold transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-gradient-to-r from-magical-purple/40 to-magical-pink/40 border-magical-pink text-white shadow-[0_0_20px_rgba(255,0,122,0.4)]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/20 hover:text-white hover:border-white/30'}">
-                                            ${theme}
-                                        </button>
-                                    `).join('')}
+                                    <div class="relative w-36 sm:w-64 focus-within:w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] group">
+                                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-magical-cyan group-focus-within:text-magical-pink transition-colors text-sm sm:text-lg"></i>
+                                        <input id="searchInput" type="text" placeholder="Rechercher..." 
+                                            value="${(state.searchQuery || '').replace(/"/g, '&quot;')}" oninput="handleSearch(event)"
+                                            class="w-full bg-black/60 border border-white/20 rounded-full py-2 sm:py-3 pl-9 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm text-white focus:outline-none focus:border-magical-pink focus:ring-1 focus:ring-magical-pink/50 transition-all placeholder:text-white/40 shadow-inner">
+                                    </div>
+
+                                    <div id="theme-scroll-container" class="flex overflow-x-auto gap-2 sm:gap-3 no-scrollbar pb-1 -mx-1 px-1 sm:-mx-2 sm:px-2">
+                                        ${themes.map(theme => `
+                                            <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-4 py-1.5 sm:px-6 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-gradient-to-r from-magical-purple/40 to-magical-pink/40 border-magical-pink text-white shadow-[0_0_15px_rgba(255,0,122,0.4)]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/20 hover:text-white hover:border-white/30'}">
+                                                ${theme}
+                                            </button>
+                                        `).join('')}
+                                    </div>
                                 </div>
                             </div>
                             <!-- FIN ZONE STICKY -->
 
                             ${filteredSongs.length > 0 ? `
-                                <div id="songs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
+                                <div id="songs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                                     ${filteredSongs.map(song => {
                                         const votesForThisSong = state.userVotes[song.id] || 0;
                                         const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
@@ -1080,49 +1077,34 @@
                                         }
 
                                         return `
-                                            <div class="song-item-card neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3.5 sm:p-5 items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}" style="display: ${displayStyle};" data-search="${(song.title + ' ' + song.artist).toLowerCase().replace(/"/g, '&quot;')}">
+                                            <div class="song-item-card neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3 sm:p-5 items-center justify-between ${isClosed ? 'opacity-50 pointer-events-none' : ''}" style="display: ${displayStyle};" data-search="${(song.title + ' ' + song.artist).toLowerCase().replace(/"/g, '&quot;')}">
                                                 <div class="flex items-center gap-3 sm:gap-5 overflow-hidden flex-1 pr-1">
-                                                    <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
-                                                        <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-xl sm:text-2xl transition-all"></i>
+                                                    <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
+                                                        <i class="ph-fill ph-play ${isClosed ? 'text-white/30' : 'text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]'} text-lg sm:text-2xl transition-all"></i>
                                                     </div>
                                                     <div class="min-w-0 flex-1">
-                                                        <h3 class="font-bold text-white text-base sm:text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
-                                                        <p class="text-xs sm:text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
+                                                        <h3 class="font-bold text-white text-sm sm:text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
+                                                        <p class="text-[10px] sm:text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
                                                     </div>
                                                 </div>
-                                                <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-1 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest transition-all ${btnClasses}">
-                                                    <i class="ph-fill ph-heart ${iconColor} text-sm sm:text-xl"></i>
+                                                <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-2 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 md:px-8 py-2 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest transition-all ${btnClasses}">
+                                                    <i class="ph-fill ph-heart ${iconColor} text-[10px] sm:text-xl"></i>
                                                     ${btnText}
                                                 </button>
                                             </div>
                                         `;
                                     }).join('')}
                                 </div>
-                                <div id="empty-search-msg" class="text-center py-32 neo-glass rounded-[3rem]" style="display: ${filteredSongs.some(s => (s.title + ' ' + s.artist).toLowerCase().includes(searchLower)) ? 'none' : 'block'};">
-                                    <i class="ph-duotone ph-music-notes text-8xl text-magical-cyan/40 mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
-                                    <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
-                                    <p class="text-lg text-white/60 font-light">Essayez une autre recherche.</p>
+                                <div id="empty-search-msg" class="text-center py-20 sm:py-32 neo-glass rounded-[2rem] sm:rounded-[3rem] mt-4" style="display: ${filteredSongs.some(s => (s.title + ' ' + s.artist).toLowerCase().includes(searchLower)) ? 'none' : 'block'};">
+                                    <i class="ph-duotone ph-music-notes text-6xl sm:text-8xl text-magical-cyan/40 mb-4 sm:mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                    <h3 class="text-xl sm:text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
+                                    <p class="text-sm sm:text-lg text-white/60 font-light">Essayez une autre recherche.</p>
                                 </div>
-                            ` : `<div class="text-center py-32 neo-glass rounded-[3rem]">
-                                    <i class="ph-duotone ph-music-notes text-8xl text-magical-cyan/40 mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
-                                    <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
-                                    <p class="text-lg text-white/60 font-light">Essayez une autre catégorie.</p>
+                            ` : `<div class="text-center py-20 sm:py-32 neo-glass rounded-[2rem] sm:rounded-[3rem] mt-4">
+                                    <i class="ph-duotone ph-music-notes text-6xl sm:text-8xl text-magical-cyan/40 mb-4 sm:mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                    <h3 class="text-xl sm:text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
+                                    <p class="text-sm sm:text-lg text-white/60 font-light">Essayez une autre catégorie.</p>
                                  </div>`}
-                                 
-                            <!-- BARRE FLOTTANTE POUR LE COMPTEUR DE VOTES -->
-                            <div class="fixed bottom-4 sm:bottom-6 left-0 w-full px-4 z-[60] pointer-events-none flex justify-center pb-safe">
-                                <div class="neo-glass rounded-full px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/20 backdrop-blur-xl pointer-events-auto relative overflow-hidden max-w-md w-full">
-                                    <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-magical-cyan to-magical-pink transition-all duration-500 ease-out" style="width: ${progressPercent}%"></div>
-                                    <div class="flex items-center gap-2 sm:gap-3">
-                                        <i class="ph-fill ph-ticket text-magical-pink text-xl sm:text-2xl drop-shadow-[0_0_10px_rgba(255,0,122,0.8)]"></i>
-                                        <span class="text-white font-bold tracking-widest uppercase text-[10px] sm:text-sm">Vos Crédits</span>
-                                    </div>
-                                    <div class="flex items-baseline gap-1">
-                                        <span class="text-2xl sm:text-3xl font-black ${votesLeft === 0 ? 'text-red-500 text-glow-pink' : 'text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]'}">${votesLeft}</span>
-                                        <span class="text-white/40 font-bold text-xs sm:text-sm">/ ${MAX_TOTAL_VOTES}</span>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     `;
                 } 
