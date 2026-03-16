@@ -154,13 +154,13 @@
         // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
         // =========================================================================
         const MY_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCrcyE5HbYE-fjiWwonzVmng_zCvXaSk", 
+            apiKey: "AIzaSyCCrcyE5HbYE-fjiVwqnzmVmhg_zCvXb5k",
             authDomain: "laplaylistideale.firebaseapp.com",
             projectId: "laplaylistideale",
             storageBucket: "laplaylistideale.firebasestorage.app",
-            messagingSenderId: "288987966838",
-            appId: "1:288987966838:web:12b48f1ae0acbfef8f6641",
-            measurementId: "G-S96KY8T8CN"
+            messagingSenderId: "288987066836",
+            appId: "1:288987066836:web:12b48f1ae0adbfef8f6641",
+            measurementId: "G-S96KYBT8CN"
         };
         // =========================================================================
 
@@ -251,7 +251,7 @@
                 appId = typeof __app_id !== 'undefined' ? __app_id : appId;
                 useCanvasAuth = true;
             } 
-            else if (MY_FIREBASE_CONFIG.apiKey !== "") {
+            else if (MY_FIREBASE_CONFIG.apiKey !== "" && MY_FIREBASE_CONFIG.apiKey !== "COLLE_TA_CLE_API_ICI") {
                 firebaseConfig = MY_FIREBASE_CONFIG;
                 appId = MY_FIREBASE_CONFIG.appId || 'universal-dj-app';
             }
