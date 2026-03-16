@@ -150,6 +150,19 @@
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // =========================================================================
+        // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
+        // =========================================================================
+        const MY_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCrcyE5HbYE-fjiWwonzVmng_zCvXaSk_E",
+            authDomain: "laplaylistideale.firebaseapp.com",
+            projectId: "laplaylistideale",
+            storageBucket: "laplaylistideale.firebasestorage.app",
+            messagingSenderId: "288987966838",
+            appId: "1:288987966838:web:12b48f1ae0acbfef8f6641"
+        };
+        // =========================================================================
+
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
         
         // Génération Dynamique du QR Code pointant vers la bonne adresse Github + INJECTION DE LA SESSION
@@ -206,38 +219,54 @@
 
         // --- INTEGRATION FIREBASE (CLOUD TEMPS RÉEL) ---
         let db, auth, appId, userId = null;
+        let isCloudActive = false; // <-- Indicateur pour le tableau de bord
         let unsubscribePublic = null;
         let unsubscribePrivate = null;
 
         try {
-            const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-            const firebaseConfig = JSON.parse(firebaseConfigStr);
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'universal-dj-app';
+            let firebaseConfig = null;
+            let useCanvasAuth = false;
 
-            const initAuth = async () => {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            };
-            initAuth();
+            if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== '{}') {
+                firebaseConfig = JSON.parse(__firebase_config);
+                appId = typeof __app_id !== 'undefined' ? __app_id : appId;
+                useCanvasAuth = true;
+            } 
+            else if (MY_FIREBASE_CONFIG.apiKey !== "") {
+                firebaseConfig = MY_FIREBASE_CONFIG;
+                appId = MY_FIREBASE_CONFIG.appId || 'universal-dj-app';
+            }
 
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    setupListeners();
-                } else {
-                    userId = null;
-                    if (unsubscribePublic) unsubscribePublic();
-                    if (unsubscribePrivate) unsubscribePrivate();
-                }
-            });
+            if (firebaseConfig) {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isCloudActive = true;
+
+                const initAuth = async () => {
+                    if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                };
+                initAuth();
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        setupListeners();
+                    } else {
+                        userId = null;
+                        if (unsubscribePublic) unsubscribePublic();
+                        if (unsubscribePrivate) unsubscribePrivate();
+                    }
+                });
+            } else {
+                console.warn("Mode Hors-ligne (Local) activé. La base de données n'est pas configurée.");
+            }
         } catch(error) {
-            console.error("Mode Hors-ligne (Firebase non configuré). L'application tournera en local.");
+            console.error("Erreur d'initialisation Firebase:", error);
         }
 
         function setupListeners() {
@@ -259,8 +288,6 @@
                     });
 
                     checkPhase();
-                    
-                    // Force la vérification de session à chaque changement Cloud
                     verifySessionAndLoadVotes();
                 } else {
                     if (state.view === 'admin') {
@@ -279,7 +306,6 @@
             const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
             
             unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
-                // On met à jour les votes du Cloud uniquement si la session correspond
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     if (data.sessionId === state.sessionId) {
@@ -465,12 +491,12 @@
             const correctCode = state.guestCode.toUpperCase().trim();
             
             // Si le code est correct OU si on est en mode "Hors ligne" (pas de Firebase configuré) on force l'accès
-            if (input === correctCode || !db) { 
+            if (input === correctCode || !isCloudActive) { 
                 state.view = 'user'; 
                 state.loginError = ''; 
                 
                 // Si on est en mode Hors ligne, on met à jour le code localement
-                if (!db) {
+                if (!isCloudActive) {
                     state.guestCode = input;
                     saveServerData();
                 }
@@ -502,7 +528,7 @@
                 state.guestCode = newCode;
                 saveServerData(); 
                 
-                if (db && userId) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     updateDoc(publicRef, { guestCode: newCode }).catch(e=>console.log(e));
                 }
@@ -523,7 +549,7 @@
                 state.eventStartTime = Date.now(); 
                 saveServerData(); 
                 
-                if (db && userId) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     updateDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
@@ -543,7 +569,7 @@
                 state.currentPhase = 0; 
                 saveServerData();
                 
-                if (db && userId) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     updateDoc(publicRef, { eventStartTime: null }).catch(e=>console.log(e));
                 }
@@ -556,7 +582,7 @@
                 state.eventStartTime = Date.now() - (state.phase1Duration + state.phase2Duration + 5000);
                 saveServerData(); 
 
-                if (db && userId) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     updateDoc(publicRef, {
                         eventStartTime: state.eventStartTime
@@ -571,12 +597,11 @@
         // --- NOUVEAU BOUTON : AUTORISER NOUVEAU VOTE (Garde les scores) ---
         window.allowReVote = function() {
             window.showModal('confirm', "Nouveau Tour de Votes", "Cela va générer un nouveau QR Code. En le scannant, les invités recevront 30 nouveaux crédits !<br><br><strong class='text-magical-cyan'>Les scores actuels des chansons seront CONSERVÉS.</strong>", () => { 
-                // Change la session pour réinitialiser les téléphones
                 state.sessionId = Date.now().toString(); 
                 saveServerData(); 
-                verifySessionAndLoadVotes(); // Vide instantanément le téléphone local s'il teste
+                verifySessionAndLoadVotes(); 
                 
-                if (db && userId) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     updateDoc(publicRef, { sessionId: state.sessionId }).catch(e=>console.log(e));
                 }
@@ -592,16 +617,15 @@
                 state.selectedTheme = 'Tous';
                 state.searchQuery = '';
                 
-                // Change la session pour réinitialiser les téléphones
                 state.sessionId = Date.now().toString(); 
                 
                 localStorage.removeItem('dj_songs');
                 localStorage.removeItem('dj_eventStartTime');
                 
                 saveServerData(); 
-                verifySessionAndLoadVotes(); // Vide instantanément le téléphone local s'il teste
+                verifySessionAndLoadVotes(); 
                 
-                if (db && userId) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         sessionId: state.sessionId, 
@@ -649,7 +673,7 @@
             render();
 
             // 2. Envoi sur le Cloud (En tâche de fond)
-            if (db && userId) {
+            if (isCloudActive && db && userId) {
                 const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
                 setDoc(privateRef, {
                     sessionId: state.sessionId,
@@ -1034,6 +1058,21 @@
 
                     mainContent = `
                         <div class="animate-fade-in max-w-5xl mx-auto pb-24 pt-28 px-4 w-full">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                                <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
+                                <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
+                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
+                                    <span class="text-xs font-bold ${isCloudActive ? 'text-magical-cyan' : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? 'Cloud Actif' : 'Mode Local'}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- FIREBASE CONFIG INSTRUCTION POUR LE MODE LOCAL -->
+                            ${!isCloudActive ? `
+                            <div class="neo-glass border border-orange-500/30 rounded-2xl p-4 mb-8">
+                                <p class="text-orange-200 text-sm font-medium">⚠️ <strong>Attention :</strong> Vous êtes en Mode Local. Les votes des téléphones ne remonteront pas sur cet écran. Pour activer le Temps Réel sur votre site Github, ajoutez les clés de votre projet Firebase dans le code.</p>
+                            </div>
+                            ` : ''}
+
                             <div class="neo-glass border-t-magical-pink/50 rounded-[2.5rem] p-8 md:p-10 mb-8 relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                                 <h3 class="text-3xl font-black text-white mb-2 flex items-center gap-4 tracking-tight relative z-10 text-glow-white">
                                     <i class="ph-fill ph-timer text-magical-pink text-4xl drop-shadow-[0_0_15px_rgba(255,0,122,0.8)]"></i> Minuteurs Automatiques
