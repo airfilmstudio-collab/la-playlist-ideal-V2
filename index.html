@@ -240,7 +240,7 @@
         window.downloadM3U = function() {
             const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
             if (top40Songs.length === 0) {
-                console.warn("Aucun vote pour générer le fichier M3U.");
+                window.showModal('alert', 'Aucun vote', 'Il n\'y a pas encore de votes pour générer la playlist.');
                 return;
             }
 
@@ -253,13 +253,26 @@
             const blob = new Blob([m3uContent], { type: 'audio/x-mpegurl;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
+            a.style.display = 'none';
             a.href = url;
             const date = new Date().toISOString().slice(0,10);
             a.download = `Universal_DJ_Top40_${date}.m3u`;
             document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        };
+
+        // Fonction pour réinitialiser la vue utilisateur et revenir en haut
+        window.resetUserView = function() {
+            state.searchQuery = '';
+            state.selectedTheme = 'Tous';
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = '';
+            render();
+            window.scrollTo({top: 0, behavior: 'smooth'});
         };
 
         // --- INTEGRATION FIREBASE (CLOUD TEMPS RÉEL) ---
@@ -958,7 +971,7 @@
                     <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
                         <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative z-10 text-center border-t-magical-pink/50">
                             <div class="mb-8 relative inline-block">
-                                <img src="${LOGO_URL}" alt="Universal DJ Logo" class="h-20 md:h-28 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.5)] mx-auto" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('login')" class="h-20 md:h-28 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.5)] mx-auto cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                 ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-magical-purple rounded-full p-3 shadow-[0_0_20px_rgba(112,0,255,0.8)]"><i class="ph-fill ph-lock-key text-white text-lg"></i></div>' : ''}
                             </div>
                             <h1 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
@@ -996,7 +1009,7 @@
                             
                             <!-- LEFT: Logo + Socials -->
                             <div class="flex items-center gap-2 sm:gap-6 overflow-hidden">
-                                <button onclick="${state.view === 'user' ? "window.scrollTo({top: 0, behavior: 'smooth'})" : "goTo('admin')"}" class="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none text-left shrink-0">
+                                <button onclick="${state.view === 'user' ? "resetUserView()" : "goTo('admin')"}" class="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none text-left shrink-0">
                                     <img src="${LOGO_URL}" alt="Universal DJ" class="h-6 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
                                     ${state.view === 'admin' ? '<h1 class="text-sm md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
                                 </button>
@@ -1217,9 +1230,14 @@
                                     </h3>
                                     <p class="text-white/70 text-base mb-8 font-light">Contrôle l'affichage sur vidéoprojecteur/TV.</p>
                                     <div class="flex flex-col gap-4">
-                                        <button onclick="forceEndAndShowMonitor()" class="w-full btn-liquid font-black px-6 py-5 rounded-2xl flex items-center justify-center gap-3 text-lg uppercase tracking-widest border-transparent shadow-[0_0_20px_rgba(255,0,122,0.4)] hover:shadow-[0_0_30px_rgba(255,0,122,0.6)]">
-                                            <i class="ph-bold ph-monitor text-2xl"></i> Clôturer & Résultat
-                                        </button>
+                                        <div class="flex gap-4">
+                                            <button onclick="forceEndAndShowMonitor()" class="flex-1 btn-liquid font-black px-4 py-5 rounded-2xl flex items-center justify-center gap-3 text-sm md:text-lg uppercase tracking-widest border-transparent shadow-[0_0_20px_rgba(255,0,122,0.4)] hover:shadow-[0_0_30px_rgba(255,0,122,0.6)]">
+                                                <i class="ph-bold ph-monitor text-xl md:text-2xl"></i> Clôturer & Résultat
+                                            </button>
+                                            <button onclick="downloadM3U()" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-4 py-5 rounded-2xl transition-colors flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="Télécharger la Playlist M3U">
+                                                <i class="ph-bold ph-download-simple text-xl md:text-2xl"></i>
+                                            </button>
+                                        </div>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <button onclick="toggleMonitor()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
                                                 <i class="ph-bold ph-eye text-lg"></i> Monitor Direct
