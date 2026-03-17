@@ -498,7 +498,13 @@
             else if (elapsed < p1 + p2) { newPhase = 2; timeLeft = (p1 + p2) - elapsed; } 
             else { newPhase = 3; timeLeft = 0; }
 
-            if (state.currentPhase !== newPhase) { state.currentPhase = newPhase; render(); }
+            if (state.currentPhase !== newPhase) { 
+                state.currentPhase = newPhase;
+                if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode') {
+                    state.view = 'monitor';
+                }
+                render(); 
+            }
 
             let globalTimeLeft = (p1 + p2) - elapsed;
             if (globalTimeLeft < 0) globalTimeLeft = 0;
@@ -1094,7 +1100,10 @@
                             ${isClosed ? `
                                 <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
                                     <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</h2>
-                                    <p class="text-white/90 text-base md:text-lg mt-2 font-medium">La playlist idéale est prête, regardez l'écran géant !</p>
+                                    <p class="text-white/90 text-base md:text-lg mt-2 mb-6 font-medium">La playlist idéale est prête, regardez l'écran géant !</p>
+                                    <button onclick="downloadM3U()" class="inline-flex items-center justify-center gap-2 bg-white text-[#7000FF] font-black px-6 py-3 rounded-full transition-all uppercase tracking-widest text-sm sm:text-base shadow-[0_0_20px_rgba(255,255,255,0.4)] hover:scale-105">
+                                        <i class="ph-bold ph-download-simple text-xl"></i> Télécharger la playlist (.M3U)
+                                    </button>
                                 </div>
                             ` : ''}
 
