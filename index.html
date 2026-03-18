@@ -498,11 +498,20 @@
             else if (elapsed < p1 + p2) { newPhase = 2; timeLeft = (p1 + p2) - elapsed; } 
             else { newPhase = 3; timeLeft = 0; }
 
+            // Vérification stricte du basculement automatique
             if (state.currentPhase !== newPhase) { 
                 state.currentPhase = newPhase;
+                
+                // Redirection côté Écran Géant / Admin
                 if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode') {
                     state.view = 'monitor';
                 }
+                
+                // Pour l'utilisateur : forcer un scroll en haut pour bien voir le classement final !
+                if (newPhase === 3 && state.view === 'user') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                
                 render(); 
             }
 
