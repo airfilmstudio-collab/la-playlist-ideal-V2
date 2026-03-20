@@ -224,6 +224,13 @@
             render();
         }
 
+        window.openExternalDisplay = function(type) {
+            const url = window.location.pathname + "?public=" + type;
+            // Ouvre une nouvelle fenêtre pop-up dédiée à l'écran étendu
+            window.open(url, "UniversalDJ_Display", "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no");
+            window.showModal('alert', 'Fenêtre Externe Ouverte', 'Une nouvelle fenêtre vient de s\'ouvrir.<br><br>Faites-la glisser sur votre 2ème écran (TV ou Vidéoprojecteur) puis appuyez sur <strong>F11</strong> pour la mettre en plein écran.');
+        }
+
         window.closeModal = function() {
             state.modal = null;
             render();
@@ -463,6 +470,12 @@
                 if (savedP1) state.phase1Duration = parseInt(savedP1, 10);
                 const savedP2 = localStorage.getItem('dj_phase2');
                 if (savedP2) state.phase2Duration = parseInt(savedP2, 10);
+                
+                // Détection de l'écran externe (HDMI/TV) pour contourner la page d'accueil
+                const publicView = urlParams.get('public');
+                if (publicView) {
+                    state.view = publicView;
+                }
             } catch (error) {
                 console.error("Erreur de mémoire cache.", error);
                 state.songs = JSON.parse(JSON.stringify(initialSongs)); 
@@ -829,45 +842,55 @@
             const root = document.getElementById('root');
             if (!root) return;
             
+            // Permet de savoir si on est sur la fenêtre détachée de la TV
+            const isExternalDisplay = new URLSearchParams(window.location.search).get('public') !== null;
+            
             let htmlToRender = '';
 
             // 1. VUE QR CODE GEANT
             if (state.view === 'qrcode' && state.currentPhase !== 1) {
                 htmlToRender = `
-                    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
-                        <button onclick="toggleQRCode()" class="absolute top-6 right-6 md:top-10 md:right-10 text-white/50 hover:text-white z-20 neo-glass p-3 rounded-full hover:bg-white/10 transition-all">
-                            <i class="ph-bold ph-x text-2xl"></i>
+                    <div class="h-screen w-screen flex flex-col items-center justify-center p-4 relative animate-fade-in overflow-hidden">
+                        <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white z-20 neo-glass p-2 md:p-3 rounded-full hover:bg-white/10 transition-all">
+                            <i class="ph-bold ph-x text-xl md:text-2xl"></i>
                         </button>
-                        <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
-                            <div class="flex items-center gap-4 justify-center mb-4 md:mb-6">
-                                <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('admin')" class="h-24 md:h-32 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
-                            </div>
+                        
+                        <div class="relative z-10 w-full h-full flex flex-col items-center justify-center gap-3 sm:gap-4 md:gap-5">
+                            <!-- Logo -->
+                            <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('admin')" class="h-10 sm:h-14 md:h-16 lg:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform shrink-0" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                             
-                            <h1 class="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] whitespace-nowrap">
+                            <!-- Titre -->
+                            <h1 class="text-3xl sm:text-5xl md:text-6xl lg:text-[4rem] xl:text-[5rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] whitespace-nowrap shrink-0 leading-none py-1">
                                 VOTRE PLAYLIST IDÉALE
                             </h1>
                             
+                            <!-- Minuteur -->
                             ${state.eventStartTime ? `
-                            <div class="flex flex-col items-center justify-center gap-1 mb-8 neo-glass px-8 py-3 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.2)]">
-                                <span class="text-white/80 text-xs sm:text-sm uppercase tracking-widest font-bold">Affichage de la playlist dans :</span>
-                                <div class="flex items-center gap-3">
-                                    <i class="ph-fill ph-timer text-magical-pink animate-pulse text-2xl sm:text-3xl drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
-                                    <span class="text-2xl sm:text-4xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink">--:--:--</span>
+                            <div class="flex flex-col items-center justify-center gap-1 neo-glass px-6 py-2 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.2)] shrink-0">
+                                <span class="text-white/80 text-[10px] sm:text-xs uppercase tracking-widest font-bold">Affichage de la playlist dans :</span>
+                                <div class="flex items-center gap-2">
+                                    <i class="ph-fill ph-timer text-magical-pink animate-pulse text-xl sm:text-2xl drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                    <span class="text-xl sm:text-3xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink leading-none">--:--:--</span>
                                 </div>
                             </div>
                             ` : ''}
                             
-                            <h2 class="text-2xl md:text-4xl font-light text-white/90 mb-10 tracking-tight text-glow-white ${state.eventStartTime ? '' : 'mt-4'}">
+                            <!-- Sous-titre -->
+                            <h2 class="text-lg md:text-2xl lg:text-3xl font-light text-white/90 tracking-tight text-glow-white shrink-0 ${state.eventStartTime ? '' : 'mt-2'}">
                                 Flashez pour <span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-magical-gold to-magical-pink drop-shadow-md">voter !</span>
                             </h2>
-                            <div class="neo-glass p-6 md:p-8 rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] mb-10 mx-auto inline-block border-2 border-white/20">
-                                <div class="bg-white p-4 rounded-3xl">
-                                    <img src="${getQRCodeUrl()}" alt="QR Code" class="w-64 h-64 md:w-96 md:h-96 rounded-xl object-contain">
+                            
+                            <!-- QR CODE (Responsive et bridé en hauteur) -->
+                            <div class="neo-glass p-3 md:p-5 lg:p-6 rounded-[2rem] lg:rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] border-2 border-white/20 shrink min-h-0 flex items-center justify-center">
+                                <div class="bg-white p-2 md:p-3 rounded-xl lg:rounded-2xl h-full flex items-center justify-center aspect-square">
+                                    <img src="${getQRCodeUrl()}" alt="QR Code" class="max-h-[25vh] md:max-h-[35vh] w-auto object-contain rounded-lg">
                                 </div>
                             </div>
-                            <div class="neo-glass py-6 px-10 md:py-8 md:px-16 rounded-[2.5rem] inline-block">
-                                <p class="text-xl md:text-2xl text-magical-cyan/90 mb-2 font-medium">Code de la soirée :</p>
-                                <p class="text-6xl md:text-8xl font-black text-white tracking-widest text-glow-white">${state.guestCode}</p>
+                            
+                            <!-- Code Invité -->
+                            <div class="neo-glass py-3 px-8 md:py-4 md:px-12 rounded-[1.5rem] md:rounded-[2rem] shrink-0 text-center">
+                                <p class="text-xs md:text-base lg:text-lg text-magical-cyan/90 mb-1 font-medium uppercase tracking-widest">Code de la soirée :</p>
+                                <p class="text-4xl md:text-5xl lg:text-7xl font-black text-white tracking-widest text-glow-white leading-none">${state.guestCode}</p>
                             </div>
                         </div>
                     </div>
@@ -877,38 +900,45 @@
             else if (state.view === 'monitor' || (state.view === 'qrcode' && state.currentPhase === 1)) {
                 if (state.currentPhase === 1) {
                     htmlToRender = `
-                        <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
-                            <button onclick="goTo('admin')" class="absolute top-6 right-6 text-white/0 hover:text-white/50 z-50 p-3 rounded-full hover:bg-white/10 transition-colors">
+                        <div class="h-screen w-screen flex flex-col items-center justify-center p-4 relative animate-fade-in overflow-hidden">
+                            <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white z-20 neo-glass p-2 md:p-3 rounded-full hover:bg-white/10 transition-all">
                                 <i class="ph-bold ph-x text-2xl"></i>
                             </button>
-                            <div class="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center">
-                                <div class="flex items-center gap-4 justify-center mb-4 md:mb-6">
-                                    <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-20 md:h-28 object-contain drop-shadow-[0_0_40px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
-                                </div>
+                            
+                            <div class="relative z-10 w-full h-full flex flex-col items-center justify-center gap-3 sm:gap-4 md:gap-5">
+                                <!-- Logo -->
+                                <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-10 sm:h-14 md:h-16 lg:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform shrink-0" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                 
-                                <h1 class="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] whitespace-nowrap">
+                                <!-- Titre -->
+                                <h1 class="text-3xl sm:text-5xl md:text-6xl lg:text-[4rem] xl:text-[5rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] whitespace-nowrap shrink-0 leading-none py-1">
                                     VOTRE PLAYLIST IDÉALE
                                </h1>
                                
-                               <div class="flex flex-col items-center justify-center gap-1 mb-8 neo-glass px-8 py-3 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.2)]">
-                                    <span class="text-white/80 text-xs sm:text-sm uppercase tracking-widest font-bold">Affichage de la playlist dans :</span>
-                                    <div class="flex items-center gap-3">
-                                        <i class="ph-fill ph-timer text-magical-pink animate-pulse text-2xl sm:text-3xl drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
-                                        <span class="text-2xl sm:text-4xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink">--:--:--</span>
+                               <!-- Minuteur -->
+                               <div class="flex flex-col items-center justify-center gap-1 neo-glass px-6 py-2 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.2)] shrink-0">
+                                    <span class="text-white/80 text-[10px] sm:text-xs uppercase tracking-widest font-bold">Affichage de la playlist dans :</span>
+                                    <div class="flex items-center gap-2">
+                                        <i class="ph-fill ph-timer text-magical-pink animate-pulse text-xl sm:text-2xl drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-xl sm:text-3xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink leading-none">--:--:--</span>
                                     </div>
                                 </div>
                                
-                                <h2 class="text-2xl md:text-4xl font-light text-white/90 mb-8 tracking-tight text-glow-white">
+                                <!-- Sous-titre -->
+                                <h2 class="text-lg md:text-2xl lg:text-3xl font-light text-white/90 tracking-tight text-glow-white shrink-0">
                                     Flashez le QR Code pour <span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-magical-gold to-magical-pink drop-shadow-md">voter !</span>
                                 </h2>
-                                <div class="neo-glass p-6 md:p-8 rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] mb-8 mx-auto inline-block border-2 border-white/20">
-                                    <div class="bg-white p-4 rounded-3xl">
-                                        <img src="${getQRCodeUrl()}" alt="QR Code" class="w-48 h-48 md:w-80 md:h-80 rounded-xl object-contain">
+                                
+                                <!-- QR CODE -->
+                                <div class="neo-glass p-3 md:p-5 lg:p-6 rounded-[2rem] lg:rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] border-2 border-white/20 shrink min-h-0 flex items-center justify-center">
+                                    <div class="bg-white p-2 md:p-3 rounded-xl lg:rounded-2xl h-full flex items-center justify-center aspect-square">
+                                        <img src="${getQRCodeUrl()}" alt="QR Code" class="max-h-[25vh] md:max-h-[35vh] w-auto object-contain rounded-lg">
                                     </div>
                                 </div>
-                                <div class="neo-glass py-4 px-10 md:py-6 md:px-16 rounded-[2rem] inline-block mb-10">
-                                    <p class="text-lg md:text-xl text-magical-cyan/90 mb-1 font-medium">Code de la soirée :</p>
-                                    <p class="text-5xl md:text-7xl font-black text-white tracking-widest text-glow-white">${state.guestCode}</p>
+                                
+                                <!-- Code Invité -->
+                                <div class="neo-glass py-3 px-8 md:py-4 md:px-12 rounded-[1.5rem] md:rounded-[2rem] shrink-0 text-center">
+                                    <p class="text-xs md:text-base lg:text-lg text-magical-cyan/90 mb-1 font-medium uppercase tracking-widest">Code de la soirée :</p>
+                                    <p class="text-4xl md:text-5xl lg:text-7xl font-black text-white tracking-widest text-glow-white leading-none">${state.guestCode}</p>
                                 </div>
                             </div>
                         </div>
@@ -917,7 +947,7 @@
                     const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
                     htmlToRender = `
                         <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden">
-                            <button onclick="goTo('admin')" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-white/10">
+                            <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-white/10">
                                 <i class="ph-bold ph-x text-2xl"></i>
                             </button>
                             <div class="relative z-10 flex justify-between items-center mb-6 px-2">
@@ -1312,11 +1342,11 @@
                                             </button>
                                         </div>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <button onclick="toggleMonitor()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                                                <i class="ph-bold ph-eye text-lg"></i> Monitor Direct
+                                            <button onclick="openExternalDisplay('monitor')" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                                <i class="ph-bold ph-screencast text-lg"></i> Fenêtre Classement
                                             </button>
-                                            <button onclick="toggleQRCode()" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                                                <i class="ph-bold ph-qr-code text-lg"></i> QR Code Direct
+                                            <button onclick="openExternalDisplay('qrcode')" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                                <i class="ph-bold ph-screencast text-lg"></i> Fenêtre QR Code
                                             </button>
                                         </div>
                                     </div>
