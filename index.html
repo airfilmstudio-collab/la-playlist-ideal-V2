@@ -225,7 +225,9 @@
         }
 
         window.openExternalDisplay = function(type) {
-            const url = window.location.pathname + "?public=" + type;
+            // Utilise l'URL absolue de base (sans les paramètres) pour éviter l'erreur 404 sur GitHub Pages
+            const baseUrl = window.location.href.split('?')[0];
+            const url = baseUrl + "?public=" + type;
             // Ouvre une nouvelle fenêtre pop-up dédiée à l'écran étendu
             window.open(url, "UniversalDJ_Display", "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no");
             window.showModal('alert', 'Fenêtre Externe Ouverte', 'Une nouvelle fenêtre vient de s\'ouvrir.<br><br>Faites-la glisser sur votre 2ème écran (TV ou Vidéoprojecteur) puis appuyez sur <strong>F11</strong> pour la mettre en plein écran.');
