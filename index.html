@@ -1233,11 +1233,8 @@
 
                                             return `
                                                 <div class="song-item-card neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3 sm:p-5 items-center justify-between" style="display: ${displayStyle};" data-search="${(song.title + ' ' + song.artist).toLowerCase().replace(/"/g, '&quot;')}">
-                                                    <div class="flex items-center gap-3 sm:gap-5 overflow-hidden flex-1 pr-1">
-                                                        <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-[1rem] bg-black/60 flex items-center justify-center shrink-0 border border-white/10 shadow-inner group-hover:bg-magical-pink/20 transition-colors">
-                                                            <i class="ph-fill ph-play text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.8)] text-lg sm:text-2xl transition-all"></i>
-                                                        </div>
-                                                        <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center overflow-hidden flex-1 pr-1">
+                                                        <div class="min-w-0 flex-1 pl-1 sm:pl-2">
                                                             <h3 class="font-bold text-white text-sm sm:text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
                                                             <p class="text-[10px] sm:text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
                                                         </div>
