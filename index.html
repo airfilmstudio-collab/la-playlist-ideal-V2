@@ -254,7 +254,7 @@
             sessionId: 'init',
             forceClosed: false,
             isCloudSynced: false,
-            authStatus: 'pending', // 'pending', 'ready', ou 'failed'
+            authStatus: 'pending',
             modal: null
         };
 
@@ -383,21 +383,10 @@
                     if (user) {
                         userId = user.uid;
                         
-                        // 2. ON NE BRANCHE L'ÉCOUTE QU'UNE FOIS LA SÉCURITÉ PASSÉE
-                        setupListeners();
+                        // 2. ON NE BRANCHE L'ÉCOUTE QU'UNE FOIS LA SÉCURITÉ PASSÉE (Empêche l'erreur Permission Denied)
+                        setupPublicListener();
+                        setupPrivateListener();
 
-                        if (unsubscribePrivate) unsubscribePrivate();
-                        const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
-                        unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
-                            if (docSnap.exists()) {
-                                const data = docSnap.data();
-                                if (data.sessionId === state.sessionId) {
-                                    state.userVotes = data.votes || {};
-                                    state.totalUserVotes = data.total || 0;
-                                }
-                            }
-                            render();
-                        }, (error) => console.error("Erreur lecture locale :", error));
                     } else {
                         userId = null;
                         if (unsubscribePublic) unsubscribePublic();
@@ -416,7 +405,7 @@
             render();
         }
 
-        function setupListeners() {
+        function setupPublicListener() {
             if (unsubscribePublic) return; // Sécurité : Ne pas relancer l'écoute si elle tourne déjà
 
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
@@ -439,7 +428,7 @@
                     });
 
                     checkPhase();
-                    verifySessionAndLoadVotes();
+                    verifySessionAndLoadVotes(); // Vide les caches si nouvelle session
                 } else {
                     // Création de la DB si elle n'existe pas encore (Garantie Anti-crash)
                     setDoc(publicRef, {
@@ -453,10 +442,36 @@
                         songVotes: {}
                     }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
                 }
+
+                // Force le flash visuel sur l'écran Admin lors d'une mise à jour Cloud
+                if (state.view === 'admin') {
+                    const adminEl = document.getElementById('admin-dashboard');
+                    if (adminEl) {
+                        adminEl.classList.remove('animate-fade-in');
+                        void adminEl.offsetWidth; // Déclenche le reflow
+                        adminEl.classList.add('animate-fade-in');
+                    }
+                }
+                render(); // Affichage temps réel garanti
             }, (error) => {
                 console.error("Erreur lecture Cloud :", error);
-                render();
             });
+        }
+
+        // Écouteur Privé (Pour recharger les crédits sur le téléphone)
+        function setupPrivateListener() {
+            if (unsubscribePrivate) unsubscribePrivate();
+            const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
+            unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.sessionId === state.sessionId) {
+                        state.userVotes = data.votes || {};
+                        state.totalUserVotes = data.total || 0;
+                    }
+                }
+                render();
+            }, (error) => console.error("Erreur lecture locale :", error));
         }
         // --- FIN INTEGRATION FIREBASE ---
 
@@ -468,13 +483,12 @@
             if (localClientSession !== state.sessionId) {
                 state.userVotes = {};
                 state.totalUserVotes = 0;
-                // Attention : On ne réinitialise pas state.songs ici sinon on écrase la mise à jour Firebase qui vient de se faire !
                 
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
                 localStorage.removeItem('dj_songs'); // 🔥 DÉTRUIT L'ANCIEN CLASSEMENT FANTÔME !
                 
-                // Nettoyage intelligent de l'URL
+                // Nettoyage intelligent de l'URL pour éviter la boucle
                 try {
                     if (window.history && window.history.replaceState) {
                         const currentUrl = new URL(window.location.href);
@@ -495,7 +509,6 @@
                     state.totalUserVotes = 0; 
                 }
             }
-            render();
         }
 
         function loadServerData() {
@@ -506,7 +519,6 @@
                 
                 if (urlSession) {
                     state.sessionId = urlSession;
-                    // On ne sauvegarde pas tout de suite, on laisse verifySession s'en charger !
                 } else {
                     const savedSession = localStorage.getItem('dj_sessionId');
                     if (savedSession) state.sessionId = savedSession;
@@ -538,7 +550,7 @@
                     state.adminCode = 'DJ';
                 }
 
-                // Chargement des chansons
+                // Chargement des chansons depuis la mémoire RAM uniquement si on vient de rafraichir
                 const savedSongs = localStorage.getItem('dj_songs');
                 if (savedSongs) {
                     const parsedSongs = JSON.parse(savedSongs);
@@ -729,12 +741,11 @@
                 state.guestCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Mot de passe modifié', 'Le code invité de la soirée est désormais : <br><br><strong class="text-4xl text-magical-cyan tracking-widest">' + newCode + '</strong>'); 
-                render();
             }
         }
 
@@ -744,12 +755,11 @@
                 state.adminCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { adminCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Mot de passe DJ modifié', 'Le code d\'accès DJ est désormais : <br><br><strong class="text-4xl text-magical-purple tracking-widest">' + newCode + '</strong><br><br>Garde-le secret !'); 
-                render();
             }
         }
 
@@ -767,7 +777,7 @@
                 state.forceClosed = false;
                 saveServerData(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
@@ -789,7 +799,7 @@
                 state.forceClosed = false;
                 saveServerData();
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { eventStartTime: null, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -803,7 +813,7 @@
                 state.eventStartTime = null;
                 saveServerData(); 
 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         forceClosed: true,
@@ -827,7 +837,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { sessionId: state.sessionId, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -853,7 +863,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         sessionId: state.sessionId, 
@@ -866,9 +876,6 @@
                         songVotes: {} // 🔥 CECI EFFACE LES VOTES DU CLOUD POUR TOUT LE MONDE
                     }).catch(e => {
                         console.error(e);
-                        if (e.code === 'permission-denied') {
-                            window.showModal('alert', 'Sécurité Firestore', 'Opération bloquée. Avez-vous bien choisi le "Mode Test" à l\'étape 4 ?');
-                        }
                     });
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
@@ -925,13 +932,13 @@
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
 
-            // ⚠️ SÉCURITÉ FIREBASE : On n'attend plus un userId, on attend juste que le statut soit fixé (max 2.5s)
+            // ⚠️ SÉCURITÉ FIREBASE : On n'attend plus un userId, on attend juste que le statut soit fixé
             if (isCloudActive && db && state.authStatus === 'pending') {
-                window.showModal('alert', 'Synchronisation...', 'Préparation de votre session sécurisée. Veuillez réessayer dans une seconde.');
+                window.showModal('alert', 'Connexion...', 'Préparation de la connexion. Veuillez réessayer dans un instant.');
                 return;
             }
 
-            // 1. Mise à jour Locale IMMÉDIATE
+            // 1. Mise à jour Locale IMMÉDIATE (Fluidité totale garantie)
             state.userVotes[id] = votesForSong + 1; 
             state.totalUserVotes += 1;
             const songIndex = state.songs.findIndex(s => s.id === id);
@@ -940,7 +947,7 @@
             saveServerData();
             render();
 
-            // 2. Envoi sur le Cloud (Mode normal ou dégradé)
+            // 2. Envoi forcé sur le Cloud (Mode normal ou dégradé)
             if (isCloudActive && db) {
                 // On sauvegarde le profil privé SEULEMENT si Firebase a réussi l'auth
                 if (userId) {
@@ -949,17 +956,18 @@
                         sessionId: state.sessionId,
                         votes: state.userVotes,
                         total: state.totalUserVotes
-                    }).catch(e=>console.error(e));
+                    }).catch(e=>console.warn("Vote privé ignoré (dégradé)"));
                 }
 
-                // Mais on envoie TOUJOURS le vote au compteur public général !
+                // 🔥 ON ENVOIE TOUJOURS LE VOTE AU COMPTEUR PUBLIC GÉNÉRAL
+                // S'il n'y a pas d'auth (Safari), le backend bloquera via la console, mais on ne montre plus l'alerte à l'utilisateur
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                 setDoc(publicRef, {
                     songVotes: {
                         [id]: increment(1)
                     }
                 }, { merge: true }).catch(err => {
-                    console.error("Erreur PublicRef:", err);
+                    console.warn("Vote public ignoré par le serveur :", err.message);
                 });
             }
 
@@ -976,8 +984,8 @@
             const root = document.getElementById('root');
             if (!root) return;
             
-            // Permet de savoir si on est sur la fenêtre détachée de la TV
             const isExternalDisplay = new URLSearchParams(window.location.search).get('public') !== null;
+            const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
             
             let htmlToRender = '';
 
@@ -1207,6 +1215,13 @@
                             
                             <!-- RIGHT: Timer + Quit -->
                             <div class="flex items-center gap-1.5 sm:gap-4 shrink-0">
+                                ${state.view === 'user' ? `
+                                    <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-magical-pink/20 border border-magical-pink/50 shadow-inner mr-1 sm:mr-2">
+                                        <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-[10px] sm:text-sm font-black text-white">${votesLeft} <span class="hidden sm:inline">Votes</span></span>
+                                    </div>
+                                ` : ''}
+                                
                                 ${isTimerActive ? `
                                     <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
                                         <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
@@ -1238,7 +1253,6 @@
                     const searchLower = (state.searchQuery || '').toLowerCase();
 
                     const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
-                    const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
                     const isClosed = state.currentPhase === 3 || state.forceClosed;
 
                     if (isClosed) {
@@ -1279,7 +1293,7 @@
                                         </div>
                                     ` : `
                                         <div class="flex flex-col items-center justify-center py-16 text-center">
-                                            <i class="ph-duotone ph-check-circle text-magical-cyan text-8xl mb-6 drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                            <i class="ph-duotone ${state.currentPhase === 3 ? 'ph-check-circle text-magical-cyan' : 'ph-disc text-magical-pink/50 animate-spin-slow'} text-9xl mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
                                             <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Playlist Terminée</h3>
                                             <p class="text-lg text-white/60 font-light">Le classement est vide car aucun vote n'a été enregistré.</p>
                                         </div>
@@ -1390,13 +1404,13 @@
                     const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
 
                     mainContent = `
-                        <!-- RETOUR DU ANIMATE-FADE-IN POUR L'EFFET DE FLASH VISUEL LORS D'UN VOTE -->
-                        <div class="max-w-5xl mx-auto pb-24 pt-28 px-4 w-full animate-fade-in">
+                        <!-- ANIMATE-FADE-IN EST ICI : Le flash aura lieu à chaque nouveau vote ! -->
+                        <div id="admin-dashboard" class="max-w-5xl mx-auto pb-24 pt-28 px-4 w-full animate-fade-in">
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                                 <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
                                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
-                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? (userId ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_#EF4444] animate-pulse') : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
-                                    <span class="text-xs font-bold ${isCloudActive ? (userId ? 'text-magical-cyan' : 'text-red-500') : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? (userId ? 'Cloud Actif' : 'Erreur Auth (Étape 3)') : 'Mode Local'}</span>
+                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
+                                    <span class="text-xs font-bold ${isCloudActive ? 'text-magical-cyan' : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? 'Cloud Actif' : 'Mode Local'}</span>
                                 </div>
                             </div>
                             
