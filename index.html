@@ -146,6 +146,29 @@
 
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
+        // =========================================================================
+        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES (Protection Chrome)
+        // =========================================================================
+        try {
+            const urlParamsInitial = new URLSearchParams(window.location.search);
+            const newSessionId = urlParamsInitial.get('s');
+            if (newSessionId) {
+                const currentSession = localStorage.getItem('dj_client_session');
+                if (currentSession && currentSession !== newSessionId) {
+                    console.log("Nouvelle session détectée via QR Code. Nettoyage absolu en cours...");
+                    localStorage.removeItem('dj_songs');
+                    localStorage.removeItem('dj_userVotes');
+                    localStorage.removeItem('dj_eventStartTime');
+                    localStorage.removeItem('dj_forceClosed');
+                    localStorage.removeItem('dj_phase1');
+                    localStorage.removeItem('dj_phase2');
+                    localStorage.setItem('dj_client_session', newSessionId);
+                    localStorage.setItem('dj_sessionId', newSessionId);
+                }
+            }
+        } catch(e) { console.error("Erreur Anti-Cache:", e); }
+        // =========================================================================
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -189,7 +212,6 @@
 
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
-        const PASS_ADMIN = "DJ";
 
         // Compression du tableau
         const initialSongs = [
@@ -231,7 +253,6 @@
             phase2Duration: 1 * 60 * 60 * 1000,
             sessionId: 'init',
             forceClosed: false,
-            isCloudSynced: false,
             modal: null
         };
 
@@ -327,10 +348,6 @@
                 db = getFirestore(app);
                 isCloudActive = true;
 
-                // On n'attend plus Firebase pour débloquer l'interface visuellement !
-                // L'utilisateur peut entrer tout de suite.
-                state.isCloudSynced = true; 
-
                 const initAuth = async () => {
                     try {
                         if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -371,22 +388,19 @@
                 });
             } else {
                 console.warn("Mode Hors-ligne (Local) activé. La base de données n'est pas configurée.");
-                state.isCloudSynced = true; 
             }
         } catch(error) {
             console.error("Erreur d'initialisation Firebase:", error);
-            state.isCloudSynced = true; // Déblocage d'urgence
             render();
         }
 
         function setupListeners() {
-            if (unsubscribePublic) return; // Sécurité : Ne pas relancer l'écoute si elle tourne déjà
+            if (!userId) return; // Sécurité vitale
+            if (unsubscribePublic) return; // Ne pas relancer l'écoute si elle tourne déjà
 
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
             
             unsubscribePublic = onSnapshot(publicRef, (docSnap) => {
-                state.isCloudSynced = true; // Verrou débloqué !
-                
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     
@@ -420,7 +434,6 @@
                 }
             }, (error) => {
                 console.error("Erreur lecture Cloud :", error);
-                state.isCloudSynced = true;
                 render();
             });
         }
@@ -430,10 +443,12 @@
         function verifySessionAndLoadVotes() {
             const localClientSession = localStorage.getItem('dj_client_session');
             
-            // Si la session globale a changé, on vide les poches du téléphone
+            // Si la session globale a changé, on vide les poches du téléphone ET la mémoire des chansons
             if (localClientSession !== state.sessionId) {
                 state.userVotes = {};
                 state.totalUserVotes = 0;
+                // Attention : On ne réinitialise pas state.songs ici sinon on écrase la mise à jour Firebase qui vient de se faire !
+                
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
                 localStorage.removeItem('dj_songs'); // 🔥 DÉTRUIT L'ANCIEN CLASSEMENT FANTÔME !
@@ -827,7 +842,7 @@
                         forceClosed: false,
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
-                        songVotes: {}
+                        songVotes: {} // 🔥 CECI EFFACE LES VOTES DU CLOUD POUR TOUT LE MONDE
                     }).catch(e => {
                         console.error(e);
                         if (e.code === 'permission-denied') {
@@ -889,18 +904,10 @@
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
 
-            // ⚠️ SÉCURITÉ FIREBASE : Vérification avant toute chose
+            // ⚠️ SÉCURITÉ FIREBASE : On attend d'avoir le badge
             if (isCloudActive && db && !userId) {
-                try {
-                    // On tente de forcer la reconnexion anonyme si elle avait échoué
-                    const userCredential = await signInAnonymously(auth);
-                    userId = userCredential.user.uid;
-                    await new Promise(r => setTimeout(r, 600)); // Laisse le temps au système de valider l'ID
-                } catch (error) {
-                    console.warn("Auth silencieuse échouée, passage en mode dégradé:", error);
-                    // 🔥 NOUVEAU : On ne bloque plus l'utilisateur avec une erreur. 
-                    // Si l'iPhone bloque l'authentification (auth/internal-error), on continue quand même !
-                }
+                window.showModal('alert', 'Connexion au réseau', 'Votre téléphone se connecte au serveur en toute sécurité. Veuillez patienter 2 secondes et réessayer.');
+                return;
             }
 
             // 1. Mise à jour Locale IMMÉDIATE
@@ -913,18 +920,14 @@
             render();
 
             // 2. Envoi sur le Cloud
-            if (isCloudActive && db) {
-                // On ne sauvegarde le profil privé que si Firebase a réussi à créer l'ID
-                if (userId) {
-                    const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
-                    setDoc(privateRef, {
-                        sessionId: state.sessionId,
-                        votes: state.userVotes,
-                        total: state.totalUserVotes
-                    }).catch(e=>console.error(e));
-                }
+            if (isCloudActive && db && userId) {
+                const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
+                setDoc(privateRef, {
+                    sessionId: state.sessionId,
+                    votes: state.userVotes,
+                    total: state.totalUserVotes
+                }).catch(e=>console.error(e));
 
-                // Mais on envoie TOUJOURS le vote au compteur public général !
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                 setDoc(publicRef, {
                     songVotes: {
@@ -1050,31 +1053,13 @@
                                 <div class="flex items-center gap-6">
                                     <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                     <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
-                                        ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
+                                        LE CLASSEMENT FINAL
                                     </h1>
                                 </div>
                                 <div class="flex items-center gap-6">
-                                    ${state.currentPhase === 2 ? `
-                                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
-                                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
-                                            <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
-                                        </div>
-                                    ` : state.currentPhase === 3 ? `
-                                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
-                                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
-                                        </div>
-                                    ` : ''}
-                                    ${state.currentPhase === 2 ? `
-                                    <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
-                                        <div class="bg-white p-2 rounded-2xl">
-                                            <img src="${getQRCodeUrl()}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
-                                        </div>
-                                        <div class="flex flex-col justify-center">
-                                            <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
-                                            <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
-                                        </div>
+                                    <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                        <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
                                     </div>
-                                    ` : ''}
                                 </div>
                             </div>
                             <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
@@ -1119,9 +1104,6 @@
             // 3. VUES DE CONNEXION
             else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
-                
-                // Pour la sécurité anti-triche : on attend que la synchronisation Cloud soit faire
-                const isReadyToLogin = !isCloudActive || state.isCloudSynced;
                 
                 // Pré-remplir le code invité si on arrive depuis le QR Code
                 const urlParams = new URLSearchParams(window.location.search);
