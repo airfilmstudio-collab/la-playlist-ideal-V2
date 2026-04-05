@@ -188,9 +188,6 @@
         });
         // =========================================================================
 
-        // =========================================================================
-        // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
-        // =========================================================================
         const MY_FIREBASE_CONFIG = {
             apiKey: "AIzaSyCCrcyE5HbYE-fjiVwqnzmVmhg_zCvXb5k",
             authDomain: "laplaylistideale.firebaseapp.com",
@@ -200,7 +197,6 @@
             appId: "1:288987066836:web:12b48f1ae0adbfef8f6641",
             measurementId: "G-S96KYBT8CN"
         };
-        // =========================================================================
 
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
         
@@ -213,7 +209,6 @@
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
 
-        // Compression du tableau
         const initialSongs = [
             [1,"Djadja","Aya Nakamura","Urbain 2020's"],[2,"Bande organisée","13 Organisé","Urbain 2020's"],[3,"Ne reviens pas","Gradur ft. Heuss L'enfoiré","Urbain 2020's"],[4,"La boulette (Génération nan nan)","Diam's","Urbain 2020's"],[5,"Jeune demoiselle","Diam's","Urbain 2020's"],[6,"Dj","Diam's","Urbain 2020's"],[7,"Anissa","Wejdene","Urbain 2020's"],[8,"La kiffance","Naps","Urbain 2020's"],[9,"Petit génie","Jul","Urbain 2020's"],[10,"T’étais où","Jul ft Vegedream, Alonzo, Zaho","Urbain 2020's"],[11,"Best life","Naps feat Gims","Urbain 2020's"],[12,"Mafiosa","Lartiste ft. Caroliina","Urbain 2020's"],[13,"Andalouse","Kendji Girac","Urbain 2020's"],[14,"Color Gitano","Kendji Girac","Urbain 2020's"],[15,"Réseaux","Niska","Urbain 2020's"],[16,"Pookie","Aya Nakamura","Urbain 2020's"],[17,"Zumba Cafew","Soolking ft. Dhurata Dora","Urbain 2020's"],[18,"Comportement","Aya Nakamura","Urbain 2020's"],[19,"Ça va aller","Naza","Urbain 2020's"],[20,"Suavemente","Soolking","Urbain 2020's"],[21,"Otra","Soolking","Urbain 2020's"],[22,"Ça fait des années","Soolking (feat. Cheb Mami)","Urbain 2020's"],[23,"Casanova","Soolking & Gazo","Urbain 2020's"],[24,"1er Gaou","Magic System","Urbain 2020's"],[25,"Bouger bouger","Magic System","Urbain 2020's"],[26,"C'est chô, ça brûle","Magic System","Urbain 2020's"],[27,"Magic in the Air","Magic System","Urbain 2020's"],[28,"Chérie Coco","Magic System","Urbain 2020's"],[29,"Ma chérie","DJ Kayz ft. Wassila","Urbain 2020's"],[30,"Doudou","Aya Nakamura","Urbain 2020's"],[31,"La dot","Aya Nakamura","Urbain 2020's"],[32,"Laisse tomber","Gambi","Urbain 2020's"],[33,"Ak kele nta","MHD","Urbain 2020's"],[34,"Laissez-les kouma","Zaho (feat. MHD)","Urbain 2020's"],[35,"Bobo","Aya Nakamura","Urbain 2020's"],[36,"Heuss L'enfoiré","Sayan Ft Gazo","Urbain 2020's"],[37,"Goutte d'eau","Dadju","Urbain 2020's"],[38,"Dubaï","Soolking","Urbain 2020's"],[39,"Ma belle","PLK","Urbain 2020's"],[40,"T nous va bien","Alonzo Ninho & Naps","Urbain 2020's"],[41,"Jolie nana","Aya Nakamura","Urbain 2020's"],[42,"Minimum Ca","Dr.Yaro","Urbain 2020's"],[43,"Imagine","Carbone","Urbain 2020's"],[44,"Alors on danse","Stromae","Urbain 2020's"],[45,"Tchikita","Jul","Urbain 2020's"],[46,"Wesh Alors","Jul","Urbain 2020's"],[47,"On m'appelle l'Ovni","Jul","Urbain 2020's"],[48,"Ma Jolie","Jul","Urbain 2020's"],[49,"J'fais que danser","Jul","Urbain 2020's"],[50,"Elle me dit","Mika","Urbain 2020's"],[51,"Dernière danse","Indila","Urbain 2020's"],[52,"Cosmo","Soprano","Urbain 2020's"],[53,"Avenir","Louane","Urbain 2020's"],[54,"Reine","Dadju","Urbain 2020's"],[55,"Balance ton Quoi","Angèle","Urbain 2020's"],[56,"Wati By Night","Sexion D’Assaut","Urbain 2020's"],[57,"J’ai cherché","Amir","Urbain 2020's"],[58,"Sur ma route","Black M","Urbain 2020's"],[59,"Un peu de rêve","Vitaa & Claudio Capéo","Urbain 2020's"],[60,"Bella Ciao","Gims, Naestro, Dadju, Slimane","Urbain 2020's"],[61,"Chocolat","Lartiste","Urbain 2020's"],[62,"Dommage","Bigflo & Oli","Urbain 2020's"],[63,"Sapés comme jamais","Gims ft. Niska","Urbain 2020's"],[64,"La Même","Gims & Vianney","Urbain 2020's"],[65,"Bella","Gims","Urbain 2020's"],[66,"J'me tire","Gims","Urbain 2020's"],[67,"Zombie","Gims","Urbain 2020's"],[68,"Laissez passer","Gims","Urbain 2020's"],[69,"Papaoutai","Stromae","Urbain 2020's"],[70,"Formidable","Stromae","Urbain 2020's"],[71,"Tous les mêmes","Stromae","Urbain 2020's"],[72,"Je te promets","Slimane","Urbain 2020's"],[73,"Le coach","Soprano ft. Vincenzo","Urbain 2020's"],[74,"En feu","Soprano","Urbain 2020's"],[75,"Clown","Soprano","Urbain 2020's"],[76,"Le sens de la vie","Tal","Urbain 2020's"],[77,"Le temps qu'il faut","Tal","Urbain 2020's"],[78,"Ma philosophie","Amel Bent","Urbain 2020's"],[79,"Je danse","Jenifer","Urbain 2020's"],[80,"Tourner dans le vide","Indila","Urbain 2020's"],[81,"Love Story","Indila","Urbain 2020's"],[82,"La fête","Amir","Urbain 2020's"],[83,"On dirait","Amir","Urbain 2020's"],[84,"Désolé","Sexion D’Assaut","Urbain 2020's"],[85,"Avant qu'elle parte","Sexion D’Assaut","Urbain 2020's"],[86,"Ma direction","Sexion D’Assaut","Urbain 2020's"],
             [619,"PARISIENNE","GIMS","Urbain 2020's"],[620,"SPA","GIMS","Urbain 2020's"],[621,"CIEL","GIMS","Urbain 2020's"],[622,"NINAO","GIMS","Urbain 2020's"],[623,"SPIDER","GIMS","Urbain 2020's"],[624,"melodrama","disiz theodora","Urbain 2020's"],[625,"Tic","Maureen","Urbain 2020's"],[626,"Laptop","Kalash & Maureen","Urbain 2020's"],[627,"Money Pull Up","Blaiz Fayah & Maureen","Urbain 2020's"],[628,"Mode Avion","DJ Kawest & Attachingboy","Urbain 2020's"],[629,"Chambre 04","DJ Kawest & Attachingboy","Urbain 2020's"],[630,"A la Mode","PLL","Urbain 2020's"],[631,"Pas Jalouse","Bamby & Kerchak","Urbain 2020's"],[632,"Balthazar Mode Vs Gal A Bubble","LeKid & Konshens","Urbain 2020's"],[633,"Shatta Confessions","Meryl","Urbain 2020's"],[634,"Vite Fait","Meryl","Urbain 2020's"],[635,"Coco Chanel","Meryl & Eva","Urbain 2020's"],[636,"Fecat’ji","Fecat’ji","Urbain 2020's"],[637,"La Piraterie","K-Rosif, Bigda & Loeil","Urbain 2020's"],[638,"Whine (Chelero Punchy Remix)","TKS 2G","Urbain 2020's"],
@@ -254,7 +249,6 @@
             sessionId: 'init',
             forceClosed: false,
             isCloudSynced: false,
-            authStatus: 'pending',
             modal: null
         };
 
@@ -265,10 +259,8 @@
         }
 
         window.openExternalDisplay = function(type) {
-            // Utilise l'URL absolue de base (sans les paramètres) pour éviter l'erreur 404 sur GitHub Pages
             const baseUrl = window.location.href.split('?')[0];
             const url = baseUrl + "?public=" + type;
-            // Ouvre une nouvelle fenêtre pop-up dédiée à l'écran étendu
             window.open(url, "UniversalDJ_Display", "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no");
             window.showModal('alert', 'Fenêtre Externe Ouverte', 'Une nouvelle fenêtre vient de s\'ouvrir.<br><br>Faites-la glisser sur votre 2ème écran (TV ou Vidéoprojecteur) puis appuyez sur <strong>F11</strong> pour la mettre en plein écran.');
         }
@@ -285,7 +277,6 @@
             window.closeModal();
         }
 
-        // Fonction pour générer et télécharger le fichier M3U (Top 40)
         window.downloadM3U = function() {
             const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
             if (top40Songs.length === 0) {
@@ -314,7 +305,6 @@
             }, 100);
         };
 
-        // Fonction pour réinitialiser la vue utilisateur et revenir en haut
         window.resetUserView = function() {
             state.searchQuery = '';
             state.selectedTheme = 'Tous';
@@ -326,7 +316,7 @@
 
         // --- INTEGRATION FIREBASE (CLOUD TEMPS RÉEL) ---
         let db, auth, appId, userId = null;
-        let isCloudActive = false; // <-- Indicateur pour le tableau de bord
+        let isCloudActive = false; 
         let unsubscribePublic = null;
         let unsubscribePrivate = null;
 
@@ -349,64 +339,47 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 isCloudActive = true;
-
-                // L'utilisateur peut entrer tout de suite visuellement.
+                
+                // L'utilisateur peut entrer dans l'interface sans attendre
                 state.isCloudSynced = true; 
 
-                // COUPE-CIRCUIT : Si Firebase est bloqué par Chrome/Safari (anti-pistage agressif)
-                setTimeout(() => {
-                    if (state.authStatus === 'pending') {
-                        state.authStatus = 'failed';
-                        console.warn("Auth Firebase ignorée (navigateur restrictif). Mode dégradé activé.");
-                    }
-                }, 2500);
-
-                const initAuth = async () => {
-                    try {
-                        if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (error) {
-                        console.error("Erreur d'authentification Firebase:", error);
-                        state.authStatus = 'failed';
-                    }
-                };
-                
-                // 1. On lance l'auth silencieuse
-                initAuth();
-
                 onAuthStateChanged(auth, (user) => {
-                    state.authStatus = 'ready'; // Firebase a bien répondu !
-                    
                     if (user) {
                         userId = user.uid;
-                        
-                        // 2. ON NE BRANCHE L'ÉCOUTE QU'UNE FOIS LA SÉCURITÉ PASSÉE (Empêche l'erreur Permission Denied)
+                        // On écoute Firebase SEULEMENT quand l'identité est validée
                         setupPublicListener();
                         setupPrivateListener();
-
                     } else {
                         userId = null;
                         if (unsubscribePublic) unsubscribePublic();
                         if (unsubscribePrivate) unsubscribePrivate();
+                        
+                        // Si pas d'utilisateur, on l'authentifie de force (Génère le fameux "Badge")
+                        signInAnonymously(auth).catch((error) => {
+                            console.error("Erreur Firebase Auth:", error);
+                            // 🔥 L'ALERTE DE DIAGNOSTIC POUR TOI
+                            let errorMsg = error.message;
+                            if (error.code === 'auth/unauthorized-domain') {
+                                errorMsg = "<strong>DOMAINE NON AUTORISÉ !</strong><br><br>Dans ta console Firebase, va dans :<br>1. Authentication<br>2. Settings (Paramètres)<br>3. Authorized Domains<br><br>Ajoute : <strong>airfilmstudio-collab.github.io</strong>";
+                            } else if (error.code === 'auth/operation-not-allowed') {
+                                errorMsg = "<strong>AUTHENTIFICATION DÉSACTIVÉE !</strong><br><br>Dans Firebase, va dans Authentication > Sign-in method, et active la méthode 'Anonyme'.";
+                            }
+                            window.showModal('alert', '🚨 Erreur de Configuration Firebase', errorMsg);
+                        });
                     }
                 });
             } else {
                 console.warn("Mode Hors-ligne (Local) activé. La base de données n'est pas configurée.");
                 state.isCloudSynced = true; 
-                state.authStatus = 'ready';
             }
         } catch(error) {
             console.error("Erreur d'initialisation Firebase:", error);
-            state.isCloudSynced = true; // Déblocage d'urgence
-            state.authStatus = 'failed';
+            state.isCloudSynced = true; 
             render();
         }
 
         function setupPublicListener() {
-            if (unsubscribePublic) return; // Sécurité : Ne pas relancer l'écoute si elle tourne déjà
+            if (unsubscribePublic) return; 
 
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
             
@@ -428,9 +401,8 @@
                     });
 
                     checkPhase();
-                    verifySessionAndLoadVotes(); // Vide les caches si nouvelle session
+                    verifySessionAndLoadVotes(); 
                 } else {
-                    // Création de la DB si elle n'existe pas encore (Garantie Anti-crash)
                     setDoc(publicRef, {
                         sessionId: Date.now().toString(),
                         guestCode: state.guestCode || 'FIESTA',
@@ -452,13 +424,12 @@
                         adminEl.classList.add('animate-fade-in');
                     }
                 }
-                render(); // Affichage temps réel garanti
+                render(); 
             }, (error) => {
                 console.error("Erreur lecture Cloud :", error);
             });
         }
 
-        // Écouteur Privé (Pour recharger les crédits sur le téléphone)
         function setupPrivateListener() {
             if (unsubscribePrivate) unsubscribePrivate();
             const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
@@ -479,16 +450,17 @@
         function verifySessionAndLoadVotes() {
             const localClientSession = localStorage.getItem('dj_client_session');
             
-            // Si la session globale a changé, on vide les poches du téléphone ET la mémoire des chansons
+            // Si la session globale a changé, on vide les poches du téléphone ET la RAM
             if (localClientSession !== state.sessionId) {
+                // 🔥 NOUVEAU : Réinitialise AUSSI les chansons en mémoire vive !
+                state.songs = JSON.parse(JSON.stringify(initialSongs));
                 state.userVotes = {};
                 state.totalUserVotes = 0;
                 
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
-                localStorage.removeItem('dj_songs'); // 🔥 DÉTRUIT L'ANCIEN CLASSEMENT FANTÔME !
+                localStorage.removeItem('dj_songs'); // Détruit l'ancien classement local
                 
-                // Nettoyage intelligent de l'URL pour éviter la boucle
                 try {
                     if (window.history && window.history.replaceState) {
                         const currentUrl = new URL(window.location.href);
@@ -499,7 +471,6 @@
                     }
                 } catch(e) {}
             } else {
-                // Sinon on recharge les votes normaux
                 const savedUserVotes = localStorage.getItem('dj_userVotes');
                 if (savedUserVotes) {
                     state.userVotes = JSON.parse(savedUserVotes);
@@ -513,7 +484,6 @@
 
         function loadServerData() {
             try {
-                // Récupération de la session globale (soit de l'URL, soit du stockage)
                 const urlParams = new URLSearchParams(window.location.search);
                 const urlSession = urlParams.get('s');
                 
@@ -525,10 +495,8 @@
                     else state.sessionId = Date.now().toString();
                 }
 
-                // Vérification de la session pour vider ou charger les votes
                 verifySessionAndLoadVotes();
 
-                // Gestion du Mot de passe Invité
                 const urlCode = urlParams.get('code');
                 if (urlCode) {
                     state.guestCode = urlCode.toUpperCase().trim();
@@ -542,7 +510,6 @@
                     }
                 }
 
-                // Gestion du Mot de passe Admin
                 const savedAdminCode = localStorage.getItem('dj_adminCode');
                 if (savedAdminCode && savedAdminCode.trim() !== '') {
                     state.adminCode = savedAdminCode.trim();
@@ -550,7 +517,6 @@
                     state.adminCode = 'DJ';
                 }
 
-                // Chargement des chansons depuis la mémoire RAM uniquement si on vient de rafraichir
                 const savedSongs = localStorage.getItem('dj_songs');
                 if (savedSongs) {
                     const parsedSongs = JSON.parse(savedSongs);
@@ -567,7 +533,6 @@
                     } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
                 } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
 
-                // Chargement Minuteur
                 const savedStartTime = localStorage.getItem('dj_eventStartTime');
                 if (savedStartTime && savedStartTime !== 'null') { state.eventStartTime = parseInt(savedStartTime, 10); } 
                 else { state.eventStartTime = null; }
@@ -580,7 +545,6 @@
                 const savedForceClosed = localStorage.getItem('dj_forceClosed');
                 if (savedForceClosed) state.forceClosed = (savedForceClosed === 'true');
                 
-                // Détection de l'écran externe (HDMI/TV) pour contourner la page d'accueil
                 const publicView = urlParams.get('public');
                 if (publicView) {
                     state.view = publicView;
@@ -634,20 +598,14 @@
             else if (elapsed < p1 + p2) { newPhase = 2; timeLeft = (p1 + p2) - elapsed; } 
             else { newPhase = 3; timeLeft = 0; }
 
-            // Vérification stricte du basculement automatique
             if (state.currentPhase !== newPhase) { 
                 state.currentPhase = newPhase;
-                
-                // Redirection côté Écran Géant / Admin
                 if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode') {
                     state.view = 'monitor';
                 }
-                
-                // Pour l'utilisateur : forcer un scroll en haut pour bien voir le classement final !
                 if (newPhase === 3 && state.view === 'user') {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
-                
                 render(); 
             }
 
@@ -687,7 +645,6 @@
             const input = passEl.value.toUpperCase().trim();
             const correctCode = state.guestCode.toUpperCase().trim();
             
-            // Si le code est correct OU si on est en mode "Hors ligne" on force l'accès
             if (input === correctCode || !isCloudActive) { 
                 state.view = 'user'; 
                 state.loginError = ''; 
@@ -697,11 +654,9 @@
                     saveServerData();
                 }
                 
-                // Nettoyage de l'URL avec protection Try-Catch
                 try {
                     if (window.history && window.history.replaceState) {
                         const currentUrl = new URL(window.location.href);
-                        // On évite les erreurs de sécurité dans les iframes de test
                         if (currentUrl.protocol !== 'blob:') {
                             currentUrl.searchParams.delete('code');
                             currentUrl.searchParams.delete('s');
@@ -741,7 +696,7 @@
                 state.guestCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -755,7 +710,7 @@
                 state.adminCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { adminCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -777,7 +732,7 @@
                 state.forceClosed = false;
                 saveServerData(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
@@ -799,7 +754,7 @@
                 state.forceClosed = false;
                 saveServerData();
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { eventStartTime: null, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -813,7 +768,7 @@
                 state.eventStartTime = null;
                 saveServerData(); 
 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         forceClosed: true,
@@ -821,7 +776,6 @@
                     }, { merge: true }).catch(e=>console.error(e));
                 }
                 
-                // Téléchargement automatique du Top 40 classé
                 window.downloadM3U();
                 
                 state.view = 'monitor';
@@ -837,7 +791,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { sessionId: state.sessionId, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -863,7 +817,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         sessionId: state.sessionId, 
@@ -873,10 +827,8 @@
                         forceClosed: false,
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
-                        songVotes: {} // 🔥 CECI EFFACE LES VOTES DU CLOUD POUR TOUT LE MONDE
-                    }).catch(e => {
-                        console.error(e);
-                    });
+                        songVotes: {} // 🔥 CECI EFFACE LES VOTES DU CLOUD
+                    }).catch(e => console.error(e));
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
             });
@@ -891,15 +843,9 @@
             if (container) state.themeScrollPos = container.scrollLeft;
             state.selectedTheme = theme; 
             render(); 
-            
-            // Remonter en haut de l'écran avec une belle animation fluide
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
-        // --- OPTIMISATION MOBILE : Recherche en temps réel sans recharger l'écran ---
         window.handleSearch = function(event) { 
             state.searchQuery = event.target.value.toLowerCase(); 
             const cards = document.querySelectorAll('.song-item-card');
@@ -922,7 +868,6 @@
         }
 
         window.vote = async function(id) {
-            // VERROU ABSOLU DE CLÔTURE : Est-ce que le DJ a définitivement fermé la session ?
             if (state.forceClosed || state.currentPhase === 3) { 
                 window.showModal('alert', 'Votes clôturés', 'Les votes sont définitivement terminés pour cette session ! Regardez l\'écran géant.'); 
                 return; 
@@ -932,13 +877,13 @@
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
 
-            // ⚠️ SÉCURITÉ FIREBASE : On n'attend plus un userId, on attend juste que le statut soit fixé
-            if (isCloudActive && db && state.authStatus === 'pending') {
-                window.showModal('alert', 'Connexion...', 'Préparation de la connexion. Veuillez réessayer dans un instant.');
+            // Sécurité : On bloque le vote SEULEMENT si l'identité n'est pas encore établie.
+            if (isCloudActive && db && !userId) {
+                window.showModal('alert', 'Patientez...', 'Connexion au serveur sécurisé en cours. Réessayez dans une seconde.');
                 return;
             }
 
-            // 1. Mise à jour Locale IMMÉDIATE (Fluidité totale garantie)
+            // 1. Mise à jour Locale IMMÉDIATE (Fluidité totale)
             state.userVotes[id] = votesForSong + 1; 
             state.totalUserVotes += 1;
             const songIndex = state.songs.findIndex(s => s.id === id);
@@ -947,31 +892,26 @@
             saveServerData();
             render();
 
-            // 2. Envoi forcé sur le Cloud (Mode normal ou dégradé)
-            if (isCloudActive && db) {
-                // On sauvegarde le profil privé SEULEMENT si Firebase a réussi l'auth
-                if (userId) {
-                    const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
-                    setDoc(privateRef, {
-                        sessionId: state.sessionId,
-                        votes: state.userVotes,
-                        total: state.totalUserVotes
-                    }).catch(e=>console.warn("Vote privé ignoré (dégradé)"));
-                }
+            // 2. Envoi sur le Cloud
+            if (isCloudActive && db && userId) {
+                const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
+                setDoc(privateRef, {
+                    sessionId: state.sessionId,
+                    votes: state.userVotes,
+                    total: state.totalUserVotes
+                }).catch(e=>console.error(e));
 
-                // 🔥 ON ENVOIE TOUJOURS LE VOTE AU COMPTEUR PUBLIC GÉNÉRAL
-                // S'il n'y a pas d'auth (Safari), le backend bloquera via la console, mais on ne montre plus l'alerte à l'utilisateur
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                 setDoc(publicRef, {
                     songVotes: {
                         [id]: increment(1)
                     }
                 }, { merge: true }).catch(err => {
-                    console.warn("Vote public ignoré par le serveur :", err.message);
+                    console.error("Erreur PublicRef:", err);
                 });
             }
 
-            // 3. Vérification de la limite finale
+            // 3. Vérification limite finale
             if (state.totalUserVotes >= MAX_TOTAL_VOTES) {
                 window.showModal('goodbye', 'Merci pour votre participation !', 'Vos 30 votes ont été enregistrés avec succès.<br><br>L\'application va se fermer pour laisser place à la musique !');
                 setTimeout(() => {
@@ -1138,7 +1078,6 @@
             else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
                 
-                // Pré-remplir le code invité si on arrive depuis le QR Code
                 const urlParams = new URLSearchParams(window.location.search);
                 const codeFromUrl = urlParams.get('code');
                 let autoFillCode = "";
@@ -1207,21 +1146,19 @@
                                     <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
                                         <i class="ph-fill ph-linkedin-logo text-[11px] sm:text-lg md:text-xl"></i>
                                     </a>
-                                    <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
-                                        <i class="ph-fill ph-map-pin text-[11px] sm:text-lg md:text-xl"></i>
-                                    </a>
+                                    
+                                    <!-- 🔥 LE COMPTEUR DE VOTES (TOUJOURS VISIBLE SUR MOBILE) -->
+                                    ${state.view === 'user' ? `
+                                    <div class="ml-1 sm:ml-4 flex items-center gap-1 sm:gap-2 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-magical-pink/20 border border-magical-pink/50 shadow-inner">
+                                        <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-[10px] sm:text-sm font-black text-white whitespace-nowrap">${votesLeft} / ${MAX_TOTAL_VOTES}</span>
+                                    </div>
+                                    ` : ''}
                                 </div>
                             </div>
                             
                             <!-- RIGHT: Timer + Quit -->
                             <div class="flex items-center gap-1.5 sm:gap-4 shrink-0">
-                                ${state.view === 'user' ? `
-                                    <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-magical-pink/20 border border-magical-pink/50 shadow-inner mr-1 sm:mr-2">
-                                        <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
-                                        <span class="text-[10px] sm:text-sm font-black text-white">${votesLeft} <span class="hidden sm:inline">Votes</span></span>
-                                    </div>
-                                ` : ''}
-                                
                                 ${isTimerActive ? `
                                     <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
                                         <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
@@ -1245,8 +1182,6 @@
                 let mainContent = '';
 
                 if (state.view === 'user') {
-                    // Pour éviter de perdre le focus de la barre de recherche et optimiser la vitesse, 
-                    // on applique uniquement le filtre des thèmes au rendu initial.
                     const filteredSongs = state.songs.filter(song => {
                         return state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
                     });
@@ -1312,10 +1247,6 @@
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center gap-2 sm:gap-4">
                                                 <h2 class="text-sm sm:text-xl font-bold text-white/90 uppercase tracking-widest text-glow-white">À vous de jouer</h2>
-                                                <div class="px-2 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-white/10 border border-white/20 flex items-center gap-1.5 sm:gap-2 shadow-inner">
-                                                    <i class="ph-fill ph-ticket ${votesLeft === 0 ? 'text-magical-pink' : 'text-magical-cyan'} text-[10px] sm:text-base"></i>
-                                                    <span class="text-xs sm:text-sm font-black ${votesLeft === 0 ? 'text-magical-pink text-glow-pink' : 'text-white'}">${votesLeft} <span class="hidden sm:inline">Crédits</span><span class="sm:hidden">/ ${MAX_TOTAL_VOTES}</span></span>
-                                                </div>
                                             </div>
                                             
                                             ${isTimerActive ? `
@@ -1409,8 +1340,8 @@
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                                 <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
                                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
-                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
-                                    <span class="text-xs font-bold ${isCloudActive ? 'text-magical-cyan' : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? 'Cloud Actif' : 'Mode Local'}</span>
+                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? (userId ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_#EF4444] animate-pulse') : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
+                                    <span class="text-xs font-bold ${isCloudActive ? (userId ? 'text-magical-cyan' : 'text-red-500') : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? (userId ? 'Cloud Actif' : 'Vérifiez Firebase') : 'Mode Local'}</span>
                                 </div>
                             </div>
                             
