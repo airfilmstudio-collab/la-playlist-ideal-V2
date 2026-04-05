@@ -147,15 +147,15 @@
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
         // =========================================================================
-        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES (Protection Chrome)
+        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES
         // =========================================================================
         try {
             const urlParamsInitial = new URLSearchParams(window.location.search);
             const newSessionId = urlParamsInitial.get('s');
             if (newSessionId) {
                 const currentSession = localStorage.getItem('dj_client_session');
-                if (currentSession && currentSession !== newSessionId) {
-                    console.log("Nouvelle session détectée via QR Code. Nettoyage absolu en cours...");
+                if (currentSession !== newSessionId) {
+                    console.log("Nouvelle session détectée via QR Code. Nettoyage absolu...");
                     localStorage.removeItem('dj_songs');
                     localStorage.removeItem('dj_userVotes');
                     localStorage.removeItem('dj_eventStartTime');
@@ -166,7 +166,7 @@
                     localStorage.setItem('dj_sessionId', newSessionId);
                 }
             }
-        } catch(e) { console.error("Erreur Anti-Cache:", e); }
+        } catch(e) { console.warn("Erreur Anti-Cache:", e); }
         // =========================================================================
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -249,8 +249,11 @@
             sessionId: 'init',
             forceClosed: false,
             isCloudSynced: false,
+            authStatus: 'pending',
             modal: null
         };
+
+        let cloudErrorMsg = null;
 
         // --- EXPOSITION DES FONCTIONS GLOBALES (Pour les onclick HTML) ---
         window.showModal = function(type, title, message, onConfirmCallback = null) {
@@ -340,45 +343,53 @@
                 db = getFirestore(app);
                 isCloudActive = true;
                 
-                // L'utilisateur peut entrer dans l'interface sans attendre
                 state.isCloudSynced = true; 
 
+                const initAuth = async () => {
+                    try {
+                        if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.warn("Auth Firebase bloquée (Mode dégradé toléré).", error);
+                        cloudErrorMsg = error.code;
+                        state.authStatus = 'failed';
+                        render();
+                    }
+                };
+                
+                initAuth();
+
                 onAuthStateChanged(auth, (user) => {
+                    state.authStatus = 'ready'; 
                     if (user) {
                         userId = user.uid;
-                        // On écoute Firebase SEULEMENT quand l'identité est validée
+                        // On lance les écouteurs UNIQUEMENT quand Firebase a donné le badge (UID)
+                        // Cela empêche l'erreur "Missing or insufficient permissions"
                         setupPublicListener();
                         setupPrivateListener();
                     } else {
                         userId = null;
-                        if (unsubscribePublic) unsubscribePublic();
-                        if (unsubscribePrivate) unsubscribePrivate();
-                        
-                        // Si pas d'utilisateur, on l'authentifie de force (Génère le fameux "Badge")
-                        signInAnonymously(auth).catch((error) => {
-                            console.error("Erreur Firebase Auth:", error);
-                            // 🔥 L'ALERTE DE DIAGNOSTIC POUR TOI
-                            let errorMsg = error.message;
-                            if (error.code === 'auth/unauthorized-domain') {
-                                errorMsg = "<strong>DOMAINE NON AUTORISÉ !</strong><br><br>Dans ta console Firebase, va dans :<br>1. Authentication<br>2. Settings (Paramètres)<br>3. Authorized Domains<br><br>Ajoute : <strong>airfilmstudio-collab.github.io</strong>";
-                            } else if (error.code === 'auth/operation-not-allowed') {
-                                errorMsg = "<strong>AUTHENTIFICATION DÉSACTIVÉE !</strong><br><br>Dans Firebase, va dans Authentication > Sign-in method, et active la méthode 'Anonyme'.";
-                            }
-                            window.showModal('alert', '🚨 Erreur de Configuration Firebase', errorMsg);
-                        });
+                        if (unsubscribePublic) { unsubscribePublic(); unsubscribePublic = null; }
+                        if (unsubscribePrivate) { unsubscribePrivate(); unsubscribePrivate = null; }
                     }
                 });
             } else {
                 console.warn("Mode Hors-ligne (Local) activé. La base de données n'est pas configurée.");
                 state.isCloudSynced = true; 
+                state.authStatus = 'ready';
             }
         } catch(error) {
             console.error("Erreur d'initialisation Firebase:", error);
             state.isCloudSynced = true; 
+            state.authStatus = 'failed';
             render();
         }
 
         function setupPublicListener() {
+            if (!userId) return; // Ne pas exécuter si on n'a pas le badge
             if (unsubscribePublic) return; 
 
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
@@ -412,7 +423,7 @@
                         phase2Duration: 1 * 60 * 60 * 1000,
                         forceClosed: false,
                         songVotes: {}
-                    }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
+                    }, { merge: true }).catch(e=>console.warn("SetDoc error (création init):", e));
                 }
 
                 // Force le flash visuel sur l'écran Admin lors d'une mise à jour Cloud
@@ -426,12 +437,14 @@
                 }
                 render(); 
             }, (error) => {
-                console.error("Erreur lecture Cloud :", error);
+                console.warn("Écoute du Cloud refusée ou interrompue :", error.message);
             });
         }
 
         function setupPrivateListener() {
+            if (!userId) return;
             if (unsubscribePrivate) unsubscribePrivate();
+            
             const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
             unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -442,7 +455,7 @@
                     }
                 }
                 render();
-            }, (error) => console.error("Erreur lecture locale :", error));
+            }, (error) => console.warn("Erreur lecture privée :", error.message));
         }
         // --- FIN INTEGRATION FIREBASE ---
 
@@ -451,7 +464,7 @@
             const localClientSession = localStorage.getItem('dj_client_session');
             
             // Si la session globale a changé, on vide les poches du téléphone ET la RAM
-            if (localClientSession !== state.sessionId) {
+            if (!localClientSession || localClientSession !== state.sessionId) {
                 // 🔥 NOUVEAU : Réinitialise AUSSI les chansons en mémoire vive !
                 state.songs = JSON.parse(JSON.stringify(initialSongs));
                 state.userVotes = {};
@@ -739,7 +752,7 @@
                         phase2Duration: state.phase2Duration,
                         eventStartTime: state.eventStartTime,
                         forceClosed: false
-                    }, { merge: true }).catch(e=>console.error(e));
+                    }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
                 state.view = 'monitor'; 
                 checkPhase();
@@ -756,7 +769,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { eventStartTime: null, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
+                    setDoc(publicRef, { eventStartTime: null, forceClosed: false }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
                 render();
             });
@@ -773,7 +786,7 @@
                     setDoc(publicRef, {
                         forceClosed: true,
                         eventStartTime: null
-                    }, { merge: true }).catch(e=>console.error(e));
+                    }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
                 
                 window.downloadM3U();
@@ -793,7 +806,7 @@
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { sessionId: state.sessionId, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
+                    setDoc(publicRef, { sessionId: state.sessionId, forceClosed: false }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
                 window.showModal('alert', 'Succès', '✅ C\'est prêt ! Affichez le QR Code sur l\'écran géant, les invités n\'ont plus qu\'à le scanner pour revoter.');
             });
@@ -828,7 +841,7 @@
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
                         songVotes: {} // 🔥 CECI EFFACE LES VOTES DU CLOUD
-                    }).catch(e => console.error(e));
+                    }).catch(e => console.warn(e));
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
             });
@@ -899,15 +912,16 @@
                     sessionId: state.sessionId,
                     votes: state.userVotes,
                     total: state.totalUserVotes
-                }).catch(e=>console.error(e));
+                }).catch(e=>console.warn("Vote privé ignoré"));
 
+                // 🔥 ON ENVOIE TOUJOURS LE VOTE AU COMPTEUR PUBLIC GÉNÉRAL
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                 setDoc(publicRef, {
                     songVotes: {
                         [id]: increment(1)
                     }
                 }, { merge: true }).catch(err => {
-                    console.error("Erreur PublicRef:", err);
+                    console.warn("Vote public ignoré par le serveur :", err.message);
                 });
             }
 
@@ -1026,13 +1040,31 @@
                                 <div class="flex items-center gap-6">
                                     <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                     <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
-                                        LE CLASSEMENT FINAL
+                                        ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
                                     </h1>
                                 </div>
                                 <div class="flex items-center gap-6">
-                                    <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
-                                        <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
+                                    ${state.currentPhase === 2 ? `
+                                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
+                                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
+                                            <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
+                                        </div>
+                                    ` : state.currentPhase === 3 ? `
+                                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
+                                        </div>
+                                    ` : ''}
+                                    ${state.currentPhase === 2 ? `
+                                    <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
+                                        <div class="bg-white p-2 rounded-2xl">
+                                            <img src="${getQRCodeUrl()}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
+                                        </div>
+                                        <div class="flex flex-col justify-center">
+                                            <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
+                                            <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
+                                        </div>
                                     </div>
+                                    ` : ''}
                                 </div>
                             </div>
                             <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
@@ -1147,12 +1179,19 @@
                                         <i class="ph-fill ph-linkedin-logo text-[11px] sm:text-lg md:text-xl"></i>
                                     </a>
                                     
-                                    <!-- 🔥 LE COMPTEUR DE VOTES (TOUJOURS VISIBLE SUR MOBILE) -->
+                                    <!-- 🔥 COMPTEUR DE VOTES EN HAUT & ALERTE FIREBASE -->
                                     ${state.view === 'user' ? `
                                     <div class="ml-1 sm:ml-4 flex items-center gap-1 sm:gap-2 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-magical-pink/20 border border-magical-pink/50 shadow-inner">
                                         <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
                                         <span class="text-[10px] sm:text-sm font-black text-white whitespace-nowrap">${votesLeft} / ${MAX_TOTAL_VOTES}</span>
                                     </div>
+                                    ` : ''}
+
+                                    ${state.authStatus === 'failed' ? `
+                                        <button onclick="window.showModal('alert', '🚨 Connexion bloquée par Firebase', 'Google Firebase refuse la connexion de ce téléphone.<br><br><b>Code erreur :</b> <i>${cloudErrorMsg || 'Non autorisé'}</i><br><br><b>Solution pour le DJ :</b> Allez sur votre console Firebase > Authentication > Paramètres > Domaines autorisés, et ajoutez-y <b>airfilmstudio-collab.github.io</b>')" class="ml-1 sm:ml-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50 shadow-inner animate-pulse cursor-pointer">
+                                            <i class="ph-bold ph-warning text-red-500 text-[10px] sm:text-base"></i>
+                                            <span class="text-[10px] sm:text-xs font-bold text-red-500 hidden sm:inline">Erreur Firebase</span>
+                                        </button>
                                     ` : ''}
                                 </div>
                             </div>
@@ -1340,17 +1379,10 @@
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                                 <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
                                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
-                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? (userId ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_#EF4444] animate-pulse') : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
-                                    <span class="text-xs font-bold ${isCloudActive ? (userId ? 'text-magical-cyan' : 'text-red-500') : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? (userId ? 'Cloud Actif' : 'Vérifiez Firebase') : 'Mode Local'}</span>
+                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
+                                    <span class="text-xs font-bold ${isCloudActive ? 'text-magical-cyan' : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? 'Cloud Actif' : 'Mode Local'}</span>
                                 </div>
                             </div>
-                            
-                            <!-- FIREBASE CONFIG INSTRUCTION POUR LE MODE LOCAL -->
-                            ${!isCloudActive ? `
-                            <div class="neo-glass border border-orange-500/30 rounded-2xl p-4 mb-8">
-                                <p class="text-orange-200 text-sm font-medium">⚠️ <strong>Attention :</strong> Vous êtes en Mode Local. Les votes des téléphones ne remonteront pas sur cet écran. Pour activer le Temps Réel sur votre site Github, ajoutez les clés de votre projet Firebase dans le code.</p>
-                            </div>
-                            ` : ''}
 
                             <div class="neo-glass border-t-magical-pink/50 rounded-[2.5rem] p-8 md:p-10 mb-8 relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                                 <h3 class="text-3xl font-black text-white mb-2 flex items-center gap-4 tracking-tight relative z-10 text-glow-white">
