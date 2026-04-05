@@ -253,6 +253,8 @@
             phase2Duration: 1 * 60 * 60 * 1000,
             sessionId: 'init',
             forceClosed: false,
+            isCloudSynced: false,
+            authStatus: 'pending', // 'pending', 'ready', ou 'failed'
             modal: null
         };
 
@@ -348,6 +350,17 @@
                 db = getFirestore(app);
                 isCloudActive = true;
 
+                // L'utilisateur peut entrer tout de suite visuellement.
+                state.isCloudSynced = true; 
+
+                // COUPE-CIRCUIT : Si Firebase est bloqué par Chrome/Safari (anti-pistage agressif)
+                setTimeout(() => {
+                    if (state.authStatus === 'pending') {
+                        state.authStatus = 'failed';
+                        console.warn("Auth Firebase ignorée (navigateur restrictif). Mode dégradé activé.");
+                    }
+                }, 2500);
+
                 const initAuth = async () => {
                     try {
                         if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -357,15 +370,20 @@
                         }
                     } catch (error) {
                         console.error("Erreur d'authentification Firebase:", error);
+                        state.authStatus = 'failed';
                     }
                 };
+                
+                // 1. On lance l'auth silencieuse
                 initAuth();
 
                 onAuthStateChanged(auth, (user) => {
+                    state.authStatus = 'ready'; // Firebase a bien répondu !
+                    
                     if (user) {
                         userId = user.uid;
                         
-                        // ON NE BRANCHE L'ÉCOUTE QU'UNE FOIS LA SÉCURITÉ PASSÉE
+                        // 2. ON NE BRANCHE L'ÉCOUTE QU'UNE FOIS LA SÉCURITÉ PASSÉE
                         setupListeners();
 
                         if (unsubscribePrivate) unsubscribePrivate();
@@ -388,15 +406,18 @@
                 });
             } else {
                 console.warn("Mode Hors-ligne (Local) activé. La base de données n'est pas configurée.");
+                state.isCloudSynced = true; 
+                state.authStatus = 'ready';
             }
         } catch(error) {
             console.error("Erreur d'initialisation Firebase:", error);
+            state.isCloudSynced = true; // Déblocage d'urgence
+            state.authStatus = 'failed';
             render();
         }
 
         function setupListeners() {
-            if (!userId) return; // Sécurité vitale
-            if (unsubscribePublic) return; // Ne pas relancer l'écoute si elle tourne déjà
+            if (unsubscribePublic) return; // Sécurité : Ne pas relancer l'écoute si elle tourne déjà
 
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
             
@@ -904,9 +925,9 @@
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
 
-            // ⚠️ SÉCURITÉ FIREBASE : On attend d'avoir le badge
-            if (isCloudActive && db && !userId) {
-                window.showModal('alert', 'Connexion au réseau', 'Votre téléphone se connecte au serveur en toute sécurité. Veuillez patienter 2 secondes et réessayer.');
+            // ⚠️ SÉCURITÉ FIREBASE : On n'attend plus un userId, on attend juste que le statut soit fixé (max 2.5s)
+            if (isCloudActive && db && state.authStatus === 'pending') {
+                window.showModal('alert', 'Synchronisation...', 'Préparation de votre session sécurisée. Veuillez réessayer dans une seconde.');
                 return;
             }
 
@@ -919,15 +940,19 @@
             saveServerData();
             render();
 
-            // 2. Envoi sur le Cloud
-            if (isCloudActive && db && userId) {
-                const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
-                setDoc(privateRef, {
-                    sessionId: state.sessionId,
-                    votes: state.userVotes,
-                    total: state.totalUserVotes
-                }).catch(e=>console.error(e));
+            // 2. Envoi sur le Cloud (Mode normal ou dégradé)
+            if (isCloudActive && db) {
+                // On sauvegarde le profil privé SEULEMENT si Firebase a réussi l'auth
+                if (userId) {
+                    const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
+                    setDoc(privateRef, {
+                        sessionId: state.sessionId,
+                        votes: state.userVotes,
+                        total: state.totalUserVotes
+                    }).catch(e=>console.error(e));
+                }
 
+                // Mais on envoie TOUJOURS le vote au compteur public général !
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                 setDoc(publicRef, {
                     songVotes: {
