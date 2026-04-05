@@ -27,7 +27,7 @@
         }
     </script>
 
-    <!-- Phosphor Icons pour les icônes (en defer pour ne pas bloquer le chargement) -->
+    <!-- Phosphor Icons pour les icônes -->
     <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     
     <style>
@@ -35,17 +35,15 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Fallbacks de sécurité pour éviter la page blanche au chargement */
         html, body { background-color: #050212; color: #ffffff; }
 
-        /* Animations fluides d'apparition (réservées aux changements de vues complets) */
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn {
             from { opacity: 0; filter: blur(5px); }
             to { opacity: 1; filter: blur(0); }
         }
         
-        /* Lumières Vivantes (Aurora / Holographic Background) */
+        /* Lumières Vivantes (Aurora Background) */
         .orb {
             position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.6;
             animation: orbFloat 25s infinite cubic-bezier(0.4, 0, 0.2, 1) alternate;
@@ -63,7 +61,6 @@
             100% { transform: translate(0, 0) scale(1) rotate(0deg); }
         }
         
-        /* HOLOGRAPHIC GLASSMORPHISM (Verre Premium) */
         .neo-glass {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
             backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
@@ -71,7 +68,6 @@
             box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.05);
         }
 
-        /* OPACIFICATION AU SCROLL (Pour le menu et les thèmes) */
         .glass-scrolled-panel {
             background: linear-gradient(135deg, rgba(5, 2, 18, 0.95) 0%, rgba(0, 0, 0, 0.98) 100%) !important;
             border-top: 1px solid rgba(0, 240, 255, 0.4) !important;
@@ -85,7 +81,6 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.9) !important;
         }
         
-        /* Cartes Interactives (Chansons) */
         .neo-card {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
             backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -98,7 +93,6 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 240, 255, 0.15), 0 0 30px rgba(255, 0, 122, 0.15);
         }
 
-        /* Boutons "Candy / Liquid" */
         .btn-liquid {
             background: linear-gradient(135deg, #FF007A 0%, #7000FF 100%); color: white;
             border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 4px 15px rgba(255, 0, 122, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.4);
@@ -115,19 +109,16 @@
         }
         .btn-liquid:active { transform: translateY(2px) scale(0.95); }
 
-        /* Textes lumineux / Typographie */
         .text-glow-white { text-shadow: 0 0 20px rgba(255, 255, 255, 0.6); }
         .text-glow-pink { text-shadow: 0 0 20px rgba(255, 0, 122, 0.8); }
         .text-glow-cyan { text-shadow: 0 0 20px rgba(0, 240, 255, 0.8); }
 
-        /* Animation de respiration pour les minuteurs / alertes */
         .pulse-magical { animation: pulseMagical 3s ease-in-out infinite alternate; }
         @keyframes pulseMagical {
             0% { box-shadow: 0 0 20px rgba(255,0,122,0.2); border-color: rgba(255,0,122,0.3); }
             100% { box-shadow: 0 0 40px rgba(0,240,255,0.4); border-color: rgba(0,240,255,0.6); }
         }
 
-        /* Safe area padding pour smartphones */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
             .pb-safe { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
         }
@@ -135,36 +126,34 @@
 </head>
 <body class="text-slate-100 font-sans selection:bg-magical-pink/50 min-h-screen relative overflow-x-hidden">
 
-    <!-- LUMIERES HOLOGRAPHIQUES (GPU-Safe) -->
     <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#050212]">
         <div class="orb orb-pink"></div><div class="orb orb-cyan"></div>
         <div class="orb orb-purple"></div><div class="orb orb-gold"></div>
     </div>
 
-    <!-- CONTENEUR PRINCIPAL -->
     <div id="root" class="relative z-10 min-h-screen flex flex-col"></div>
 
-    <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
-        // =========================================================================
-        // 🚨 VERSION FINALE : RÉPARATION DU DIALOGUE DES SOURDS
-        // =========================================================================
-        const APP_VERSION = "FINAL_V1";
-        try {
-            if (localStorage.getItem('dj_app_version') !== APP_VERSION) {
-                console.log("Mise à jour Finale : Purge de la mémoire ancienne...");
-                localStorage.clear();
-                localStorage.setItem('dj_app_version', APP_VERSION);
-            }
-        } catch(e) { console.error(e); }
-        // =========================================================================
-
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =========================================================================
-        // 🔴🔴🔴 CONFIGURATION FIREBASE (VOS CLÉS RÉELLES) 🔴🔴🔴
+        // 🔄 ANTI-FANTÔMES VERSION FINALE
+        // =========================================================================
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                const sleepTime = localStorage.getItem('dj_sleep_time');
+                if (sleepTime && (Date.now() - parseInt(sleepTime)) > 2 * 60 * 1000) {
+                    window.location.reload(); 
+                }
+            } else {
+                localStorage.setItem('dj_sleep_time', Date.now().toString());
+            }
+        });
+
+        // =========================================================================
+        // 🔴🔴🔴 CONFIGURATION FIREBASE (RESTAURÉE) 🔴🔴🔴
         // =========================================================================
         const MY_FIREBASE_CONFIG = {
             apiKey: "AIzaSyCCrcyE5HbYE-fjiVwqnzmVmhg_zCvXb5k",
@@ -172,10 +161,10 @@
             projectId: "laplaylistideale",
             storageBucket: "laplaylistideale.firebasestorage.app",
             messagingSenderId: "288987066836",
-            appId: "1:288987066836:web:12b48f1ae0adbfef8f6641"
+            appId: "1:288987066836:web:12b48f1ae0adbfef8f6641",
+            measurementId: "G-S96KYBT8CN"
         };
-        const FIXED_APP_ID = "laplaylistideale"; // On force cet ID partout pour que tout le monde se parle
-        // =========================================================================
+        const FIXED_APP_ID = "laplaylistideale"; 
 
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
         
@@ -196,9 +185,9 @@
             [215,"Freed from desire","GALA","Hits 90s"],[216,"The Rhythm of the Night","Corona","Hits 90s"],[217,"Rhythm Is a Dancer","Snap!","Hits 90s"],[218,"The Power","Snap!","Hits 90s"],[219,"Vogue","Madonna","Hits 90s"],[220,"What Is Love","Haddaway","Hits 90s"],[221,"No Limit","2 Unlimited","Hits 90s"],[222,"Be My Lover","La Bouche","Hits 90s"],[223,"Show Me Love","Robin S","Hits 90s"],[224,"Around the World","Daft Punk","Hits 90s"],[225,"Firestarter","The Prodigy","Hits 90s"],[226,"Insomnia","Faithless","Hits 90s"],[227,"Boom, Boom, Boom, Boom!!","Vengaboys","Hits 90s"],[228,"Blue (Da Ba Dee)","Eiffel 65","Hits 90s"],[229,"Believe","Cher","Hits 90s"],[230,"Wannabe","Spice Girls","Hits 90s"],[231,"Baby One More Time","Britney Spears","Hits 90s"],[232,"The Sign","Ace of Base","Hits 90s"],[233,"Another Night","Real McCoy","Hits 90s"],[234,"Mr. Vain","Culture Beat","Hits 90s"],[235,"It's My Life","Dr. Alban","Hits 90s"],[236,"Pump Up the Jam","Technotronic","Hits 90s"],[237,"Music Sounds Better with You","Stardust","Hits 90s"],[238,"Saturday Night","Whigfield","Hits 90s"],[239,"Finally","CeCe Peniston","Hits 90s"],[240,"Scatman","Scatman John","Hits 90s"],[241,"Barbie Girl","Aqua","Hits 90s"],[242,"Cotton Eye Joe","Rednex","Hits 90s"],[243,"Ooh Aah... Just a Little Bit","Gina G","Hits 90s"],[244,"Ride on Time","Black Box","Hits 90s"],[245,"Push It","Salt-N-Pepa","Hits 90s"],[246,"No Scrubs","TLC","Hits 90s"],[247,"Bills, Bills, Bills","Destiny's Child","Hits 90s"],[248,"Together Again","Janet Jackson","Hits 90s"],[249,"Freedom! '90","George Michael","Hits 90s"],[250,"Black or White","Michael Jackson","Hits 90s"],[251,"Praise You","Fatboy Slim","Hits 90s"],[252,"Sing It Back","Moloko","Hits 90s"],[253,"Groove Is in the Heart","Deee-Lite","Hits 90s"],[254,"Children","Robert Miles","Hits 90s"],[255,"Dreamer","Livin' Joy","Hits 90s"],[256,"Feel the Heat of the Night","Masterboy","Hits 90s"],[257,"Captain Jack","Captain Jack","Hits 90s"],[258,"Think About the Way","Ice MC","Hits 90s"],[259,"Ecuador","Sash!","Hits 90s"],[260,"Better Off Alone","Alice Deejay","Hits 90s"],[261,"9 PM (Till I Come)","ATB","Hits 90s"],[262,"L'Amour Toujours","Gigi D'Agostino","Hits 90s"],[263,"Hey Boy Hey Girl","The Chemical Brothers","Hits 90s"],[264,"Born Slippy","Underworld","Hits 90s"],[265,"Lovefool","The Cardigans","Hits 90s"],[266,"Torn","Natalie Imbruglia","Hits 90s"],[267,"Don't Speak","No Doubt","Hits 90s"],[268,"Bitter Sweet Symphony","The Verve","Hits 90s"],[269,"Wonderwall","Oasis","Hits 90s"],[270,"Song 2","Blur","Hits 90s"],
             [271,"I'm Outta Love","Anastacia","Hits 2000s"],[272,"When Love Takes Over","David Guetta","Hits 2000s"],[273,"Hips Don't Lie","Shakira","Hits 2000s"],[274,"Umbrella","Rihanna","Hits 2000s"],[275,"Just Dance","Lady Gaga","Hits 2000s"],[276,"I Gotta Feeling","Black Eyed Peas","Hits 2000s"],[277,"Single Ladies","Beyoncé","Hits 2000s"],[278,"Crazy in Love","Beyoncé","Hits 2000s"],[279,"We Found Love","Rihanna","Hits 2000s"],[280,"Can't Get You Out of My Head","Kylie Minogue","Hits 2000s"],[281,"One More Time","Daft Punk","Hits 2000s"],[282,"Call on Me","Eric Prydz","Hits 2000s"],[283,"Love Generation","Bob Sinclar","Hits 2000s"],[284,"Everytime We Touch","Cascada","Hits 2000s"],[285,"From Paris to Berlin","Infernal","Hits 2000s"],[286,"Put Your Hands Up for Detroit","Fedde Le Grand","Hits 2000s"],[287,"Sun Is Shining","Axwell /\\ Ingrosso","Hits 2000s"],[288,"Don't You Worry Child","Swedish House Mafia","Hits 2000s"],[289,"Summer","Calvin Harris","Hits 2000s"],[290,"Levels","Avicii","Hits 2000s"],[291,"Party Rock Anthem","LMFAO","Hits 2000s"],[292,"Give Me Everything","Pitbull","Hits 2000s"],[293,"Get Busy","Sean Paul","Hits 2000s"],[294,"It Wasnt Me","Shaggy","Hits 2000s"],[295,"Harder, Better, Faster, Stronger","Daft Punk","Hits 2000s"],[296,"Toxic","Britney Spears","Hits 2000s"],[297,"Hung Up","Madonna","Hits 2000s"],[298,"Hey Ya!","OutKast","Hits 2000s"],[299,"Beggin","Madcon","Hits 2000s"],[300,"In da Club","50 Cent","Hits 2000s"],[301,"Yeah!","Usher","Hits 2000s"],[302,"Dilemma","Nelly","Hits 2000s"],[303,"Rock Your Body","Justin Timberlake","Hits 2000s"],[304,"I'm Real","Jennifer Lopez","Hits 2000s"],[305,"Without Me","Eminem","Hits 2000s"],[306,"Pon de Replay","Rihanna","Hits 2000s"],[307,"Viva La Vida","Coldplay","Hits 2000s"],[308,"This Love","Maroon 5","Hits 2000s"],[309,"Low","Flo Rida","Hits 2000s"],[310,"Dynamite","Taio Cruz","Hits 2000s"],[311,"In My Head","Jason Derulo","Hits 2000s"],[312,"I Like It","Enrique Iglesias","Hits 2000s"],[313,"Wild Ones","Flo Rida ft. Sia","Hits 2000s"],[314,"Tik Tok","Kesha","Hits 2000s"],[315,"SexyBack","Justin Timberlake","Hits 2000s"],[316,"Jenny from the Block","Jennifer Lopez","Hits 2000s"],[317,"Family Affair","Mary J. Blige","Hits 2000s"],
             [318,"Titanium","David Guetta","Hits 2010s"],[319,"Poker Face","Lady Gaga","Hits 2010s"],[320,"Only Girl","Rihanna","Hits 2010s"],[321,"Shape of You","Ed Sheeran","Hits 2010s"],[322,"Uptown Funk","Mark Ronson","Hits 2010s"],[323,"Happy","Pharrell Williams","Hits 2010s"],[324,"Lean On","Major Lazer","Hits 2010s"],[325,"Firestone","Kygo","Hits 2010s"],[326,"Clarity","Zedd","Hits 2010s"],[327,"Animals","Martin Garrix","Hits 2010s"],[328,"Ocean Drive","Duke Dumont","Hits 2010s"],[329,"Rather Be","Clean Bandit","Hits 2010s"],[330,"Latch","Disclosure","Hits 2010s"],[331,"Wake Me Up","Avicii","Hits 2010s"],[332,"This Is What You Came For","Calvin Harris","Hits 2010s"],[333,"Get Lucky","Daft Punk","Hits 2010s"],[334,"Prayer in C","Robin Schulz","Hits 2010s"],[335,"Closer","The Chainsmokers","Hits 2010s"],[336,"Let Me Love You","DJ Snake","Hits 2010s"],[337,"Alone","Marshmello","Hits 2010s"],[338,"Lush Life","Zara Larsson","Hits 2010s"],[339,"Faded","Alan Walker","Hits 2010s"],[340,"Fast Car","Jonas Blue","Hits 2010s"],[341,"Easy Love","Sigala","Hits 2010s"],[342,"Runaway (U & I)","Galantis","Hits 2010s"],[343,"This Girl","Kungs","Hits 2010s"],[344,"Feel So Close","Calvin Harris","Hits 2010s"],[345,"Stole the Show","Kygo","Hits 2010s"],[654,"Barbra Streisand","Duck Sauce","Hits 2010s"],[655,"Club Can’t Handle Me","Flo Rida","Hits 2010s"],[656,"DJ Got Got Us Fallin’ In Love","Usher","Hits 2010s"],[657,"Empire State of Mind","Jay-Z & Alicia Keys","Hits 2010s"],[658,"On The Floor","Jennifer Lopez","Hits 2010s"],[659,"Mr. Saxobeat","Alexandra Stan","Hits 2010s"],[660,"Rolling In The Deep","Adele","Hits 2010s"],[661,"Sexy And I Know It","LMFAO","Hits 2010s"],[662,"Call Me Maybe","Carly Rae Jepsen","Hits 2010s"],[663,"Starships","Nicki Minaj","Hits 2010s"],[664,"Gangnam Style","PSY","Hits 2010s"],[665,"Balada","Gusttavo Lima","Hits 2010s"],[666,"Turn Me On","David Guetta ft. Nicki Minaj","Hits 2010s"],[667,"Diamonds","Rihanna","Hits 2010s"],[668,"Blurred Lines","Robin Thicke","Hits 2010s"],[669,"Can’t Hold Us","Macklemore & Ryan Lewis","Hits 2010s"],[670,"Timber","Pitbull ft. Kesha","Hits 2010s"],[671,"Treasure","Bruno Mars","Hits 2010s"],[672,"Shake It Off","Taylor Swift","Hits 2010s"],[673,"All About That Bass","Meghan Trainor","Hits 2010s"],[674,"Cheerleader (Remix)","OMI","Hits 2010s"],[675,"Sugar","Maroon 5","Hits 2010s"],[676,"Worth It","Fifth Harmony","Hits 2010s"],[677,"Rockstar","Post Malone","Hits 2010s"],[678,"Feels","Calvin Harris","Hits 2010s"],[679,"It Ain’t Me","Kygo","Hits 2010s"],[680,"Symphony","Clean Bandit","Hits 2010s"],[681,"What About Us","P!nk","Hits 2010s"],[682,"One Kiss","Calvin Harris & Dua Lipa","Hits 2010s"],[683,"Señorita","Shawn Mendes & Camila Cabello","Hits 2010s"],[684,"Old Town Road","Lil Nas X","Hits 2010s"],[685,"Bad Guy","Billie Eilish","Hits 2010s"],[686,"I Don’t Care","Ed Sheeran & Justin Bieber","Hits 2010s"],[687,"Memories","Maroon 5","Hits 2010s"],[688,"Higher Love","Kygo & Whitney Houston","Hits 2010s"],
-            [639,"APT.","ROSÉ & Bruno Mars","Hits 2020s"],[640,"DtMF","Bad Bunny","Hits 2020s"],[641,"BAILE INoLVIDABLE","Bad Bunny","Hits 2020s"],[642,"Cold Heart (Pnau Remix)","Elton John & Dua Lipa","Hits 2020s"],[643,"Flowers","Miley Cyrus","Hits 2020s"],[644,"Dance The Night","Dua Lipa","Hits 2020s"],[645,"Can’t Stop The Feeling","Justin Timberlake","Hits 2020s"],[646,"Levitating","D Dua Lipa","Hits 2020s"],[647,"Stay","The Kid LAROI & Justin Bieber","Hits 2020s"],[648,"Pepas","Farruko","Hits 2020s"],[649,"Beggin’","Måneskin","Hits 2020s"],[650,"Shivers","Ed Sheeran","Hits 2020s"],[651,"Don’t Go Yet","Camila Cabello","Hits 2020s"],[652,"Calm Down","Rema","Hits 2020s"],[653,"Espresso","Sabrina Carpenter","Hits 2020s"],[346,"Don't Start Now","Dua Lipa","Hits 2020s"],[347,"Blinding Lights","The Weeknd","Hits 2020s"],[348,"Roses (Imanbek Remix)","SAINt JHN","Hits 2020s"],[349,"Head & Heart","Joel Corry","Hits 2020s"],[350,"Breaking Me","Topic","Hits 2020s"],[351,"Ride It","Regard","Hits 2020s"],[352,"Dynamite","BTS","Hits 2020s"],[353,"As It Was","Harry Styles","Hits 2020s"],[354,"Titi Me Preguntó","Bad Bunny","Hits 2020s"],[355,"Juro Que","Rosalía","Hits 2020s"],[356,"I'm Good (Blue)","David Guetta","Hits 2020s"],[357,"The Business","Tiësto","Hits 2020s"],[358,"Piece of Your Heart","Meduza","Hits 2020s"],[359,"Montero (Call Me by Your Name)","Lil Nas X","Hits 2020s"],[360,"Say So","Doja Cat","Hits 2020s"],[361,"Rain on Me","Lady Gaga","Hits 2020s"],[362,"I Wanna Be Your Slave","Måneskin","Hits 2020s"],[363,"Good 4 U","Olivia Rodrigo","Hits 2020s"],[364,"Therefore I Am","Billie Eilish","Hits 2020s"],[365,"Franchise","Travis Scott","Hits 2020s"],
+            [639,"APT.","ROSÉ & Bruno Mars","Hits 2020s"],[640,"DtMF","Bad Bunny","Hits 2020s"],[641,"BAILE INoLVIDABLE","Bad Bunny","Hits 2020s"],[642,"Cold Heart (Pnau Remix)","Elton John & Dua Lipa","Hits 2020s"],[643,"Flowers","Miley Cyrus","Hits 2020s"],[644,"Dance The Night","Dua Lipa","Hits 2020s"],[645,"Can’t Stop The Feeling","Justin Timberlake","Hits 2020s"],[646,"Levitating","Dua Lipa","Hits 2020s"],[647,"Stay","The Kid LAROI & Justin Bieber","Hits 2020s"],[648,"Pepas","Farruko","Hits 2020s"],[649,"Beggin’","Måneskin","Hits 2020s"],[650,"Shivers","Ed Sheeran","Hits 2020s"],[651,"Don’t Go Yet","Camila Cabello","Hits 2020s"],[652,"Calm Down","Rema","Hits 2020s"],[653,"Espresso","Sabrina Carpenter","Hits 2020s"],[346,"Don't Start Now","Dua Lipa","Hits 2020s"],[347,"Blinding Lights","The Weeknd","Hits 2020s"],[348,"Roses (Imanbek Remix)","SAINt JHN","Hits 2020s"],[349,"Head & Heart","Joel Corry","Hits 2020s"],[350,"Breaking Me","Topic","Hits 2020s"],[351,"Ride It","Regard","Hits 2020s"],[352,"Dynamite","BTS","Hits 2020s"],[353,"As It Was","Harry Styles","Hits 2020s"],[354,"Titi Me Preguntó","Bad Bunny","Hits 2020s"],[355,"Juro Que","Rosalía","Hits 2020s"],[356,"I'm Good (Blue)","David Guetta","Hits 2020s"],[357,"The Business","Tiësto","Hits 2020s"],[358,"Piece of Your Heart","Meduza","Hits 2020s"],[359,"Montero (Call Me by Your Name)","Lil Nas X","Hits 2020s"],[360,"Say So","Doja Cat","Hits 2020s"],[361,"Rain on Me","Lady Gaga","Hits 2020s"],[362,"I Wanna Be Your Slave","Måneskin","Hits 2020s"],[363,"Good 4 U","Olivia Rodrigo","Hits 2020s"],[364,"Therefore I Am","Billie Eilish","Hits 2020s"],[365,"Franchise","Travis Scott","Hits 2020s"],
             [366,"Gasolina","Daddy Yankee","Reggaeton & Latin"],[367,"Chantaje","Shakira","Reggaeton & Latin"],[368,"Mi Gente","J Balvin","Reggaeton & Latin"],[369,"Despacito","Luis Fonsi","Reggaeton & Latin"],[370,"Dakiti","Bad Bunny","Reggaeton & Latin"],[371,"Tusa","Karol G","Reggaeton & Latin"],[372,"Baila Baila Baila","Ozuna","Reggaeton & Latin"],[373,"Hawái","Maluma","Reggaeton & Latin"],[374,"Con Altura","Rosalía","Reggaeton & Latin"],[375,"China","Anuel AA","Reggaeton & Latin"],
-            [376,"Jerusalema","Master KG","Hits Soleil"],[377,"C'est la vie","Khaled","Hits Soleil"],[378,"Danza Kuduro","Don Omar","Hits Soleil"],[379,"Waka Waka","Shakira","Hits Soleil"],[380,"Bailando","Enrique Iglesias","Hits Soleil"],[381,"El Perdón","Nicky Jam","Hits Soleil"],[382,"La Gozadera","Gente de Zone","Hits Soleil"],[383,"Subeme la Radio","Enrique Iglesias","Hits Soleil"],[384,"Taki Taki","DJ Snake","Hits Soleil"],[385,"Calma (Remix)","Pedro Capó","Hits Soleil"],[386,"Con Calma","Daddy Yankee","Hits Soleil"],[387,"Obsesión","Aventura","Hits Soleil"],[388,"Maldòn","Zouk Machine","Hits Soleil"],[389,"Kolé séré","Philippe Lavil","Hits Soleil"],[390,"Angela","Saïan Supa Crew","Hits Soleil"],[391,"Les Sunlights des Tropiques","Gilbert Montagné","Hits Soleil"],[392,"Flamme","Slaï","Hits Soleil"],[393,"Enamórame","Papi Sánchez","Hits Soleil"],[394,"Petites îles","Neg' Marrons","Hits Soleil"],[395,"Temperature","Sean Paul","Hits Soleil"],[396,"Cheap Thrills","Sia","Hits Soleil"],[397,"One Dance","Drake","Hits Soleil"],[398,"Sorry","Justin Bieber","Hits Soleil"],[399,"Havana","Camila Cabello","Hits Soleil"],[400,"Bum Bum Tam Tam","MC Fioti","Hits Soleil"],[401,"Safari","J Balvin","Hits Soleil"],[402,"Gyal You a Party Animal","Charly Black","Hits Soleil"],[403,"Te Boté","Nio García","Hits Soleil"],[404,"X (Equis)","Nicky Jam","Hits Soleil"],[405,"Felices los 4","Maluma","Hits Soleil"],[406,"Vivir Mi Vida","Marc Anthony","Hits Soleil"],[407,"Bailar","Deorro","Hits Soleil"],[408,"El Taxi","Osmani Garcia","Hits Soleil"],[409,"Ginza","J Balvin","Hits Soleil"],[410,"Duele el Corazón","Enrique Iglesias","Hits Soleil"],[411,"Reggaetón Lento (Bailemos)","CNCO","Hits Soleil"],[412,"Je vais à Rio","Claude François","Hits Soleil"],[413,"Could You Be Loved","Bob Marley","Hits Soleil"],[414,"L'amour à la plage","Niagara","Hits Soleil"],[415,"Un, Dos, Tres, Maria","Ricky Martin","Hits Soleil"],[416,"Macumba","Jean-Pierre Mader","Hits Soleil"],[417,"Macarena","Los Del Rio","Hits Soleil"],[418,"Mambo No. 5","Lou Bega","Hits Soleil"],[419,"Paris Latino","Bandolero","Hits Soleil"],[420,"J'veux du soleil","Au P'tit Bonheur","Hits Soleil"],[421,"Is This Love","Bob Marley","Hits Soleil"],[422,"Samba de Janeiro","Bellini","Hits Soleil"],[423,"Soca Dance","Charles D. Lewis","Hits Soleil"],[424,"Bamboleo","Gipsy Kings","Hits Soleil"],[425,"Alane","Wes","Hits Soleil"],[426,"Vamos a la Playa","Righeira","Hits Soleil"],[427,"You'll Be Mine (Party Time)","Gloria Estefan","Hits Soleil"],[428,"Yaka Dansé","Raft","Hits Soleil"],[429,"Don't Let Me Be Misunderstood","Santa Esmeralda","Hits Soleil"],[430,"Gimme Hope Jo'Anna","Eddy Grant","Hits Soleil"],[431,"Yé Ké Yé Ké","Mory Kanté","Hits Soleil"],[432,"Club Tropicana","Wham!","Hits Soleil"],[433,"Cuba","Gibson Brothers","Hits Soleil"],[434,"Amor de Mis Amores","Paco","Hits Soleil"],
+            [376,"Jerusalema","Master KG","Hits Soleil"],[377,"C'est la vie","Khaled","Hits Soleil"],[378,"Danza Kuduro","Don Omar","Hits Soleil"],[379,"Waka Waka","Shakira","Hits Soleil"],[380,"Bailando","Enrique Iglesias","Hits Soleil"],[381,"El Perdón","Nicky Jam","Hits Soleil"],[382,"La Gozadera","Gente de Zona","Hits Soleil"],[383,"Subeme la Radio","Enrique Iglesias","Hits Soleil"],[384,"Taki Taki","DJ Snake","Hits Soleil"],[385,"Calma (Remix)","Pedro Capó","Hits Soleil"],[386,"Con Calma","Daddy Yankee","Hits Soleil"],[387,"Obsesión","Aventura","Hits Soleil"],[388,"Maldòn","Zouk Machine","Hits Soleil"],[389,"Kolé séré","Philippe Lavil","Hits Soleil"],[390,"Angela","Saïan Supa Crew","Hits Soleil"],[391,"Les Sunlights des Tropiques","Gilbert Montagné","Hits Soleil"],[392,"Flamme","Slaï","Hits Soleil"],[393,"Enamórame","Papi Sánchez","Hits Soleil"],[394,"Petites îles","Neg' Marrons","Hits Soleil"],[395,"Temperature","Sean Paul","Hits Soleil"],[396,"Cheap Thrills","Sia","Hits Soleil"],[397,"One Dance","Drake","Hits Soleil"],[398,"Sorry","Justin Bieber","Hits Soleil"],[399,"Havana","Camila Cabello","Hits Soleil"],[400,"Bum Bum Tam Tam","MC Fioti","Hits Soleil"],[401,"Safari","J Balvin","Hits Soleil"],[402,"Gyal You a Party Animal","Charly Black","Hits Soleil"],[403,"Te Boté","Nio García","Hits Soleil"],[404,"X (Equis)","Nicky Jam","Hits Soleil"],[405,"Felices los 4","Maluma","Hits Soleil"],[406,"Vivir Mi Vida","Marc Anthony","Hits Soleil"],[407,"Bailar","Deorro","Hits Soleil"],[408,"El Taxi","Osmani Garcia","Hits Soleil"],[409,"Ginza","J Balvin","Hits Soleil"],[410,"Duele el Corazón","Enrique Iglesias","Hits Soleil"],[411,"Reggaetón Lento (Bailemos)","CNCO","Hits Soleil"],[412,"Je vais à Rio","Claude François","Hits Soleil"],[413,"Could You Be Loved","Bob Marley","Hits Soleil"],[414,"L'amour à la plage","Niagara","Hits Soleil"],[415,"Un, Dos, Tres, Maria","Ricky Martin","Hits Soleil"],[416,"Macumba","Jean-Pierre Mader","Hits Soleil"],[417,"Macarena","Los Del Rio","Hits Soleil"],[418,"Mambo No. 5","Lou Bega","Hits Soleil"],[419,"Paris Latino","Bandolero","Hits Soleil"],[420,"J'veux du soleil","Au P'tit Bonheur","Hits Soleil"],[421,"Is This Love","Bob Marley","Hits Soleil"],[422,"Samba de Janeiro","Bellini","Hits Soleil"],[423,"Soca Dance","Charles D. Lewis","Hits Soleil"],[424,"Bamboleo","Gipsy Kings","Hits Soleil"],[425,"Alane","Wes","Hits Soleil"],[426,"Vamos a la Playa","Righeira","Hits Soleil"],[427,"You'll Be Mine (Party Time)","Gloria Estefan","Hits Soleil"],[428,"Yaka Dansé","Raft","Hits Soleil"],[429,"Don't Let Me Be Misunderstood","Santa Esmeralda","Hits Soleil"],[430,"Gimme Hope Jo'Anna","Eddy Grant","Hits Soleil"],[431,"Yé Ké Yé Ké","Mory Kanté","Hits Soleil"],[432,"Club Tropicana","Wham!","Hits Soleil"],[433,"Cuba","Gibson Brothers","Hits Soleil"],[434,"Amor de Mis Amores","Paco","Hits Soleil"],
             [435,"Save the World","Swedish House Mafia","Électro / Club"],[436,"Hey Brother","Avicii","Électro / Club"],[437,"Stay the Night","Zedd","Électro / Club"],[438,"Hear Me Now","Alok","Électro / Club"],[439,"Hello","Martin Solveig","Électro / Club"],[440,"Take Over Control","Afrojack","Électro / Club"],[441,"Boneless","Steve Aoki","Électro / Club"],[442,"You Don't Know Me","Armand Van Helden","Électro / Club"],[443,"Where's Your Head At","Basement Jaxx","Électro / Club"],[444,"Go","Moby","Électro / Club"],[445,"God Is a DJ","Faithless","Électro / Club"],[446,"Southern Sun","Paul Oakenfold","Électro / Club"],
             [447,"In the Mood","Glenn Miller and His Orchestra","Rock n' Roll & Soul"],[448,"Blue Suede Shoes","Elvis Presley","Rock n' Roll & Soul"],[449,"What'd I Say","Ray Charles","Rock n' Roll & Soul"],[450,"Green Onions","Booker T. & The M.G.","Rock n' Roll & Soul"],[451,"Just a Gigolo / I Ain't Got Nobody","David Lee Roth","Rock n' Roll & Soul"],[452,"La Bamba","Los Lobos","Rock n' Roll & Soul"],[453,"Rock Around The Clock","Valentin Asenov","Rock n' Roll & Soul"],[454,"Let's Twist Again","Chubby Checker","Rock n' Roll & Soul"],[455,"Les cactus","Jacques Dutronc","Rock n' Roll & Soul"],[456,"Et moi, et moi, et moi","Jacques Dutronc","Rock n' Roll & Soul"],[457,"Respect","Aretha Franklin","Rock n' Roll & Soul"],[458,"Gimme Some Lovin'","The Spencer Davis Group","Rock n' Roll & Soul"],[459,"Think","Aretha Franklin","Rock n' Roll & Soul"],[460,"Jumpin' Jack Flash","The Rolling Stones","Rock n' Roll & Soul"],[461,"Get Back","The Beatles","Rock n' Roll & Soul"],[462,"Bad Moon Rising","Creedence Clearwater Revival","Rock n' Roll & Soul"],[463,"Proud Mary","Creedence Clearwater Revival","Rock n' Roll & Soul"],[464,"Green River","Creedence Clearwater Revival","Rock n' Roll & Soul"],[465,"Sugar, Sugar","The Archies","Rock n' Roll & Soul"],[466,"Surfin' U.S.A.","The Beach Boys","Rock n' Roll & Soul"],[467,"Da Doo Ron Ron","The Crystals","Rock n' Roll & Soul"],[468,"Memphis","Johnny Rivers","Rock n' Roll & Soul"],[469,"Twist and Shout","The Beatles","Rock n' Roll & Soul"],[470,"Papa's Got a Brand New Bag","James Brown","Rock n' Roll & Soul"],[471,"California Dreamin'","The Mamas & The Papas","Rock n' Roll & Soul"],[472,"Good Vibrations","The Beach Boys","Rock n' Roll & Soul"],[473,"You Keep Me Hangin' On","The Supremes","Rock n' Roll & Soul"],[474,"Black Is Black","Los Bravos","Rock n' Roll & Soul"],[475,"Light My Fire","The Doors","Rock n' Roll & Soul"],[476,"Soul Man","Sam & Dave","Rock n' Roll & Soul"],[477,"Can't Take My Eyes Off You","Frankie Valli","Rock n' Roll & Soul"],[478,"Sunny","Bobby Hebb","Rock n' Roll & Soul"],[479,"Take Five","Dave Brubeck","Rock n' Roll & Soul"],[480,"Shout","Lulu & The Luvvers","Rock n' Roll & Soul"],[481,"Rum & Coca Cola","The Andrews Sisters","Rock n' Roll & Soul"],[482,"Rock-A-Bye Your Baby With a Dixie Melody","Al Jolson","Rock n' Roll & Soul"],[483,"Don't Be That Way","Benny Goodman","Rock n' Roll & Soul"],[484,"Goody Goody","Benny Goodman","Rock n' Roll & Soul"],[485,"Mambo italiano","Rosemary Clooney","Rock n' Roll & Soul"],[486,"Le lundi au soleil","Claude François","Rock n' Roll & Soul"],[487,"Knock On Wood","Eddie Floyd","Rock n' Roll & Soul"],[488,"Cette année-là","Claude François","Rock n' Roll & Soul"],[489,"Noir c'est noir","Johnny Hallyday","Rock n' Roll & Soul"],[490,"Paint It, Black","The Rolling Stones","Rock n' Roll & Soul"],[491,"Twist à Saint-Tropez","Dick Rivers","Rock n' Roll & Soul"],[492,"Dactylo Rock","Les Chaussettes Noires","Rock n' Roll & Soul"],[493,"Peggy Sue","Buddy Holly","Rock n' Roll & Soul"],[494,"La Bamba","Ritchie Valens","Rock n' Roll & Soul"],[495,"Daniela","Les Chaussettes Noires","Rock n' Roll & Soul"],[496,"Mirza","Nino Ferrer","Rock n' Roll & Soul"],[497,"Buena Sera","Louis Prima","Rock n' Roll & Soul"],[498,"Just a Gigolo","Louis Prima","Rock n' Roll & Soul"],[499,"Baby Love","The Supremes","Rock n' Roll & Soul"],[500,"Everybody Needs Somebody to Love","Solomon Burke","Rock n' Roll & Soul"],[501,"California Girls","The Beach Boys","Rock n' Roll & Soul"],[502,"Jailhouse Rock","Elvis Presley","Rock n' Roll & Soul"],[503,"Hold On, I'm Comin'","Sam & Dave","Rock n' Roll & Soul"],[504,"Hound Dog","Elvis Presley","Rock n' Roll & Soul"],[505,"Johnny B. Goode","Chuck Berry","Rock n' Roll & Soul"],[506,"Tutti Frutti","Little Richard","Rock n' Roll & Soul"],[507,"Maybellene","Chuck Berry","Rock n' Roll & Soul"],[508,"Heartbreak Hotel","Elvis Presley","Rock n' Roll & Soul"],[509,"Great Balls Of Fire","Jerry Lee Lewis","Rock n' Roll & Soul"],[510,"Long Tall Sally","Little Richard","Rock n' Roll & Soul"],[511,"Lucille","Little Richard","Rock n' Roll & Soul"],[512,"Shake, Rattle and Roll","Bill Haley and His Comets","Rock n' Roll & Soul"],[513,"Sweet Little Sixteen","Chuck Berry","Rock n' Roll & Soul"],[514,"Whole Lotta Shakin' Going On","Jerry Lee Lewis","Rock n' Roll & Soul"],[515,"C’Mon Everybody","Eddie Cochran","Rock n' Roll & Soul"],[516,"Don't Be Cruel","Elvis Presley","Rock n' Roll & Soul"],[517,"Be-Bop-a-Lula","Gene Vincent","Rock n' Roll & Soul"],[518,"Good Golly Miss Molly","Little Richard","Rock n' Roll & Soul"],[519,"Grease","Frankie Valli","Rock n' Roll & Soul"],[520,"Your Song","Billy Paul","Rock n' Roll & Soul"],[521,"You Can't hurry Love","The Supremes","Rock n' Roll & Soul"],[522,"Born to Be Wild","Steppenwolf","Rock n' Roll & Soul"],[523,"Susie Q.","Creedence Clearwater Revival","Rock n' Roll & Soul"],[524,"Jimmy Mack","Martha Reeves & The Vandellas","Rock n' Roll & Soul"],[525,"Venus","Shocking Blue","Rock n' Roll & Soul"],[526,"Spirit In the Sky","Norman Greenbaum","Rock n' Roll & Soul"],[527,"Eloise","Barry Ryan","Rock n' Roll & Soul"],
             [528,"Enjoy the Silence","Depeche Mode","Pop Rock"],[529,"Tainted Love","Soft Cell","Pop Rock"],[530,"Relax","Frankie Goes to Hollywood","Pop Rock"],[531,"London Calling","The Clash","Pop Rock"],[532,"Why ?","Bronski Beat","Pop Rock"],[533,"Smalltown Boy","Bronski Beat","Pop Rock"],[534,"99 Luftballons","Nena","Pop Rock"],[535,"In Between Days","The Cure","Pop Rock"],[536,"Enola Gay","Orchestral Manoeuvres In the Dark","Pop Rock"],[537,"L'aventurier","Indochine","Pop Rock"],[538,"Long Train Running","Traks","Pop Rock"],[539,"Sweet Dreams (Are Made of This)","Eurythmics","Pop Rock"],[540,"Another Brick In the Wall, Pt. 2","Pink Floyd","Pop Rock"],[541,"Boys Don't Cry","The Cure","Pop Rock"],[542,"Highway to Hell","AC/DC","Pop Rock"],[543,"I Love Rock 'N' Roll","Joan Jett & The Blackhearts","Pop Rock"],[544,"J'ai Vu","Niagara","Pop Rock"],[545,"Pride (In the Name of Love)","U2","Pop Rock"],[546,"Seven Nation Army","The White Stripes","Pop Rock"],[547,"Sunday Bloody Sunday","U2","Pop Rock"],[548,"Take Me Out","Franz Ferdinand","Pop Rock"],[549,"Shout","Tears for Fears","Pop Rock"],[550,"Just Can't Get Enough","Depeche Mode","Pop Rock"],[551,"Everybody Wants to Rule the World","Tears for Fears","Pop Rock"],[552,"Don't You (Forget About Me)","Simple Minds","Pop Rock"],[553,"Let's Dance","David Bowie","Pop Rock"],[554,"Need You Tonight","INXS","Pop Rock"],[555,"Kiss","Prince & The Revolution","Pop Rock"],[556,"Take On Me","a-ha","Pop Rock"],[557,"Heart of Glass","Blondie","Pop Rock"],[558,"Under Pressure","Queen & David Bowie","Pop Rock"],[559,"I'm Still Standing","Elton John","Pop Rock"],[560,"Video Killed the Radio Star","The Buggles","Pop Rock"],[561,"One Step Beyond","Madness","Pop Rock"],[562,"I Will Survive","Gloria Gaynor","Pop Rock"],[563,"Love You Madly","CAKE","Pop Rock"],[564,"Viva la Vida","Coldplay","Pop Rock"],[565,"Creep","Radiohead","Pop Rock"],[566,"Banquet","Bloc Party","Pop Rock"],[567,"Song 2","Blur","Pop Rock"],[568,"Girls and Boys","Blur","Pop Rock"],[569,"Paint It, Black","The Rolling Stones","Pop Rock"],[570,"Start Me Up","The Rolling Stones","Pop Rock"],[571,"Wonderwall","Oasis","Pop Rock"],[572,"Town Called Malice","The Jam","Pop Rock"],[573,"Charmless Man","Blur","Pop Rock"],[574,"Mr. Brightside","The Killers","Pop Rock"],[575,"No Fun","The Stooges","Pop Rock"],[576,"Sex on Fire","Kings of Leon","Pop Rock"],[577,"Fortunate Son","Creedence Clearwater Revival","Pop Rock"],[578,"Born to Be Wild","Steppenwolf","Pop Rock"],[579,"Jump","Van Halen","Pop Rock"],[580,"Don't Stop Me Now","Queen","Pop Rock"],[581,"Sweet Home Alabama","Lynyrd Skynyrd","Pop Rock"],[582,"Long Train Runnin'","The Doobie Brothers","Pop Rock"],[583,"Crocodile Rock","Elton John","Pop Rock"],[584,"Killing In the Name","Rage Against the Machine","Pop Rock"],[585,"Smells Like Teen Spirit","Nirvana","Pop Rock"],[586,"Under the Bridge","Red Hot Chili Peppers","Pop Rock"],[587,"Bohemian Rhapsody","Queen","Pop Rock"],[588,"La Grange","ZZ Top","Pop Rock"],[589,"Roxanne","The Police","Pop Rock"],[590,"Sultans Of Swing","Dire Straits","Pop Rock"],[591,"Back In Black","AC/DC","Pop Rock"],[592,"Losing My Religion","R.E.M.","Pop Rock"],[593,"The Logical Song","Supertramp","Pop Rock"],[594,"Hold the Line","Toto","Pop Rock"],[595,"Hysteria","Muse","Pop Rock"],[596,"You Really Got Me","The Kinks","Pop Rock"],[597,"Smoke on the Water","Deep Purple","Pop Rock"],[598,"Born to Run","Bruce Springsteen","Pop Rock"],[599,"Are You Gonna Go My Way","Lenny Kravitz","Pop Rock"],[600,"Owner of a Lonely Heart","Yes","Pop Rock"],[601,"Every You Every Me","Placebo","Pop Rock"],[602,"A Kind of Magic","Queen","Pop Rock"],[603,"Another One Bites the Dust","Queen Factory","Pop Rock"],[604,"We Are The Champions","Queen","Pop Rock"],[605,"With or Without You","U2","Pop Rock"],[606,"Desire","U2","Pop Rock"],[607,"New Year's Day","U2","Pop Rock"],[608,"Gimme All Your Lovin'","ZZ Top","Pop Rock"],[609,"The Final Countdown","Europe","Pop Rock"],[610,"It's Raining Men","The Weather Girls","Pop Rock"],[611,"Africa","Toto","Pop Rock"],[612,"I Want To Break Free","Queen","Pop Rock"],[613,"Footloose","Kenny Loggins","Pop Rock"],[614,"Blue Monday","New Order","Pop Rock"],[615,"Maniac","Michael Sembello","Pop Rock"],[616,"China Girl","David Bowie","Pop Rock"],[617,"Da Ya Think I'm Sexy?","Rod Stewart","Pop Rock"],[618,"Bad News","Moon Martin","Pop Rock"]
@@ -234,7 +223,7 @@
 
         let cloudErrorMsg = null;
 
-        // --- EXPOSITION DES FONCTIONS GLOBALES ---
+        // --- EXPOSITION DES FONCTIONS GLOBALES (Pour les onclick HTML) ---
         window.showModal = function(type, title, message, onConfirmCallback = null) {
             state.modal = { type, title, message, onConfirmCallback };
             render();
@@ -259,6 +248,7 @@
             window.closeModal();
         }
 
+        // Fonction pour générer et télécharger le fichier M3U (Top 40)
         window.downloadM3U = function() {
             const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
             if (top40Songs.length === 0) {
@@ -287,6 +277,7 @@
             }, 100);
         };
 
+        // Fonction pour réinitialiser la vue utilisateur et revenir en haut
         window.resetUserView = function() {
             state.searchQuery = '';
             state.selectedTheme = 'Tous';
@@ -296,14 +287,14 @@
             window.scrollTo({top: 0, behavior: 'smooth'});
         };
 
-        // --- INTEGRATION FIREBASE (CLOUD TEMPS RÉEL) ---
+        // --- INTEGRATION FIREBASE (SYNCHRONISATION UNIVERSELLE) ---
         let db, auth, appId, userId = null;
         let isCloudActive = false; 
         let unsubscribePublic = null;
         let unsubscribePrivate = null;
 
         try {
-            // 🔥 ON FORCE L'UTILISATION DE TES CLÉS RÉELLES (RÉGLAGE DU BUG DES DEUX TIROIRS)
+            // 🔥 RESTAURATION DES CLÉS ET DU CHEMIN UNIQUE
             const firebaseConfig = MY_FIREBASE_CONFIG;
             appId = FIXED_APP_ID;
 
@@ -314,26 +305,25 @@
             
             state.isCloudSynced = true; 
 
-            // Étape 1 : On tente l'authentification silencieuse immédiatement
-            signInAnonymously(auth).catch(err => {
-                console.warn("Auth silencieuse échouée", err);
+            // Étape 1 : On demande d'abord l'identification silencieuse
+            signInAnonymously(auth).then(() => {
+                // Étape 2 : Une fois authentifié, on branche TOUS les écouteurs Cloud
+                onAuthStateChanged(auth, (user) => {
+                    state.authStatus = 'ready'; 
+                    if (user) {
+                        userId = user.uid;
+                        // On lance les écouteurs sur TA base de données Firebase
+                        setupPublicListener();
+                        setupPrivateListener();
+                    }
+                });
+            }).catch(err => {
+                console.warn("Auth Firebase bloquée (Mode dégradé).", err);
                 state.authStatus = 'failed';
                 cloudErrorMsg = err.code;
-            });
-
-            // Étape 2 : Dès que Firebase répond (succès ou échec), on branche les écouteurs
-            onAuthStateChanged(auth, (user) => {
-                state.authStatus = 'ready'; 
-                if (user) {
-                    userId = user.uid;
-                    // Lancement des écouteurs Cloud une fois identifié
-                    setupPublicListener();
-                    setupPrivateListener();
-                } else {
-                    // Si on n'est pas identifié (ex: Safari qui bloque), on essaie quand même d'écouter en mode public
-                    userId = null;
-                    setupPublicListener();
-                }
+                // En mode dégradé, on tente quand même l'écoute publique
+                setupPublicListener();
+                render();
             });
             
         } catch(error) {
@@ -346,7 +336,7 @@
         function setupPublicListener() {
             if (unsubscribePublic) return; 
 
-            // On utilise toujours FIXED_APP_ID ("laplaylistideale") pour que tout le monde se parle
+            // On utilise toujours FIXED_APP_ID ("laplaylistideale") pour que tout le monde regarde au même endroit
             const publicRef = doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main');
             
             unsubscribePublic = onSnapshot(publicRef, (docSnap) => {
@@ -369,7 +359,7 @@
                     checkPhase();
                     verifySessionAndLoadVotes(); 
                 } else {
-                    // Création initiale si nécessaire
+                    // Création initiale Cloud
                     setDoc(publicRef, {
                         sessionId: Date.now().toString(),
                         guestCode: state.guestCode || 'FIESTA',
@@ -379,24 +369,24 @@
                         phase2Duration: 1 * 60 * 60 * 1000,
                         forceClosed: false,
                         songVotes: {}
-                    }, { merge: true }).catch(e => console.warn("Erreur création initiale Cloud"));
+                    }, { merge: true }).catch(e => console.warn("Erreur SetDoc initiale"));
                 }
 
-                // 🔥 Effet de Flash visuel sur le tableau de bord DJ
+                // 🔥 FLASH VISUEL DJ (Effet visuel à chaque nouveau vote reçu)
                 if (state.view === 'admin') {
                     const adminEl = document.getElementById('admin-dashboard');
                     if (adminEl) {
                         adminEl.classList.remove('animate-fade-in');
-                        void adminEl.offsetWidth; 
+                        void adminEl.offsetWidth; // Déclenche le flash
                         adminEl.classList.add('animate-fade-in');
                     }
                 }
                 render(); 
             }, (error) => {
                 console.warn("Écoute Cloud restreinte :", error.message);
-                // Si l'erreur est une permission refusée, c'est le mode test Firebase de 30 jours
-                if (error.code === 'permission-denied' && state.view === 'admin') {
-                    window.showModal('alert', '🚨 Sécurité Firebase Expirée', 'Vos règles de sécurité Google ont expiré (limite des 30 jours).<br><br>Allez dans votre console Firebase > Firestore > Règles et publiez ceci :<br><br><code class="text-xs bg-black p-2 block text-magical-cyan">allow read, write: if true;</code>');
+                if (error.code === 'permission-denied') {
+                    state.authStatus = 'failed';
+                    cloudErrorMsg = 'Permissions refusées';
                 }
             });
         }
@@ -421,6 +411,7 @@
         function verifySessionAndLoadVotes() {
             const localClientSession = localStorage.getItem('dj_client_session');
             
+            // Si la session change, on efface tout sur le téléphone pour repartir à neuf
             if (!localClientSession || localClientSession !== state.sessionId) {
                 state.songs = JSON.parse(JSON.stringify(initialSongs));
                 state.userVotes = {};
@@ -429,6 +420,16 @@
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
                 localStorage.removeItem('dj_songs');
+                
+                try {
+                    if (window.history && window.history.replaceState) {
+                        const currentUrl = new URL(window.location.href);
+                        if (currentUrl.searchParams.has('s')) {
+                            currentUrl.searchParams.delete('s');
+                            window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search);
+                        }
+                    }
+                } catch(e) {}
             } else {
                 const savedUserVotes = localStorage.getItem('dj_userVotes');
                 if (savedUserVotes) {
@@ -445,8 +446,9 @@
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 const urlSession = urlParams.get('s');
-                if (urlSession) state.sessionId = urlSession;
-                else {
+                if (urlSession) {
+                    state.sessionId = urlSession;
+                } else {
                     const savedSession = localStorage.getItem('dj_sessionId');
                     if (savedSession) state.sessionId = savedSession;
                     else state.sessionId = Date.now().toString();
@@ -532,13 +534,13 @@
                 if (newPhase === 3 && state.view === 'user') window.scrollTo({ top: 0, behavior: 'smooth' });
                 render(); 
             }
-            // Mises à jour des minuteurs (DOM direct)
-            const timeLeft = (newPhase === 1) ? state.phase1Duration - elapsed : 
-                             (newPhase === 2) ? (state.phase1Duration + state.phase2Duration) - elapsed : 0;
+            // Mises à jour des minuteurs
             const format = (ms) => {
                 const s = Math.max(0, Math.floor(ms / 1000));
                 return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
             };
+            const timeLeft = (newPhase === 1) ? state.phase1Duration - elapsed : 
+                             (newPhase === 2) ? (state.phase1Duration + state.phase2Duration) - elapsed : 0;
             document.querySelectorAll('.dynamic-timer-display').forEach(el => el.textContent = format(timeLeft));
             document.querySelectorAll('.global-timer-display').forEach(el => el.textContent = format((state.phase1Duration + state.phase2Duration) - elapsed));
         }
@@ -668,7 +670,7 @@
             if (idx !== -1) state.songs[idx].votes += 1;
             saveServerData(); render();
 
-            // Update Cloud de force (Même sans Auth parfaite)
+            // Update Cloud de force (Même sans identification parfaite)
             if (isCloudActive && db) {
                 if (userId) {
                     setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'users', userId, 'userData', 'votes'), {
