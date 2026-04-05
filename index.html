@@ -27,7 +27,7 @@
         }
     </script>
 
-    <!-- Phosphor Icons pour les icônes -->
+    <!-- Phosphor Icons pour les icônes (en defer pour ne pas bloquer le chargement) -->
     <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     
     <style>
@@ -38,7 +38,7 @@
         /* Fallbacks de sécurité pour éviter la page blanche au chargement */
         html, body { background-color: #050212; color: #ffffff; }
 
-        /* Animations fluides d'apparition */
+        /* Animations fluides d'apparition (réservées aux changements de vues complets) */
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn {
             from { opacity: 0; filter: blur(5px); }
@@ -71,7 +71,7 @@
             box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.05);
         }
 
-        /* OPACIFICATION AU SCROLL */
+        /* OPACIFICATION AU SCROLL (Pour le menu et les thèmes) */
         .glass-scrolled-panel {
             background: linear-gradient(135deg, rgba(5, 2, 18, 0.95) 0%, rgba(0, 0, 0, 0.98) 100%) !important;
             border-top: 1px solid rgba(0, 240, 255, 0.4) !important;
@@ -120,7 +120,7 @@
         .text-glow-pink { text-shadow: 0 0 20px rgba(255, 0, 122, 0.8); }
         .text-glow-cyan { text-shadow: 0 0 20px rgba(0, 240, 255, 0.8); }
 
-        /* Animation de respiration */
+        /* Animation de respiration pour les minuteurs / alertes */
         .pulse-magical { animation: pulseMagical 3s ease-in-out infinite alternate; }
         @keyframes pulseMagical {
             0% { box-shadow: 0 0 20px rgba(255,0,122,0.2); border-color: rgba(255,0,122,0.3); }
@@ -135,7 +135,7 @@
 </head>
 <body class="text-slate-100 font-sans selection:bg-magical-pink/50 min-h-screen relative overflow-x-hidden">
 
-    <!-- LUMIERES HOLOGRAPHIQUES -->
+    <!-- LUMIERES HOLOGRAPHIQUES (GPU-Safe) -->
     <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#050212]">
         <div class="orb orb-pink"></div><div class="orb orb-cyan"></div>
         <div class="orb orb-purple"></div><div class="orb orb-gold"></div>
@@ -151,7 +151,7 @@
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =========================================================================
-        // 🔄 AUTO-ACTUALISATION POUR SMARTPHONES
+        // 🔄 AUTO-ACTUALISATION (ANTI-FANTÔMES) POUR SMARTPHONES
         // =========================================================================
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "hidden") {
@@ -182,21 +182,14 @@
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
         
         function getQRCodeUrl() {
-            // NOUVEAU : Récupère l'URL exacte où vous vous trouvez (pour les tests en réseau local)
-            let baseUrl = window.location.href.split('?')[0];
-            
-            // Si on lance le fichier depuis l'ordinateur (file://), le téléphone ne trouvera rien. 
-            // On force donc l'URL Github.
-            if (window.location.protocol === 'file:') {
-                baseUrl = "https://airfilmstudio-collab.github.io/la-playlist-ideal-V2/index.html";
-            }
-            
+            const baseUrl = "https://airfilmstudio-collab.github.io/la-playlist-ideal-V2/index.html";
             const shareUrl = `${baseUrl}?code=${encodeURIComponent(state.guestCode)}&s=${state.sessionId}`;
             return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}&color=050212&bgcolor=FFFFFF`;
         }
 
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
+        const PASS_ADMIN = "DJ";
 
         const initialSongs = [
             [1,"Djadja","Aya Nakamura","Urbain 2020's"],[2,"Bande organisée","13 Organisé","Urbain 2020's"],[3,"Ne reviens pas","Gradur ft. Heuss L'enfoiré","Urbain 2020's"],[4,"La boulette (Génération nan nan)","Diam's","Urbain 2020's"],[5,"Jeune demoiselle","Diam's","Urbain 2020's"],[6,"Dj","Diam's","Urbain 2020's"],[7,"Anissa","Wejdene","Urbain 2020's"],[8,"La kiffance","Naps","Urbain 2020's"],[9,"Petit génie","Jul","Urbain 2020's"],[10,"T'étais où","Jul ft Vegedream, Alonzo, Zaho","Urbain 2020's"],[11,"Best life","Naps feat Gims","Urbain 2020's"],[12,"Mafiosa","Lartiste ft. Caroliina","Urbain 2020's"],[13,"Andalouse","Kendji Girac","Urbain 2020's"],[14,"Color Gitano","Kendji Girac","Urbain 2020's"],[15,"Réseaux","Niska","Urbain 2020's"],[16,"Pookie","Aya Nakamura","Urbain 2020's"],[17,"Zumba Cafew","Soolking ft. Dhurata Dora","Urbain 2020's"],[18,"Comportement","Aya Nakamura","Urbain 2020's"],[19,"Ça va aller","Naza","Urbain 2020's"],[20,"Suavemente","Soolking","Urbain 2020's"],[21,"Otra","Soolking","Urbain 2020's"],[22,"Ça fait des années","Soolking (feat. Cheb Mami)","Urbain 2020's"],[23,"Casanova","Soolking & Gazo","Urbain 2020's"],[24,"1er Gaou","Magic System","Urbain 2020's"],[25,"Bouger bouger","Magic System","Urbain 2020's"],[26,"C'est chô, ça brûle","Magic System","Urbain 2020's"],[27,"Magic in the Air","Magic System","Urbain 2020's"],[28,"Chérie Coco","Magic System","Urbain 2020's"],[29,"Ma chérie","DJ Kayz ft. Wassila","Urbain 2020's"],[30,"Doudou","Aya Nakamura","Urbain 2020's"],[31,"La dot","Aya Nakamura","Urbain 2020's"],[32,"Laisse tomber","Gambi","Urbain 2020's"],[33,"Ak kele nta","MHD","Urbain 2020's"],[34,"Laissez-les kouma","Zaho (feat. MHD)","Urbain 2020's"],[35,"Bobo","Aya Nakamura","Urbain 2020's"],[36,"Heuss L'enfoiré","Sayan Ft Gazo","Urbain 2020's"],[37,"Goutte d'eau","Dadju","Urbain 2020's"],[38,"Dubaï","Soolking","Urbain 2020's"],[39,"Ma belle","PLK","Urbain 2020's"],[40,"T nous va bien","Alonzo Ninho & Naps","Urbain 2020's"],[41,"Jolie nana","Aya Nakamura","Urbain 2020's"],[42,"Minimum Ca","Dr.Yaro","Urbain 2020's"],[43,"Imagine","Carbone","Urbain 2020's"],[44,"Alors on danse","Stromae","Urbain 2020's"],[45,"Tchikita","Jul","Urbain 2020's"],[46,"Wesh Alors","Jul","Urbain 2020's"],[47,"On m'appelle l'Ovni","Jul","Urbain 2020's"],[48,"Ma Jolie","Jul","Urbain 2020's"],[49,"J'fais que danser","Jul","Urbain 2020's"],[50,"Elle me dit","Mika","Urbain 2020's"],[51,"Dernière danse","Indila","Urbain 2020's"],[52,"Cosmo","Soprano","Urbain 2020's"],[53,"Avenir","Louane","Urbain 2020's"],[54,"Reine","Dadju","Urbain 2020's"],[55,"Balance ton Quoi","Angèle","Urbain 2020's"],[56,"Wati By Night","Sexion D'Assaut","Urbain 2020's"],[57,"J'ai cherché","Amir","Urbain 2020's"],[58,"Sur ma route","Black M","Urbain 2020's"],[59,"Un peu de rêve","Vitaa & Claudio Capéo","Urbain 2020's"],[60,"Bella Ciao","Gims, Naestro, Dadju, Slimane","Urbain 2020's"],[61,"Chocolat","Lartiste","Urbain 2020's"],[62,"Dommage","Bigflo & Oli","Urbain 2020's"],[63,"Sapés comme jamais","Gims ft. Niska","Urbain 2020's"],[64,"La Même","Gims & Vianney","Urbain 2020's"],[65,"Bella","Gims","Urbain 2020's"],[66,"J'me tire","Gims","Urbain 2020's"],[67,"Zombie","Gims","Urbain 2020's"],[68,"Laissez passer","Gims","Urbain 2020's"],[69,"Papaoutai","Stromae","Urbain 2020's"],[70,"Formidable","Stromae","Urbain 2020's"],[71,"Tous les mêmes","Stromae","Urbain 2020's"],[72,"Je te promets","Slimane","Urbain 2020's"],[73,"Le coach","Soprano ft. Vincenzo","Urbain 2020's"],[74,"En feu","Soprano","Urbain 2020's"],[75,"Clown","Soprano","Urbain 2020's"],[76,"Le sens de la vie","Tal","Urbain 2020's"],[77,"Le temps qu'il faut","Tal","Urbain 2020's"],[78,"Ma philosophie","Amel Bent","Urbain 2020's"],[79,"Je danse","Jenifer","Urbain 2020's"],[80,"Tourner dans le vide","Indila","Urbain 2020's"],[81,"Love Story","Indila","Urbain 2020's"],[82,"La fête","Amir","Urbain 2020's"],[83,"On dirait","Amir","Urbain 2020's"],[84,"Désolé","Sexion D'Assaut","Urbain 2020's"],[85,"Avant qu'elle parte","Sexion D'Assaut","Urbain 2020's"],[86,"Ma direction","Sexion D'Assaut","Urbain 2020's"],
@@ -496,6 +489,7 @@
         });
 
         loadServerData(); setInterval(checkPhase, 1000);
+        // 🔧 CORRECTION : Si Firebase ne répond pas après 5 secondes, on débloque le bouton quand même
         setTimeout(() => { if (!state.isCloudSynced) { state.isCloudSynced = true; render(); } }, 5000);
 
         // --- METHODES D'ACTIONS UTILISATEUR ---
@@ -552,16 +546,7 @@
             window.showModal('confirm', `Démarrer le minuteur (${mode}) ?`, `${msg}<br>- Ensuite : Clôture des votes.`, () => {
                 state.phase1Duration = p1Min * 60 * 1000; state.phase2Duration = p2Min * 60 * 1000;
                 state.eventStartTime = Date.now(); state.forceClosed = false; saveServerData();
-                if (isCloudActive && db && userId) { 
-                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main'); 
-                    setDoc(publicRef, { phase1Duration: state.phase1Duration, phase2Duration: state.phase2Duration, eventStartTime: state.eventStartTime, forceClosed: false }, { merge: true })
-                    .catch(e => {
-                        console.error(e);
-                        if (e.code === 'permission-denied') {
-                            setTimeout(() => window.showModal('alert', '⚠️ Cloud Déconnecté', 'Le minuteur tourne bien sur cet ordinateur... Mais <strong>Firebase a bloqué</strong> l\'envoi vers les téléphones !<br><br>Allez dans votre console Firebase, et vérifiez que :<br>1. "Anonymous" est activé dans Auth.<br>2. Votre domaine est autorisé.<br>3. Firestore Rules est en Mode Test.'), 500);
-                        }
-                    }); 
-                }
+                if (isCloudActive && db && userId) { const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main'); setDoc(publicRef, { phase1Duration: state.phase1Duration, phase2Duration: state.phase2Duration, eventStartTime: state.eventStartTime, forceClosed: false }, { merge: true }).catch(e=>console.error(e)); }
                 state.view = 'monitor'; checkPhase(); render();
             });
         }
@@ -618,7 +603,6 @@
         }
 
         window.vote = async function(id) {
-            if (state.currentPhase === 0) { window.showModal('alert', 'Patience...', 'Le DJ n\'a pas encore officiellement ouvert les votes pour cette session.'); return; }
             if (state.forceClosed || state.currentPhase === 3) { window.showModal('alert', 'Votes clôturés', 'Les votes sont définitivement terminés pour cette session ! Regardez l\'écran géant.'); return; }
             if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
             const votesForSong = state.userVotes[id] || 0;
