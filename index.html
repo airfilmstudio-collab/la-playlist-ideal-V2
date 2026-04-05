@@ -146,47 +146,9 @@
 
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
-        // =========================================================================
-        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES (Protection Chrome/Safari)
-        // =========================================================================
-        try {
-            const urlParamsInitial = new URLSearchParams(window.location.search);
-            const newSessionId = urlParamsInitial.get('s');
-            if (newSessionId) {
-                const currentSession = localStorage.getItem('dj_client_session');
-                if (currentSession && currentSession !== newSessionId) {
-                    console.log("Nouvelle session détectée via QR Code. Nettoyage absolu...");
-                    localStorage.removeItem('dj_songs');
-                    localStorage.removeItem('dj_userVotes');
-                    localStorage.removeItem('dj_eventStartTime');
-                    localStorage.removeItem('dj_forceClosed');
-                    localStorage.removeItem('dj_phase1');
-                    localStorage.removeItem('dj_phase2');
-                    localStorage.setItem('dj_client_session', newSessionId);
-                    localStorage.setItem('dj_sessionId', newSessionId);
-                }
-            }
-        } catch(e) { console.error("Erreur Anti-Cache:", e); }
-        // =========================================================================
-
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // =========================================================================
-        // 🔄 AUTO-ACTUALISATION (ANTI-FANTÔMES) POUR SMARTPHONES
-        // =========================================================================
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "hidden") {
-                localStorage.setItem('dj_sleep_time', Date.now().toString());
-            } else if (document.visibilityState === "visible") {
-                const sleepTime = localStorage.getItem('dj_sleep_time');
-                if (sleepTime && (Date.now() - parseInt(sleepTime)) > 2 * 60 * 1000) {
-                    window.location.reload(); 
-                }
-            }
-        });
-        // =========================================================================
 
         // =========================================================================
         // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
@@ -200,11 +162,11 @@
             appId: "1:288987066836:web:12b48f1ae0adbfef8f6641",
             measurementId: "G-S96KYBT8CN"
         };
-        const FIXED_APP_ID = "laplaylistideale"; 
         // =========================================================================
 
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
         
+        // Génération Dynamique du QR Code pointant vers la bonne adresse Github + INJECTION DE LA SESSION
         function getQRCodeUrl() {
             const baseUrl = "https://airfilmstudio-collab.github.io/la-playlist-ideal-V2/index.html";
             const shareUrl = `${baseUrl}?code=${encodeURIComponent(state.guestCode)}&s=${state.sessionId}`;
@@ -213,19 +175,21 @@
 
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
+        const PASS_ADMIN = "DJ";
 
+        // Compression du tableau pour éviter la coupure du fichier sans perdre aucune donnée
         const initialSongs = [
             [1,"Djadja","Aya Nakamura","Urbain 2020's"],[2,"Bande organisée","13 Organisé","Urbain 2020's"],[3,"Ne reviens pas","Gradur ft. Heuss L'enfoiré","Urbain 2020's"],[4,"La boulette (Génération nan nan)","Diam's","Urbain 2020's"],[5,"Jeune demoiselle","Diam's","Urbain 2020's"],[6,"Dj","Diam's","Urbain 2020's"],[7,"Anissa","Wejdene","Urbain 2020's"],[8,"La kiffance","Naps","Urbain 2020's"],[9,"Petit génie","Jul","Urbain 2020's"],[10,"T’étais où","Jul ft Vegedream, Alonzo, Zaho","Urbain 2020's"],[11,"Best life","Naps feat Gims","Urbain 2020's"],[12,"Mafiosa","Lartiste ft. Caroliina","Urbain 2020's"],[13,"Andalouse","Kendji Girac","Urbain 2020's"],[14,"Color Gitano","Kendji Girac","Urbain 2020's"],[15,"Réseaux","Niska","Urbain 2020's"],[16,"Pookie","Aya Nakamura","Urbain 2020's"],[17,"Zumba Cafew","Soolking ft. Dhurata Dora","Urbain 2020's"],[18,"Comportement","Aya Nakamura","Urbain 2020's"],[19,"Ça va aller","Naza","Urbain 2020's"],[20,"Suavemente","Soolking","Urbain 2020's"],[21,"Otra","Soolking","Urbain 2020's"],[22,"Ça fait des années","Soolking (feat. Cheb Mami)","Urbain 2020's"],[23,"Casanova","Soolking & Gazo","Urbain 2020's"],[24,"1er Gaou","Magic System","Urbain 2020's"],[25,"Bouger bouger","Magic System","Urbain 2020's"],[26,"C'est chô, ça brûle","Magic System","Urbain 2020's"],[27,"Magic in the Air","Magic System","Urbain 2020's"],[28,"Chérie Coco","Magic System","Urbain 2020's"],[29,"Ma chérie","DJ Kayz ft. Wassila","Urbain 2020's"],[30,"Doudou","Aya Nakamura","Urbain 2020's"],[31,"La dot","Aya Nakamura","Urbain 2020's"],[32,"Laisse tomber","Gambi","Urbain 2020's"],[33,"Ak kele nta","MHD","Urbain 2020's"],[34,"Laissez-les kouma","Zaho (feat. MHD)","Urbain 2020's"],[35,"Bobo","Aya Nakamura","Urbain 2020's"],[36,"Heuss L'enfoiré","Sayan Ft Gazo","Urbain 2020's"],[37,"Goutte d'eau","Dadju","Urbain 2020's"],[38,"Dubaï","Soolking","Urbain 2020's"],[39,"Ma belle","PLK","Urbain 2020's"],[40,"T nous va bien","Alonzo Ninho & Naps","Urbain 2020's"],[41,"Jolie nana","Aya Nakamura","Urbain 2020's"],[42,"Minimum Ca","Dr.Yaro","Urbain 2020's"],[43,"Imagine","Carbone","Urbain 2020's"],[44,"Alors on danse","Stromae","Urbain 2020's"],[45,"Tchikita","Jul","Urbain 2020's"],[46,"Wesh Alors","Jul","Urbain 2020's"],[47,"On m'appelle l'Ovni","Jul","Urbain 2020's"],[48,"Ma Jolie","Jul","Urbain 2020's"],[49,"J'fais que danser","Jul","Urbain 2020's"],[50,"Elle me dit","Mika","Urbain 2020's"],[51,"Dernière danse","Indila","Urbain 2020's"],[52,"Cosmo","Soprano","Urbain 2020's"],[53,"Avenir","Louane","Urbain 2020's"],[54,"Reine","Dadju","Urbain 2020's"],[55,"Balance ton Quoi","Angèle","Urbain 2020's"],[56,"Wati By Night","Sexion D’Assaut","Urbain 2020's"],[57,"J’ai cherché","Amir","Urbain 2020's"],[58,"Sur ma route","Black M","Urbain 2020's"],[59,"Un peu de rêve","Vitaa & Claudio Capéo","Urbain 2020's"],[60,"Bella Ciao","Gims, Naestro, Dadju, Slimane","Urbain 2020's"],[61,"Chocolat","Lartiste","Urbain 2020's"],[62,"Dommage","Bigflo & Oli","Urbain 2020's"],[63,"Sapés comme jamais","Gims ft. Niska","Urbain 2020's"],[64,"La Même","Gims & Vianney","Urbain 2020's"],[65,"Bella","Gims","Urbain 2020's"],[66,"J'me tire","Gims","Urbain 2020's"],[67,"Zombie","Gims","Urbain 2020's"],[68,"Laissez passer","Gims","Urbain 2020's"],[69,"Papaoutai","Stromae","Urbain 2020's"],[70,"Formidable","Stromae","Urbain 2020's"],[71,"Tous les mêmes","Stromae","Urbain 2020's"],[72,"Je te promets","Slimane","Urbain 2020's"],[73,"Le coach","Soprano ft. Vincenzo","Urbain 2020's"],[74,"En feu","Soprano","Urbain 2020's"],[75,"Clown","Soprano","Urbain 2020's"],[76,"Le sens de la vie","Tal","Urbain 2020's"],[77,"Le temps qu'il faut","Tal","Urbain 2020's"],[78,"Ma philosophie","Amel Bent","Urbain 2020's"],[79,"Je danse","Jenifer","Urbain 2020's"],[80,"Tourner dans le vide","Indila","Urbain 2020's"],[81,"Love Story","Indila","Urbain 2020's"],[82,"La fête","Amir","Urbain 2020's"],[83,"On dirait","Amir","Urbain 2020's"],[84,"Désolé","Sexion D’Assaut","Urbain 2020's"],[85,"Avant qu'elle parte","Sexion D’Assaut","Urbain 2020's"],[86,"Ma direction","Sexion D’Assaut","Urbain 2020's"],
             [619,"PARISIENNE","GIMS","Urbain 2020's"],[620,"SPA","GIMS","Urbain 2020's"],[621,"CIEL","GIMS","Urbain 2020's"],[622,"NINAO","GIMS","Urbain 2020's"],[623,"SPIDER","GIMS","Urbain 2020's"],[624,"melodrama","disiz theodora","Urbain 2020's"],[625,"Tic","Maureen","Urbain 2020's"],[626,"Laptop","Kalash & Maureen","Urbain 2020's"],[627,"Money Pull Up","Blaiz Fayah & Maureen","Urbain 2020's"],[628,"Mode Avion","DJ Kawest & Attachingboy","Urbain 2020's"],[629,"Chambre 04","DJ Kawest & Attachingboy","Urbain 2020's"],[630,"A la Mode","PLL","Urbain 2020's"],[631,"Pas Jalouse","Bamby & Kerchak","Urbain 2020's"],[632,"Balthazar Mode Vs Gal A Bubble","LeKid & Konshens","Urbain 2020's"],[633,"Shatta Confessions","Meryl","Urbain 2020's"],[634,"Vite Fait","Meryl","Urbain 2020's"],[635,"Coco Chanel","Meryl & Eva","Urbain 2020's"],[636,"Fecat’ji","Fecat’ji","Urbain 2020's"],[637,"La Piraterie","K-Rosif, Bigda & Loeil","Urbain 2020's"],[638,"Whine (Chelero Punchy Remix)","TKS 2G","Urbain 2020's"],
             [87,"Toute première fois","Jeanne Mas","Hits Français"],[88,"Johnny, Johnny","Jeanne Mas","Hits Français"],[89,"En Rouge Et Noir","Jeanne Mas","Hits Français"],[90,"J't'emmène au vent","Louise Attaque","Hits Français"],[91,"Ton invitation","Louise Attaque","Hits Français"],[92,"Femmes Que J'aime !!!","Jean Luc Lahaye","Hits Français"],[93,"J'irai où tu iras","Céline Dion","Hits Français"],[94,"Sans contrefaçon","Mylène Farmer","Hits Français"],[95,"Désenchantée","Mylène Farmer","Hits Français"],[96,"Le Jerk","Thierry Hazard","Hits Français"],[97,"Tomber La Chemise","Zebda","Hits Français"],[98,"Il jouait du piano debout","France Gall","Hits Français"],[99,"Besoin De Rien Envie De Toi","Peter Sloane","Hits Français"],[100,"Les Démons de minuit","Images","Hits Français"],[101,"Nuit de folie","Début de soirée","Hits Français"],[102,"La Tribu De Dana","Manau","Hits Français"],[103,"Confidences pour confidences","Jean Schultheis","Hits Français"],[104,"Pourvu qu'elles soient douces","Mylène Farmer","Hits Français"],[105,"Je te donne","Jean-Jacques Goldman","Hits Français"],[106,"Il suffira d'un signe","Jean-Jacques Goldman","Hits Français"],[107,"Au bout de mes rêves","Jean-Jacques Goldman","Hits Français"],[108,"Quand la musique est bonne","Jean-Jacques Goldman","Hits Français"],[109,"La Groupie du pianiste","Michel Berger","Hits Français"],[110,"Les lacs du Connemara","Michel Sardou","Hits Français"],[111,"Laissez-moi danser","Dalida","Hits Français"],[112,"On va s'aimer","Gilbert Montagné","Hits Français"],[113,"Voyage Voyage","Desireless","Hits Français"],[114,"Lambé An Dro","Matmatah","Hits Français"],[115,"L'apologie","Matmatah","Hits Français"],[116,"Résiste","France Gall","Hits Français"],[117,"J'ai Vu","Niagara","Hits Français"],[118,"Femme Like U","K.Maro","Hits Français"],[119,"Ca m'énerve","Helmut Fritz","Hits Français"],[120,"Joue pas","Francois Feldman","Hits Français"],[121,"Aimons‐nous vivants","François Valéry","Hits Français"],[122,"Elle danse marie","François Valéry","Hits Français"],[123,"Capitaine abandonné","Gold","Hits Français"],[124,"Cendrillon","Téléphone","Hits Français"],[125,"Un autre monde","Téléphone","Hits Français"],[126,"La grenade","Clara Luciani","Hits Français"],[127,"SOS d'un terrien en détresse","Daniel Balavoine","Hits Français"],[128,"D.I.S.C.O.","Ottawan","Hits Français"],[129,"Tahiti","Keen'V","Hits Français"],[130,"Partenaire particulier","Partenaire particulier","Hits Français"],[131,"À nos souvenirs","Trois Cafés Gourmands","Hits Français"],[132,"Marcia Baïla","Rita Mitsouko","Hits Français"],[133,"L'amour à la plage","Niagara","Hits Français"],[134,"Tout Oublier","Angèle feat. Roméo Elvis","Hits Français"],[135,"Week-end à Rome","Étienne Daho","Hits Français"],[136,"Tombé du ciel","Jacques Higelin","Hits Français"],[137,"Étienne","Guesch Patti","Hits Français"],[138,"Vacances j'oublie tout","Élégance","Hits Français"],[139,"Femme libérée","Cookie Dingler","Hits Français"],[140,"Chante","Les Forbans","Hits Français"],[141,"Je suis bien","Gazoline","Hits Français"],[142,"Chacun fait (c'qui lui plaît)","Chagrin d'amour","Hits Français"],[143,"Andy","Les Rita Mitsouko","Hits Français"],[144,"Elle a les yeux revolver","Marc Lavoine","Hits Français"],[145,"Sensualité","Axelle Red","Hits Français"],[146,"Il tape sur des bambous","Philippe Lavil","Hits Français"],[147,"La Boîte de jazz","Michel Jonasz","Hits Français"],[148,"Où sont les femmes ?","Patrick Juvet","Hits Français"],[149,"Du côté de chez Swann","Dave","Hits Français"],[150,"Mélissa","Julien Clerc","Hits Français"],[151,"Canary Bay","Indochine","Hits Français"],[152,"Le chant des cygnes","Indochine","Hits Français"],[153,"L'aventurier","Indochine","Hits Français"],[154,"3e sexe","Indochine","Hits Français"],[155,"Antisocial","Trust","Hits Français"],[156,"Joe Le Taxi","Vanessa Paradis","Hits Français"],[157,"Le bal masqué","La Compagnie Créole","Hits Français"],[158,"Africa","Rose Laurens","Hits Français"],[159,"T'es ok","Ottawan","Hits Français"],[160,"Banana Split","Lio","Hits Français"],[161,"C'est bon pour le moral","La Compagnie Créole","Hits Français"],[162,"Vive le Douanier Rousseau","La Compagnie Créole","Hits Français"],[163,"Alexandrie Alexandra","Claude Francois","Hits Français"],[164,"Magnolias for ever","Claude Francois","Hits Français"],[165,"Rock Amadour","Gerard Blanchard","Hits Français"],[166,"Ça Plane Pour Moi","Plastic Bertrand","Hits Français"],[167,"Tropique","Muriel Dacq","Hits Français"],[168,"C'est toi qui m'a fait","Francois Feldman","Hits Français"],[169,"Eve Lève Toi","JULIE PIETRI","Hits Français"],[170,"C'est la ouate","Caroline Loeb","Hits Français"],
             [171,"Lambada","Kaoma","Classic 80s"],[172,"Fotonovela","Ivan","Classic 80s"],[173,"Ghostbusters","Ray Parker Jr.","Classic 80s"],[174,"Like a Virgin","Madonna","Classic 80s"],[175,"Smalltown Boy","Bronski Beat","Classic 80s"],[176,"You Spin Me Round","Dead or Alive","Classic 80s"],[177,"Relax","Frankie Goes to Hollywood","Classic 80s"],[178,"Wake Me Up Before You Go-Go","Wham!","Classic 80s"],[179,"Billie Jean","Michael Jackson","Classic 80s"],[180,"Purple Rain","Prince","Classic 80s"],[181,"Tarzan Boy","Baltimora","Classic 80s"],[182,"Self Control","Laura Branigan","Classic 80s"],[183,"Just Can't Get Enough","Depeche Mode","Classic 80s"],[184,"Blue Monday","New Order","Classic 80s"],[185,"Shout","Tears for Fears","Classic 80s"],[186,"Take On Me","A-ha","Classic 80s"],[187,"West End Girls","Pet Shop Boys","Classic 80s"],[188,"I Will Survive","Gloria Gaynor","Classic 80s"],[189,"Hot Stuff","Donna Summer","Classic 80s"],[190,"I Feel for You","Chaka Khan","Classic 80s"],[191,"Celebration","Kool & The Gang","Classic 80s"],[192,"How Will I Know","Whitney Houston","Classic 80s"],[193,"Girls Just Want to Have Fun","Cyndi Lauper","Classic 80s"],[194,"Kiss","Prince & The Revolution","Classic 80s"],[195,"Livin' on a Prayer","Bon Jovi","Classic 80s"],[196,"Sweet Dreams","Eurythmics","Classic 80s"],[197,"Never Gonna Give You Up","Rick Astley","Classic 80s"],[198,"Careless Whisper","George Michael","Classic 80s"],[199,"Another One Bites the Dust","Queen","Classic 80s"],[200,"Rio","Duran Duran","Classic 80s"],[201,"Just Like Heaven","The Cure","Classic 80s"],[202,"Enjoy the Silence","Depeche Mode","Classic 80s"],[203,"Everybody Wants to Rule the World","Tears for Fears","Classic 80s"],[204,"Don't You (Forget About Me)","Simple Minds","Classic 80s"],[205,"Jump","Van Halen","Classic 80s"],[206,"Cruel Summer","Bananarama","Classic 80s"],[207,"Karma Chameleon","Culture Club","Classic 80s"],[208,"Gloria","Laura Branigan","Classic 80s"],[209,"Conga","Gloria Estefan","Classic 80s"],[210,"Thriller","Michael Jackson","Classic 80s"],[211,"Dancing Queen","ABBA","Classic 80s"],[212,"Give Me the Night","George Benson","Classic 80s"],[213,"Into the Groove","Madonna","Classic 80s"],[214,"The Final Countdown","Europe","Classic 80s"],
-            [215,"Freed from desire","GALA","Hits 90s"],[216,"The Rhythm of the Night","Corona","Hits 90s"],[217,"Rhythm Is a Dancer","Snap!","Hits 90s"],[218,"The Power","Snap!","Hits 90s"],[219,"Vogue","Madonna","Hits 90s"],[220,"What Is Love","Haddaway","Hits 90s"],[221,"No Limit","2 Unlimited","Hits 90s"],[222,"Be My Lover","La Bouche","Hits 90s"],[223,"Show Me Love","Robin S","Hits 90s"],[224,"Around the World","Daft Punk","Hits 90s"],[225,"Firestarter","The Prodigy","Hits 90s"],[226,"Insomnia","Faithless","Hits 90s"],[227,"Boom, Boom, Boom, Boom!!","Vengaboys","Hits 90s"],[228,"Blue (Da Ba Dee)","Eiffel 65","Hits 90s"],[228,"Believe","Cher","Hits 90s"],[230,"Wannabe","Spice Girls","Hits 90s"],[231,"Baby One More Time","Britney Spears","Hits 90s"],[232,"The Sign","Ace of Base","Hits 90s"],[233,"Another Night","Real McCoy","Hits 90s"],[234,"Mr. Vain","Culture Beat","Hits 90s"],[235,"It's My Life","Dr. Alban","Hits 90s"],[236,"Pump Up the Jam","Technotronic","Hits 90s"],[237,"Music Sounds Better with You","Stardust","Hits 90s"],[238,"Saturday Night","Whigfield","Hits 90s"],[239,"Finally","CeCe Peniston","Hits 90s"],[240,"Scatman","Scatman John","Hits 90s"],[241,"Barbie Girl","Aqua","Hits 90s"],[242,"Cotton Eye Joe","Rednex","Hits 90s"],[243,"Ooh Aah... Just a Little Bit","Gina G","Hits 90s"],[244,"Ride on Time","Black Box","Hits 90s"],[245,"Push It","Salt-N-Pepa","Hits 90s"],[246,"No Scrubs","TLC","Hits 90s"],[247,"Bills, Bills, Bills","Destiny's Child","Hits 90s"],[248,"Together Again","Janet Jackson","Hits 90s"],[249,"Freedom! '90","George Michael","Hits 90s"],[250,"Black or White","Michael Jackson","Hits 90s"],[251,"Praise You","Fatboy Slim","Hits 90s"],[252,"Sing It Back","Moloko","Hits 90s"],[253,"Groove Is in the Heart","Deee-Lite","Hits 90s"],[254,"Children","Robert Miles","Hits 90s"],[255,"Dreamer","Livin' Joy","Hits 90s"],[256,"Feel the Heat of the Night","Masterboy","Hits 90s"],[257,"Captain Jack","Captain Jack","Hits 90s"],[258,"Think About the Way","Ice MC","Hits 90s"],[259,"Ecuador","Sash!","Hits 90s"],[260,"Better Off Alone","Alice Deejay","Hits 90s"],[261,"9 PM (Till I Come)","ATB","Hits 90s"],[262,"L'Amour Toujours","Gigi D'Agostino","Hits 90s"],[263,"Hey Boy Hey Girl","The Chemical Brothers","Hits 90s"],[264,"Born Slippy","Underworld","Hits 90s"],[265,"Lovefool","The Cardigans","Hits 90s"],[266,"Torn","Natalie Imbruglia","Hits 90s"],[267,"Don't Speak","No Doubt","Hits 90s"],[268,"Bitter Sweet Symphony","The Verve","Hits 90s"],[269,"Wonderwall","Oasis","Hits 90s"],[270,"Song 2","Blur","Hits 90s"],
+            [215,"Freed from desire","GALA","Hits 90s"],[216,"The Rhythm of the Night","Corona","Hits 90s"],[217,"Rhythm Is a Dancer","Snap!","Hits 90s"],[218,"The Power","Snap!","Hits 90s"],[219,"Vogue","Madonna","Hits 90s"],[220,"What Is Love","Haddaway","Hits 90s"],[221,"No Limit","2 Unlimited","Hits 90s"],[222,"Be My Lover","La Bouche","Hits 90s"],[223,"Show Me Love","Robin S","Hits 90s"],[224,"Around the World","Daft Punk","Hits 90s"],[225,"Firestarter","The Prodigy","Hits 90s"],[226,"Insomnia","Faithless","Hits 90s"],[227,"Boom, Boom, Boom, Boom!!","Vengaboys","Hits 90s"],[228,"Blue (Da Ba Dee)","Eiffel 65","Hits 90s"],[229,"Believe","Cher","Hits 90s"],[230,"Wannabe","Spice Girls","Hits 90s"],[231,"Baby One More Time","Britney Spears","Hits 90s"],[232,"The Sign","Ace of Base","Hits 90s"],[233,"Another Night","Real McCoy","Hits 90s"],[234,"Mr. Vain","Culture Beat","Hits 90s"],[235,"It's My Life","Dr. Alban","Hits 90s"],[236,"Pump Up the Jam","Technotronic","Hits 90s"],[237,"Music Sounds Better with You","Stardust","Hits 90s"],[238,"Saturday Night","Whigfield","Hits 90s"],[239,"Finally","CeCe Peniston","Hits 90s"],[240,"Scatman","Scatman John","Hits 90s"],[241,"Barbie Girl","Aqua","Hits 90s"],[242,"Cotton Eye Joe","Rednex","Hits 90s"],[243,"Ooh Aah... Just a Little Bit","Gina G","Hits 90s"],[244,"Ride on Time","Black Box","Hits 90s"],[245,"Push It","Salt-N-Pepa","Hits 90s"],[246,"No Scrubs","TLC","Hits 90s"],[247,"Bills, Bills, Bills","Destiny's Child","Hits 90s"],[248,"Together Again","Janet Jackson","Hits 90s"],[249,"Freedom! '90","George Michael","Hits 90s"],[250,"Black or White","Michael Jackson","Hits 90s"],[251,"Praise You","Fatboy Slim","Hits 90s"],[252,"Sing It Back","Moloko","Hits 90s"],[253,"Groove Is in the Heart","Deee-Lite","Hits 90s"],[254,"Children","Robert Miles","Hits 90s"],[255,"Dreamer","Livin' Joy","Hits 90s"],[256,"Feel the Heat of the Night","Masterboy","Hits 90s"],[257,"Captain Jack","Captain Jack","Hits 90s"],[258,"Think About the Way","Ice MC","Hits 90s"],[259,"Ecuador","Sash!","Hits 90s"],[260,"Better Off Alone","Alice Deejay","Hits 90s"],[261,"9 PM (Till I Come)","ATB","Hits 90s"],[262,"L'Amour Toujours","Gigi D'Agostino","Hits 90s"],[263,"Hey Boy Hey Girl","The Chemical Brothers","Hits 90s"],[264,"Born Slippy","Underworld","Hits 90s"],[265,"Lovefool","The Cardigans","Hits 90s"],[266,"Torn","Natalie Imbruglia","Hits 90s"],[267,"Don't Speak","No Doubt","Hits 90s"],[268,"Bitter Sweet Symphony","The Verve","Hits 90s"],[269,"Wonderwall","Oasis","Hits 90s"],[270,"Song 2","Blur","Hits 90s"],
             [271,"I'm Outta Love","Anastacia","Hits 2000s"],[272,"When Love Takes Over","David Guetta","Hits 2000s"],[273,"Hips Don't Lie","Shakira","Hits 2000s"],[274,"Umbrella","Rihanna","Hits 2000s"],[275,"Just Dance","Lady Gaga","Hits 2000s"],[276,"I Gotta Feeling","Black Eyed Peas","Hits 2000s"],[277,"Single Ladies","Beyoncé","Hits 2000s"],[278,"Crazy in Love","Beyoncé","Hits 2000s"],[279,"We Found Love","Rihanna","Hits 2000s"],[280,"Can't Get You Out of My Head","Kylie Minogue","Hits 2000s"],[281,"One More Time","Daft Punk","Hits 2000s"],[282,"Call on Me","Eric Prydz","Hits 2000s"],[283,"Love Generation","Bob Sinclar","Hits 2000s"],[284,"Everytime We Touch","Cascada","Hits 2000s"],[285,"From Paris to Berlin","Infernal","Hits 2000s"],[286,"Put Your Hands Up for Detroit","Fedde Le Grand","Hits 2000s"],[287,"Sun Is Shining","Axwell /\\ Ingrosso","Hits 2000s"],[288,"Don't You Worry Child","Swedish House Mafia","Hits 2000s"],[289,"Summer","Calvin Harris","Hits 2000s"],[290,"Levels","Avicii","Hits 2000s"],[291,"Party Rock Anthem","LMFAO","Hits 2000s"],[292,"Give Me Everything","Pitbull","Hits 2000s"],[293,"Get Busy","Sean Paul","Hits 2000s"],[294,"It Wasnt Me","Shaggy","Hits 2000s"],[295,"Harder, Better, Faster, Stronger","Daft Punk","Hits 2000s"],[296,"Toxic","Britney Spears","Hits 2000s"],[297,"Hung Up","Madonna","Hits 2000s"],[298,"Hey Ya!","OutKast","Hits 2000s"],[299,"Beggin","Madcon","Hits 2000s"],[300,"In da Club","50 Cent","Hits 2000s"],[301,"Yeah!","Usher","Hits 2000s"],[302,"Dilemma","Nelly","Hits 2000s"],[303,"Rock Your Body","Justin Timberlake","Hits 2000s"],[304,"I'm Real","Jennifer Lopez","Hits 2000s"],[305,"Without Me","Eminem","Hits 2000s"],[306,"Pon de Replay","Rihanna","Hits 2000s"],[307,"Viva La Vida","Coldplay","Hits 2000s"],[308,"This Love","Maroon 5","Hits 2000s"],[309,"Low","Flo Rida","Hits 2000s"],[310,"Dynamite","Taio Cruz","Hits 2000s"],[311,"In My Head","Jason Derulo","Hits 2000s"],[312,"I Like It","Enrique Iglesias","Hits 2000s"],[313,"Wild Ones","Flo Rida ft. Sia","Hits 2000s"],[314,"Tik Tok","Kesha","Hits 2000s"],[315,"SexyBack","Justin Timberlake","Hits 2000s"],[316,"Jenny from the Block","Jennifer Lopez","Hits 2000s"],[317,"Family Affair","Mary J. Blige","Hits 2000s"],
-            [318,"Titanium","David Guetta","Hits 2010s"],[319,"Poker Face","Lady Gaga","Hits 2010s"],[320,"Only Girl","Rihanna","Hits 2010s"],[321,"Shape of You","Ed Sheeran","Hits 2010s"],[322,"Uptown Funk","Mark Ronson","Hits 2010s"],[323,"Happy","Pharrell Williams","Hits 2010s"],[324,"Lean On","Major Lazer","Hits 2010s"],[325,"Firestone","Kygo","Hits 2010s"],[326,"Clarity","Zedd","Hits 2010s"],[327,"Animals","Martin Garrix","Hits 2010s"],[328,"Ocean Drive","Duke Dumont","Hits 2010s"],[329,"Rather Be","Clean Bandit","Hits 2010s"],[330,"Latch","Disclosure","Hits 2010s"],[331,"Wake Me Up","Avicii","Hits 2010s"],[332,"This Is What You Came For","Calvin Harris","Hits 2010s"],[333,"Get Lucky","Daft Punk","Hits 2010s"],[334,"Prayer in C","Robin Schulz","Hits 2010s"],[335,"Closer","The Chainsmokers","Hits 2010s"],[336,"Let Me Love You","DJ Snake","Hits 2010s"],[337,"Alone","Marshmello","Hits 2010s"],[338,"Lush Life","Zara Larsson","Hits 2010s"],[339,"Faded","Alan Walker","Hits 2010s"],[340,"Fast Car","Jonas Blue","Hits 2010s"],[341,"Easy Love","Sigala","Hits 2010s"],[342,"Runaway (U & I)","Galantis","Hits 2010s"],[343,"This Girl","Kungs","Hits 2010s"],[344,"Feel So Close","Calvin Harris","Hits 2010s"],[345,"Stole the Show","Kygo","Hits 2010s"],[654,"Barbra Streisand","Duck Sauce","Hits 2010s"],[655,"Club Can’t Handle Me","Flo Rida","Hits 2010s"],[656,"DJ Got Got Us Fallin’ In Love","Usher","Hits 2010s"],[657,"Empire State of Mind","Jay-Z & Alicia Keys","Hits 2010s"],[658,"On The Floor","Jennifer Lopez","Hits 2010s"],[659,"Mr. Saxobeat","Alexandra Stan","Hits 2010s"],[660,"Rolling In The Deep","Adele","Hits 2010s"],[661,"Sexy And I Know It","LMFAO","Hits 2010s"],[662,"Call Me Maybe","Carly Rae Jepsen","Hits 2010s"],[663,"Starships","Nicki Minaj","Hits 2010s"],[664,"Gangnam Style","PSY","Hits 2010s"],[665,"Balada","Gusttavo Lima","Hits 2010s"],[666,"Turn Me On","David Guetta ft. Nicki Minaj","Hits 2010s"],[667,"Diamonds","Rihanna","Hits 2010s"],[668,"Blurred Lines","Robin Thicke","Hits 2010s"],[669,"Can’t Hold Us","Macklemore & Ryan Lewis","Hits 2010s"],[670,"Timber","Pitbull ft. Kesha","Hits 2010s"],[671,"Treasure","Bruno Mars","Hits 2010s"],[672,"Shake It Off","Taylor Swift","Hits 2010s"],[673,"All About That Bass","Meghan Trainor","Hits 2010s"],[674,"Cheerleader (Remix)","OMI","Hits 2010s"],[675,"Sugar","Maroon 5","Hits 2010s"],[676,"Worth It","Fifth Harmony","Hits 2010s"],[677,"Rockstar","Post Malone","Hits 2010s"],[678,"Feels","Calvin Harris","Hits 2010s"],[679,"It Ain’t Me","Kygo","Hits 2010s"],[680,"Symphony","Clean Bandit","Hits 2010s"],[681,"What About Us","P!nk","Hits 2010s"],[682,"One Kiss","Calvin Harris & Dua Lipa","Hits 2010s"],[683,"Señorita","Shawn Mendes & Camila Cabello","Hits 2010s"],[684,"Old Town Road","Lil Nas X","Hits 2010s"],[685,"Bad Guy","Billie Eilish","Hits 2010s"],[686,"I Don’t Care","Ed Sheeran & Justin Bieber","Hits 2010s"],[687,"Memories","Maroon 5","Hits 2010s"],[688,"Higher Love","Kygo & Whitney Houston","Hits 2010s"],
+            [318,"Titanium","David Guetta","Hits 2010s"],[319,"Poker Face","Lady Gaga","Hits 2010s"],[320,"Only Girl","Rihanna","Hits 2010s"],[321,"Shape of You","Ed Sheeran","Hits 2010s"],[322,"Uptown Funk","Mark Ronson","Hits 2010s"],[323,"Happy","Pharrell Williams","Hits 2010s"],[324,"Lean On","Major Lazer","Hits 2010s"],[325,"Firestone","Kygo","Hits 2010s"],[326,"Clarity","Zedd","Hits 2010s"],[327,"Animals","Martin Garrix","Hits 2010s"],[328,"Ocean Drive","Duke Dumont","Hits 2010s"],[329,"Rather Be","Clean Bandit","Hits 2010s"],[330,"Latch","Disclosure","Hits 2010s"],[331,"Wake Me Up","Avicii","Hits 2010s"],[332,"This Is What You Came For","Calvin Harris","Hits 2010s"],[333,"Get Lucky","Daft Punk","Hits 2010s"],[334,"Prayer in C","Robin Schulz","Hits 2010s"],[335,"Closer","The Chainsmokers","Hits 2010s"],[336,"Let Me Love You","DJ Snake","Hits 2010s"],[337,"Alone","Marshmello","Hits 2010s"],[338,"Lush Life","Zara Larsson","Hits 2010s"],[339,"Faded","Alan Walker","Hits 2010s"],[340,"Fast Car","Jonas Blue","Hits 2010s"],[341,"Easy Love","Sigala","Hits 2010s"],[342,"Runaway (U & I)","Galantis","Hits 2010s"],[343,"This Girl","Kungs","Hits 2010s"],[344,"Feel So Close","Calvin Harris","Hits 2010s"],[345,"Stole the Show","Kygo","Hits 2010s"],[654,"Barbra Streisand","Duck Sauce","Hits 2010s"],[655,"Club Can’t Handle Me","Flo Rida","Hits 2010s"],[656,"DJ Got Us Fallin’ In Love","Usher","Hits 2010s"],[657,"Empire State of Mind","Jay-Z & Alicia Keys","Hits 2010s"],[658,"On The Floor","Jennifer Lopez","Hits 2010s"],[659,"Mr. Saxobeat","Alexandra Stan","Hits 2010s"],[660,"Rolling In The Deep","Adele","Hits 2010s"],[661,"Sexy And I Know It","LMFAO","Hits 2010s"],[662,"Call Me Maybe","Carly Rae Jepsen","Hits 2010s"],[663,"Starships","Nicki Minaj","Hits 2010s"],[664,"Gangnam Style","PSY","Hits 2010s"],[665,"Balada","Gusttavo Lima","Hits 2010s"],[666,"Turn Me On","David Guetta ft. Nicki Minaj","Hits 2010s"],[667,"Diamonds","Rihanna","Hits 2010s"],[668,"Blurred Lines","Robin Thicke","Hits 2010s"],[669,"Can’t Hold Us","Macklemore & Ryan Lewis","Hits 2010s"],[670,"Timber","Pitbull ft. Kesha","Hits 2010s"],[671,"Treasure","Bruno Mars","Hits 2010s"],[672,"Shake It Off","Taylor Swift","Hits 2010s"],[673,"All About That Bass","Meghan Trainor","Hits 2010s"],[674,"Cheerleader (Remix)","OMI","Hits 2010s"],[675,"Sugar","Maroon 5","Hits 2010s"],[676,"Worth It","Fifth Harmony","Hits 2010s"],[677,"Rockstar","Post Malone","Hits 2010s"],[678,"Feels","Calvin Harris","Hits 2010s"],[679,"It Ain’t Me","Kygo","Hits 2010s"],[680,"Symphony","Clean Bandit","Hits 2010s"],[681,"What About Us","P!nk","Hits 2010s"],[682,"One Kiss","Calvin Harris & Dua Lipa","Hits 2010s"],[683,"Señorita","Shawn Mendes & Camila Cabello","Hits 2010s"],[684,"Old Town Road","Lil Nas X","Hits 2010s"],[685,"Bad Guy","Billie Eilish","Hits 2010s"],[686,"I Don’t Care","Ed Sheeran & Justin Bieber","Hits 2010s"],[687,"Memories","Maroon 5","Hits 2010s"],[688,"Higher Love","Kygo & Whitney Houston","Hits 2010s"],
             [639,"APT.","ROSÉ & Bruno Mars","Hits 2020s"],[640,"DtMF","Bad Bunny","Hits 2020s"],[641,"BAILE INoLVIDABLE","Bad Bunny","Hits 2020s"],[642,"Cold Heart (Pnau Remix)","Elton John & Dua Lipa","Hits 2020s"],[643,"Flowers","Miley Cyrus","Hits 2020s"],[644,"Dance The Night","Dua Lipa","Hits 2020s"],[645,"Can’t Stop The Feeling","Justin Timberlake","Hits 2020s"],[646,"Levitating","Dua Lipa","Hits 2020s"],[647,"Stay","The Kid LAROI & Justin Bieber","Hits 2020s"],[648,"Pepas","Farruko","Hits 2020s"],[649,"Beggin’","Måneskin","Hits 2020s"],[650,"Shivers","Ed Sheeran","Hits 2020s"],[651,"Don’t Go Yet","Camila Cabello","Hits 2020s"],[652,"Calm Down","Rema","Hits 2020s"],[653,"Espresso","Sabrina Carpenter","Hits 2020s"],[346,"Don't Start Now","Dua Lipa","Hits 2020s"],[347,"Blinding Lights","The Weeknd","Hits 2020s"],[348,"Roses (Imanbek Remix)","SAINt JHN","Hits 2020s"],[349,"Head & Heart","Joel Corry","Hits 2020s"],[350,"Breaking Me","Topic","Hits 2020s"],[351,"Ride It","Regard","Hits 2020s"],[352,"Dynamite","BTS","Hits 2020s"],[353,"As It Was","Harry Styles","Hits 2020s"],[354,"Titi Me Preguntó","Bad Bunny","Hits 2020s"],[355,"Juro Que","Rosalía","Hits 2020s"],[356,"I'm Good (Blue)","David Guetta","Hits 2020s"],[357,"The Business","Tiësto","Hits 2020s"],[358,"Piece of Your Heart","Meduza","Hits 2020s"],[359,"Montero (Call Me by Your Name)","Lil Nas X","Hits 2020s"],[360,"Say So","Doja Cat","Hits 2020s"],[361,"Rain on Me","Lady Gaga","Hits 2020s"],[362,"I Wanna Be Your Slave","Måneskin","Hits 2020s"],[363,"Good 4 U","Olivia Rodrigo","Hits 2020s"],[364,"Therefore I Am","Billie Eilish","Hits 2020s"],[365,"Franchise","Travis Scott","Hits 2020s"],
             [366,"Gasolina","Daddy Yankee","Reggaeton & Latin"],[367,"Chantaje","Shakira","Reggaeton & Latin"],[368,"Mi Gente","J Balvin","Reggaeton & Latin"],[369,"Despacito","Luis Fonsi","Reggaeton & Latin"],[370,"Dakiti","Bad Bunny","Reggaeton & Latin"],[371,"Tusa","Karol G","Reggaeton & Latin"],[372,"Baila Baila Baila","Ozuna","Reggaeton & Latin"],[373,"Hawái","Maluma","Reggaeton & Latin"],[374,"Con Altura","Rosalía","Reggaeton & Latin"],[375,"China","Anuel AA","Reggaeton & Latin"],
-            [376,"Jerusalema","Master KG","Hits Soleil"],[377,"C'est la vie","Khaled","Hits Soleil"],[378,"Danza Kuduro","Don Omar","Hits Soleil"],[379,"Waka Waka","Shakira","Hits Soleil"],[380,"Bailando","Enrique Iglesias","Hits Soleil"],[381,"El Perdón","Nicky Jam","Hits Soleil"],[382,"La Gozadera","Gente de Zone","Hits Soleil"],[383,"Subeme la Radio","Enrique Iglesias","Hits Soleil"],[384,"Taki Taki","DJ Snake","Hits Soleil"],[385,"Calma (Remix)","Pedro Capó","Hits Soleil"],[386,"Con Calma","Daddy Yankee","Hits Soleil"],[387,"Obsesión","Aventura","Hits Soleil"],[388,"Maldòn","Zouk Machine","Hits Soleil"],[389,"Kolé séré","Philippe Lavil","Hits Soleil"],[390,"Angela","Saïan Supa Crew","Hits Soleil"],[391,"Les Sunlights des Tropiques","Gilbert Montagné","Hits Soleil"],[392,"Flamme","Slaï","Hits Soleil"],[393,"Enamórame","Papi Sánchez","Hits Soleil"],[394,"Petites îles","Neg' Marrons","Hits Soleil"],[395,"Temperature","Sean Paul","Hits Soleil"],[396,"Cheap Thrills","Sia","Hits Soleil"],[397,"One Dance","Drake","Hits Soleil"],[398,"Sorry","Justin Bieber","Hits Soleil"],[399,"Havana","Camila Cabello","Hits Soleil"],[400,"Bum Bum Tam Tam","MC Fioti","Hits Soleil"],[401,"Safari","J Balvin","Hits Soleil"],[402,"Gyal You a Party Animal","Charly Black","Hits Soleil"],[403,"Te Boté","Nio García","Hits Soleil"],[404,"X (Equis)","Nicky Jam","Hits Soleil"],[405,"Felices los 4","Maluma","Hits Soleil"],[406,"Vivir Mi Vida","Marc Anthony","Hits Soleil"],[407,"Bailar","Deorro","Hits Soleil"],[408,"El Taxi","Osmani Garcia","Hits Soleil"],[409,"Ginza","J Balvin","Hits Soleil"],[410,"Duele el Corazón","Enrique Iglesias","Hits Soleil"],[411,"Reggaetón Lento (Bailemos)","CNCO","Hits Soleil"],[412,"Je vais à Rio","Claude François","Hits Soleil"],[413,"Could You Be Loved","Bob Marley","Hits Soleil"],[414,"L'amour à la plage","Niagara","Hits Soleil"],[415,"Un, Dos, Tres, Maria","Ricky Martin","Hits Soleil"],[416,"Macumba","Jean-Pierre Mader","Hits Soleil"],[417,"Macarena","Los Del Rio","Hits Soleil"],[418,"Mambo No. 5","Lou Bega","Hits Soleil"],[419,"Paris Latino","Bandolero","Hits Soleil"],[420,"J'veux du soleil","Au P'tit Bonheur","Hits Soleil"],[421,"Is This Love","Bob Marley","Hits Soleil"],[422,"Samba de Janeiro","Bellini","Hits Soleil"],[423,"Soca Dance","Charles D. Lewis","Hits Soleil"],[424,"Bamboleo","Gipsy Kings","Hits Soleil"],[425,"Alane","Wes","Hits Soleil"],[426,"Vamos a la Playa","Righeira","Hits Soleil"],[427,"You'll Be Mine (Party Time)","Gloria Estefan","Hits Soleil"],[428,"Yaka Dansé","Raft","Hits Soleil"],[429,"Don't Let Me Be Misunderstood","Santa Esmeralda","Hits Soleil"],[430,"Gimme Hope Jo'Anna","Eddy Grant","Hits Soleil"],[431,"Yé Ké Yé Ké","Mory Kanté","Hits Soleil"],[432,"Club Tropicana","Wham!","Hits Soleil"],[433,"Cuba","Gibson Brothers","Hits Soleil"],[434,"Amor de Mis Amores","Paco","Hits Soleil"],
-            [435,"Save the World","Swedish House Mafia","Électro / Club"],[436,"Hey Brother","Avicii","Électro / Club"],[437,"Stay the Night","Zedd","Électro / Club"],[438,"Hear Me Now","Alok","Électro / Club"],[440,"Hello","Martin Solveig","Électro / Club"],[440,"Take Over Control","Afrojack","Électro / Club"],[441,"Boneless","Steve Aoki","Électro / Club"],[442,"You Don't Know Me","Armand Van Helden","Électro / Club"],[443,"Where's Your Head At","Basement Jaxx","Électro / Club"],[444,"Go","Moby","Électro / Club"],[445,"God Is a DJ","Faithless","Électro / Club"],[446,"Southern Sun","Paul Oakenfold","Électro / Club"],
+            [376,"Jerusalema","Master KG","Hits Soleil"],[377,"C'est la vie","Khaled","Hits Soleil"],[378,"Danza Kuduro","Don Omar","Hits Soleil"],[379,"Waka Waka","Shakira","Hits Soleil"],[380,"Bailando","Enrique Iglesias","Hits Soleil"],[381,"El Perdón","Nicky Jam","Hits Soleil"],[382,"La Gozadera","Gente de Zona","Hits Soleil"],[383,"Subeme la Radio","Enrique Iglesias","Hits Soleil"],[384,"Taki Taki","DJ Snake","Hits Soleil"],[385,"Calma (Remix)","Pedro Capó","Hits Soleil"],[386,"Con Calma","Daddy Yankee","Hits Soleil"],[387,"Obsesión","Aventura","Hits Soleil"],[388,"Maldòn","Zouk Machine","Hits Soleil"],[389,"Kolé séré","Philippe Lavil","Hits Soleil"],[390,"Angela","Saïan Supa Crew","Hits Soleil"],[391,"Les Sunlights des Tropiques","Gilbert Montagné","Hits Soleil"],[392,"Flamme","Slaï","Hits Soleil"],[393,"Enamórame","Papi Sánchez","Hits Soleil"],[394,"Petites îles","Neg' Marrons","Hits Soleil"],[395,"Temperature","Sean Paul","Hits Soleil"],[396,"Cheap Thrills","Sia","Hits Soleil"],[397,"One Dance","Drake","Hits Soleil"],[398,"Sorry","Justin Bieber","Hits Soleil"],[399,"Havana","Camila Cabello","Hits Soleil"],[400,"Bum Bum Tam Tam","MC Fioti","Hits Soleil"],[401,"Safari","J Balvin","Hits Soleil"],[402,"Gyal You a Party Animal","Charly Black","Hits Soleil"],[403,"Te Boté","Nio García","Hits Soleil"],[404,"X (Equis)","Nicky Jam","Hits Soleil"],[405,"Felices los 4","Maluma","Hits Soleil"],[406,"Vivir Mi Vida","Marc Anthony","Hits Soleil"],[407,"Bailar","Deorro","Hits Soleil"],[408,"El Taxi","Osmani Garcia","Hits Soleil"],[409,"Ginza","J Balvin","Hits Soleil"],[410,"Duele el Corazón","Enrique Iglesias","Hits Soleil"],[411,"Reggaetón Lento (Bailemos)","CNCO","Hits Soleil"],[412,"Je vais à Rio","Claude François","Hits Soleil"],[413,"Could You Be Loved","Bob Marley","Hits Soleil"],[414,"L'amour à la plage","Niagara","Hits Soleil"],[415,"Un, Dos, Tres, Maria","Ricky Martin","Hits Soleil"],[416,"Macumba","Jean-Pierre Mader","Hits Soleil"],[417,"Macarena","Los Del Rio","Hits Soleil"],[418,"Mambo No. 5","Lou Bega","Hits Soleil"],[419,"Paris Latino","Bandolero","Hits Soleil"],[420,"J'veux du soleil","Au P'tit Bonheur","Hits Soleil"],[421,"Is This Love","Bob Marley","Hits Soleil"],[422,"Samba de Janeiro","Bellini","Hits Soleil"],[423,"Soca Dance","Charles D. Lewis","Hits Soleil"],[424,"Bamboleo","Gipsy Kings","Hits Soleil"],[425,"Alane","Wes","Hits Soleil"],[426,"Vamos a la Playa","Righeira","Hits Soleil"],[427,"You'll Be Mine (Party Time)","Gloria Estefan","Hits Soleil"],[428,"Yaka Dansé","Raft","Hits Soleil"],[429,"Don't Let Me Be Misunderstood","Santa Esmeralda","Hits Soleil"],[430,"Gimme Hope Jo'Anna","Eddy Grant","Hits Soleil"],[431,"Yé Ké Yé Ké","Mory Kanté","Hits Soleil"],[432,"Club Tropicana","Wham!","Hits Soleil"],[433,"Cuba","Gibson Brothers","Hits Soleil"],[434,"Amor de Mis Amores","Paco","Hits Soleil"],
+            [435,"Save the World","Swedish House Mafia","Électro / Club"],[436,"Hey Brother","Avicii","Électro / Club"],[437,"Stay the Night","Zedd","Électro / Club"],[438,"Hear Me Now","Alok","Électro / Club"],[439,"Hello","Martin Solveig","Électro / Club"],[440,"Take Over Control","Afrojack","Électro / Club"],[441,"Boneless","Steve Aoki","Électro / Club"],[442,"You Don't Know Me","Armand Van Helden","Électro / Club"],[443,"Where's Your Head At","Basement Jaxx","Électro / Club"],[444,"Go","Moby","Électro / Club"],[445,"God Is a DJ","Faithless","Électro / Club"],[446,"Southern Sun","Paul Oakenfold","Électro / Club"],
             [447,"In the Mood","Glenn Miller and His Orchestra","Rock n' Roll & Soul"],[448,"Blue Suede Shoes","Elvis Presley","Rock n' Roll & Soul"],[449,"What'd I Say","Ray Charles","Rock n' Roll & Soul"],[450,"Green Onions","Booker T. & The M.G.","Rock n' Roll & Soul"],[451,"Just a Gigolo / I Ain't Got Nobody","David Lee Roth","Rock n' Roll & Soul"],[452,"La Bamba","Los Lobos","Rock n' Roll & Soul"],[453,"Rock Around The Clock","Valentin Asenov","Rock n' Roll & Soul"],[454,"Let's Twist Again","Chubby Checker","Rock n' Roll & Soul"],[455,"Les cactus","Jacques Dutronc","Rock n' Roll & Soul"],[456,"Et moi, et moi, et moi","Jacques Dutronc","Rock n' Roll & Soul"],[457,"Respect","Aretha Franklin","Rock n' Roll & Soul"],[458,"Gimme Some Lovin'","The Spencer Davis Group","Rock n' Roll & Soul"],[459,"Think","Aretha Franklin","Rock n' Roll & Soul"],[460,"Jumpin' Jack Flash","The Rolling Stones","Rock n' Roll & Soul"],[461,"Get Back","The Beatles","Rock n' Roll & Soul"],[462,"Bad Moon Rising","Creedence Clearwater Revival","Rock n' Roll & Soul"],[463,"Proud Mary","Creedence Clearwater Revival","Rock n' Roll & Soul"],[464,"Green River","Creedence Clearwater Revival","Rock n' Roll & Soul"],[465,"Sugar, Sugar","The Archies","Rock n' Roll & Soul"],[466,"Surfin' U.S.A.","The Beach Boys","Rock n' Roll & Soul"],[467,"Da Doo Ron Ron","The Crystals","Rock n' Roll & Soul"],[468,"Memphis","Johnny Rivers","Rock n' Roll & Soul"],[469,"Twist and Shout","The Beatles","Rock n' Roll & Soul"],[470,"Papa's Got a Brand New Bag","James Brown","Rock n' Roll & Soul"],[471,"California Dreamin'","The Mamas & The Papas","Rock n' Roll & Soul"],[472,"Good Vibrations","The Beach Boys","Rock n' Roll & Soul"],[473,"You Keep Me Hangin' On","The Supremes","Rock n' Roll & Soul"],[474,"Black Is Black","Los Bravos","Rock n' Roll & Soul"],[475,"Light My Fire","The Doors","Rock n' Roll & Soul"],[476,"Soul Man","Sam & Dave","Rock n' Roll & Soul"],[477,"Can't Take My Eyes Off You","Frankie Valli","Rock n' Roll & Soul"],[478,"Sunny","Bobby Hebb","Rock n' Roll & Soul"],[479,"Take Five","Dave Brubeck","Rock n' Roll & Soul"],[480,"Shout","Lulu & The Luvvers","Rock n' Roll & Soul"],[481,"Rum & Coca Cola","The Andrews Sisters","Rock n' Roll & Soul"],[482,"Rock-A-Bye Your Baby With a Dixie Melody","Al Jolson","Rock n' Roll & Soul"],[483,"Don't Be That Way","Benny Goodman","Rock n' Roll & Soul"],[484,"Goody Goody","Benny Goodman","Rock n' Roll & Soul"],[485,"Mambo italiano","Rosemary Clooney","Rock n' Roll & Soul"],[486,"Le lundi au soleil","Claude François","Rock n' Roll & Soul"],[487,"Knock On Wood","Eddie Floyd","Rock n' Roll & Soul"],[488,"Cette année-là","Claude François","Rock n' Roll & Soul"],[489,"Noir c'est noir","Johnny Hallyday","Rock n' Roll & Soul"],[490,"Paint It, Black","The Rolling Stones","Rock n' Roll & Soul"],[491,"Twist à Saint-Tropez","Dick Rivers","Rock n' Roll & Soul"],[492,"Dactylo Rock","Les Chaussettes Noires","Rock n' Roll & Soul"],[493,"Peggy Sue","Buddy Holly","Rock n' Roll & Soul"],[494,"La Bamba","Ritchie Valens","Rock n' Roll & Soul"],[495,"Daniela","Les Chaussettes Noires","Rock n' Roll & Soul"],[496,"Mirza","Nino Ferrer","Rock n' Roll & Soul"],[497,"Buena Sera","Louis Prima","Rock n' Roll & Soul"],[498,"Just a Gigolo","Louis Prima","Rock n' Roll & Soul"],[499,"Baby Love","The Supremes","Rock n' Roll & Soul"],[500,"Everybody Needs Somebody to Love","Solomon Burke","Rock n' Roll & Soul"],[501,"California Girls","The Beach Boys","Rock n' Roll & Soul"],[502,"Jailhouse Rock","Elvis Presley","Rock n' Roll & Soul"],[503,"Hold On, I'm Comin'","Sam & Dave","Rock n' Roll & Soul"],[504,"Hound Dog","Elvis Presley","Rock n' Roll & Soul"],[505,"Johnny B. Goode","Chuck Berry","Rock n' Roll & Soul"],[506,"Tutti Frutti","Little Richard","Rock n' Roll & Soul"],[507,"Maybellene","Chuck Berry","Rock n' Roll & Soul"],[508,"Heartbreak Hotel","Elvis Presley","Rock n' Roll & Soul"],[509,"Great Balls Of Fire","Jerry Lee Lewis","Rock n' Roll & Soul"],[510,"Long Tall Sally","Little Richard","Rock n' Roll & Soul"],[511,"Lucille","Little Richard","Rock n' Roll & Soul"],[512,"Shake, Rattle and Roll","Bill Haley and His Comets","Rock n' Roll & Soul"],[513,"Sweet Little Sixteen","Chuck Berry","Rock n' Roll & Soul"],[514,"Whole Lotta Shakin' Going On","Jerry Lee Lewis","Rock n' Roll & Soul"],[515,"C’Mon Everybody","Eddie Cochran","Rock n' Roll & Soul"],[516,"Don't Be Cruel","Elvis Presley","Rock n' Roll & Soul"],[517,"Be-Bop-a-Lula","Gene Vincent","Rock n' Roll & Soul"],[518,"Good Golly Miss Molly","Little Richard","Rock n' Roll & Soul"],[519,"Grease","Frankie Valli","Rock n' Roll & Soul"],[520,"Your Song","Billy Paul","Rock n' Roll & Soul"],[521,"You Can't hurry Love","The Supremes","Rock n' Roll & Soul"],[522,"Born to Be Wild","Steppenwolf","Rock n' Roll & Soul"],[523,"Susie Q.","Creedence Clearwater Revival","Rock n' Roll & Soul"],[524,"Jimmy Mack","Martha Reeves & The Vandellas","Rock n' Roll & Soul"],[525,"Venus","Shocking Blue","Rock n' Roll & Soul"],[526,"Spirit In the Sky","Norman Greenbaum","Rock n' Roll & Soul"],[527,"Eloise","Barry Ryan","Rock n' Roll & Soul"],
             [528,"Enjoy the Silence","Depeche Mode","Pop Rock"],[529,"Tainted Love","Soft Cell","Pop Rock"],[530,"Relax","Frankie Goes to Hollywood","Pop Rock"],[531,"London Calling","The Clash","Pop Rock"],[532,"Why ?","Bronski Beat","Pop Rock"],[533,"Smalltown Boy","Bronski Beat","Pop Rock"],[534,"99 Luftballons","Nena","Pop Rock"],[535,"In Between Days","The Cure","Pop Rock"],[536,"Enola Gay","Orchestral Manoeuvres In the Dark","Pop Rock"],[537,"L'aventurier","Indochine","Pop Rock"],[538,"Long Train Running","Traks","Pop Rock"],[539,"Sweet Dreams (Are Made of This)","Eurythmics","Pop Rock"],[540,"Another Brick In the Wall, Pt. 2","Pink Floyd","Pop Rock"],[541,"Boys Don't Cry","The Cure","Pop Rock"],[542,"Highway to Hell","AC/DC","Pop Rock"],[543,"I Love Rock 'N' Roll","Joan Jett & The Blackhearts","Pop Rock"],[544,"J'ai Vu","Niagara","Pop Rock"],[545,"Pride (In the Name of Love)","U2","Pop Rock"],[546,"Seven Nation Army","The White Stripes","Pop Rock"],[547,"Sunday Bloody Sunday","U2","Pop Rock"],[548,"Take Me Out","Franz Ferdinand","Pop Rock"],[549,"Shout","Tears for Fears","Pop Rock"],[550,"Just Can't Get Enough","Depeche Mode","Pop Rock"],[551,"Everybody Wants to Rule the World","Tears for Fears","Pop Rock"],[552,"Don't You (Forget About Me)","Simple Minds","Pop Rock"],[553,"Let's Dance","David Bowie","Pop Rock"],[554,"Need You Tonight","INXS","Pop Rock"],[555,"Kiss","Prince & The Revolution","Pop Rock"],[556,"Take On Me","a-ha","Pop Rock"],[557,"Heart of Glass","Blondie","Pop Rock"],[558,"Under Pressure","Queen & David Bowie","Pop Rock"],[559,"I'm Still Standing","Elton John","Pop Rock"],[560,"Video Killed the Radio Star","The Buggles","Pop Rock"],[561,"One Step Beyond","Madness","Pop Rock"],[562,"I Will Survive","Gloria Gaynor","Pop Rock"],[563,"Love You Madly","CAKE","Pop Rock"],[564,"Viva la Vida","Coldplay","Pop Rock"],[565,"Creep","Radiohead","Pop Rock"],[566,"Banquet","Bloc Party","Pop Rock"],[567,"Song 2","Blur","Pop Rock"],[568,"Girls and Boys","Blur","Pop Rock"],[569,"Paint It, Black","The Rolling Stones","Pop Rock"],[570,"Start Me Up","The Rolling Stones","Pop Rock"],[571,"Wonderwall","Oasis","Pop Rock"],[572,"Town Called Malice","The Jam","Pop Rock"],[573,"Charmless Man","Blur","Pop Rock"],[574,"Mr. Brightside","The Killers","Pop Rock"],[575,"No Fun","The Stooges","Pop Rock"],[576,"Sex on Fire","Kings of Leon","Pop Rock"],[577,"Fortunate Son","Creedence Clearwater Revival","Pop Rock"],[578,"Born to Be Wild","Steppenwolf","Pop Rock"],[579,"Jump","Van Halen","Pop Rock"],[580,"Don't Stop Me Now","Queen","Pop Rock"],[581,"Sweet Home Alabama","Lynyrd Skynyrd","Pop Rock"],[582,"Long Train Runnin'","The Doobie Brothers","Pop Rock"],[583,"Crocodile Rock","Elton John","Pop Rock"],[584,"Killing In the Name","Rage Against the Machine","Pop Rock"],[585,"Smells Like Teen Spirit","Nirvana","Pop Rock"],[586,"Under the Bridge","Red Hot Chili Peppers","Pop Rock"],[587,"Bohemian Rhapsody","Queen","Pop Rock"],[588,"La Grange","ZZ Top","Pop Rock"],[589,"Roxanne","The Police","Pop Rock"],[590,"Sultans Of Swing","Dire Straits","Pop Rock"],[591,"Back In Black","AC/DC","Pop Rock"],[592,"Losing My Religion","R.E.M.","Pop Rock"],[593,"The Logical Song","Supertramp","Pop Rock"],[594,"Hold the Line","Toto","Pop Rock"],[595,"Hysteria","Muse","Pop Rock"],[596,"You Really Got Me","The Kinks","Pop Rock"],[597,"Smoke on the Water","Deep Purple","Pop Rock"],[598,"Born to Run","Bruce Springsteen","Pop Rock"],[599,"Are You Gonna Go My Way","Lenny Kravitz","Pop Rock"],[600,"Owner of a Lonely Heart","Yes","Pop Rock"],[601,"Every You Every Me","Placebo","Pop Rock"],[602,"A Kind of Magic","Queen","Pop Rock"],[603,"Another One Bites the Dust","Queen Factory","Pop Rock"],[604,"We Are The Champions","Queen","Pop Rock"],[605,"With or Without You","U2","Pop Rock"],[606,"Desire","U2","Pop Rock"],[607,"New Year's Day","U2","Pop Rock"],[608,"Gimme All Your Lovin'","ZZ Top","Pop Rock"],[609,"The Final Countdown","Europe","Pop Rock"],[610,"It's Raining Men","The Weather Girls","Pop Rock"],[611,"Africa","Toto","Pop Rock"],[612,"I Want To Break Free","Queen","Pop Rock"],[613,"Footloose","Kenny Loggins","Pop Rock"],[614,"Blue Monday","New Order","Pop Rock"],[615,"Maniac","Michael Sembello","Pop Rock"],[616,"China Girl","David Bowie","Pop Rock"],[617,"Da Ya Think I'm Sexy?","Rod Stewart","Pop Rock"],[618,"Bad News","Moon Martin","Pop Rock"]
         ].map(s => ({
@@ -252,13 +216,8 @@
             phase1Duration: 2 * 60 * 60 * 1000, 
             phase2Duration: 1 * 60 * 60 * 1000,
             sessionId: 'init',
-            forceClosed: false,
-            isCloudSynced: false,
-            authStatus: 'pending',
             modal: null
         };
-
-        let cloudErrorMsg = null;
 
         // --- EXPOSITION DES FONCTIONS GLOBALES (Pour les onclick HTML) ---
         window.showModal = function(type, title, message, onConfirmCallback = null) {
@@ -267,8 +226,10 @@
         }
 
         window.openExternalDisplay = function(type) {
+            // Utilise l'URL absolue de base (sans les paramètres) pour éviter l'erreur 404 sur GitHub Pages
             const baseUrl = window.location.href.split('?')[0];
             const url = baseUrl + "?public=" + type;
+            // Ouvre une nouvelle fenêtre pop-up dédiée à l'écran étendu
             window.open(url, "UniversalDJ_Display", "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no");
             window.showModal('alert', 'Fenêtre Externe Ouverte', 'Une nouvelle fenêtre vient de s\'ouvrir.<br><br>Faites-la glisser sur votre 2ème écran (TV ou Vidéoprojecteur) puis appuyez sur <strong>F11</strong> pour la mettre en plein écran.');
         }
@@ -285,6 +246,7 @@
             window.closeModal();
         }
 
+        // Fonction pour générer et télécharger le fichier M3U (Top 40)
         window.downloadM3U = function() {
             const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
             if (top40Songs.length === 0) {
@@ -313,6 +275,7 @@
             }, 100);
         };
 
+        // Fonction pour réinitialiser la vue utilisateur et revenir en haut
         window.resetUserView = function() {
             state.searchQuery = '';
             state.selectedTheme = 'Tous';
@@ -322,57 +285,66 @@
             window.scrollTo({top: 0, behavior: 'smooth'});
         };
 
-        // --- INTEGRATION FIREBASE (SYNCHRONISATION UNIVERSELLE) ---
+        // --- INTEGRATION FIREBASE (CLOUD TEMPS RÉEL) ---
         let db, auth, appId, userId = null;
-        let isCloudActive = false; 
+        let isCloudActive = false; // <-- Indicateur pour le tableau de bord
         let unsubscribePublic = null;
         let unsubscribePrivate = null;
 
         try {
-            // 🔥 RESTAURATION DES CLÉS ET DU CHEMIN UNIQUE DANS VOTRE BASE
-            const firebaseConfig = MY_FIREBASE_CONFIG;
-            appId = FIXED_APP_ID;
+            let firebaseConfig = null;
+            let useCanvasAuth = false;
 
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            isCloudActive = true;
-            
-            state.isCloudSynced = true; 
+            if (typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== '{}') {
+                firebaseConfig = JSON.parse(__firebase_config);
+                appId = typeof __app_id !== 'undefined' ? __app_id : appId;
+                useCanvasAuth = true;
+            } 
+            else if (MY_FIREBASE_CONFIG.apiKey !== "" && MY_FIREBASE_CONFIG.apiKey !== "COLLE_TA_CLE_API_ICI") {
+                firebaseConfig = MY_FIREBASE_CONFIG;
+                appId = MY_FIREBASE_CONFIG.appId || 'universal-dj-app';
+            }
 
-            // Étape 1 : On demande d'abord l'identification silencieuse
-            signInAnonymously(auth).then(() => {
-                // Étape 2 : Une fois authentifié, on branche TOUS les écouteurs Cloud
+            if (firebaseConfig) {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isCloudActive = true;
+
+                const initAuth = async () => {
+                    try {
+                        if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Erreur d'authentification Firebase:", error);
+                        // On ne bloque pas l'écran de connexion pour l'instant.
+                        // L'erreur sera signalée si l'utilisateur tente de voter.
+                    }
+                };
+                initAuth();
+
                 onAuthStateChanged(auth, (user) => {
-                    state.authStatus = 'ready'; 
                     if (user) {
                         userId = user.uid;
-                        // On lance les écouteurs sur TA base de données Firebase
-                        setupPublicListener();
-                        setupPrivateListener();
+                        setupListeners();
+                    } else {
+                        userId = null;
+                        if (unsubscribePublic) unsubscribePublic();
+                        if (unsubscribePrivate) unsubscribePrivate();
                     }
                 });
-            }).catch(err => {
-                console.warn("Auth Firebase bloquée (Mode dégradé).", err);
-                state.authStatus = 'failed';
-                cloudErrorMsg = err.code;
-                // En mode dégradé (Safari), on tente quand même l'écoute publique
-                setupPublicListener();
-                render();
-            });
-            
+            } else {
+                console.warn("Mode Hors-ligne (Local) activé. La base de données n'est pas configurée.");
+            }
         } catch(error) {
             console.error("Erreur d'initialisation Firebase:", error);
-            state.isCloudSynced = true; 
-            state.authStatus = 'failed';
-            render();
         }
 
-        function setupPublicListener() {
-            if (unsubscribePublic) return; 
-
-            // On utilise toujours FIXED_APP_ID ("laplaylistideale") pour que tout le monde regarde au même endroit
-            const publicRef = doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main');
+        function setupListeners() {
+            const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
             
             unsubscribePublic = onSnapshot(publicRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -384,7 +356,6 @@
                     state.eventStartTime = data.eventStartTime || null;
                     state.phase1Duration = data.phase1Duration || (2 * 60 * 60 * 1000);
                     state.phase2Duration = data.phase2Duration || (1 * 60 * 60 * 1000);
-                    state.forceClosed = data.forceClosed || false;
 
                     const cloudVotes = data.songVotes || {};
                     state.songs.forEach(song => {
@@ -392,9 +363,9 @@
                     });
 
                     checkPhase();
-                    verifySessionAndLoadVotes(); 
+                    verifySessionAndLoadVotes();
                 } else {
-                    // Création initiale Cloud si besoin
+                    // Création de la DB si elle n'existe pas encore (Garantie Anti-crash)
                     setDoc(publicRef, {
                         sessionId: Date.now().toString(),
                         guestCode: state.guestCode || 'FIESTA',
@@ -402,35 +373,13 @@
                         eventStartTime: null,
                         phase1Duration: 2 * 60 * 60 * 1000,
                         phase2Duration: 1 * 60 * 60 * 1000,
-                        forceClosed: false,
                         songVotes: {}
-                    }, { merge: true }).catch(e => console.warn("Erreur SetDoc initiale"));
+                    }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
                 }
+            }, (error) => console.error("Erreur lecture Cloud :", error));
 
-                // 🔥 FLASH VISUEL DJ (Effet visuel à chaque nouveau vote reçu)
-                if (state.view === 'admin') {
-                    const adminEl = document.getElementById('admin-dashboard');
-                    if (adminEl) {
-                        adminEl.classList.remove('animate-fade-in');
-                        void adminEl.offsetWidth; // Déclenche le flash
-                        adminEl.classList.add('animate-fade-in');
-                    }
-                }
-                render(); 
-            }, (error) => {
-                console.warn("Écoute Cloud restreinte :", error.message);
-                if (error.code === 'permission-denied') {
-                    state.authStatus = 'failed';
-                    cloudErrorMsg = 'Permissions refusées';
-                }
-            });
-        }
-
-        function setupPrivateListener() {
-            if (!userId) return;
-            if (unsubscribePrivate) unsubscribePrivate();
+            const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
             
-            const privateRef = doc(db, 'artifacts', FIXED_APP_ID, 'users', userId, 'userData', 'votes');
             unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -440,32 +389,22 @@
                     }
                 }
                 render();
-            }, (error) => console.warn("Lecture privée indisponible"));
+            }, (error) => console.error("Erreur lecture locale :", error));
         }
+        // --- FIN INTEGRATION FIREBASE ---
 
+        // Fonction magique : Vérifie si c'est une nouvelle soirée/tour et vide les crédits si besoin
         function verifySessionAndLoadVotes() {
             const localClientSession = localStorage.getItem('dj_client_session');
             
-            // Si la session change, on efface tout sur le téléphone pour repartir à neuf
-            if (!localClientSession || localClientSession !== state.sessionId) {
-                state.songs = JSON.parse(JSON.stringify(initialSongs));
+            // Si la session globale a changé, on vide les poches du téléphone
+            if (localClientSession !== state.sessionId) {
                 state.userVotes = {};
                 state.totalUserVotes = 0;
-                
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
-                localStorage.removeItem('dj_songs');
-                
-                try {
-                    if (window.history && window.history.replaceState) {
-                        const currentUrl = new URL(window.location.href);
-                        if (currentUrl.searchParams.has('s')) {
-                            currentUrl.searchParams.delete('s');
-                            window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search);
-                        }
-                    }
-                } catch(e) {}
             } else {
+                // Sinon on recharge les votes normaux
                 const savedUserVotes = localStorage.getItem('dj_userVotes');
                 if (savedUserVotes) {
                     state.userVotes = JSON.parse(savedUserVotes);
@@ -475,58 +414,87 @@
                     state.totalUserVotes = 0; 
                 }
             }
+            render();
         }
 
         function loadServerData() {
             try {
+                // Récupération de la session globale (soit de l'URL, soit du stockage)
                 const urlParams = new URLSearchParams(window.location.search);
                 const urlSession = urlParams.get('s');
+                
                 if (urlSession) {
                     state.sessionId = urlSession;
+                    localStorage.setItem('dj_sessionId', urlSession);
                 } else {
                     const savedSession = localStorage.getItem('dj_sessionId');
                     if (savedSession) state.sessionId = savedSession;
                     else state.sessionId = Date.now().toString();
                 }
 
+                // Vérification de la session pour vider ou charger les votes
                 verifySessionAndLoadVotes();
 
+                // Gestion du Mot de passe Invité
                 const urlCode = urlParams.get('code');
                 if (urlCode) {
                     state.guestCode = urlCode.toUpperCase().trim();
                     localStorage.setItem('dj_guestCode', state.guestCode);
                 } else {
                     const savedCode = localStorage.getItem('dj_guestCode');
-                    if (savedCode) state.guestCode = savedCode.trim();
+                    if (savedCode && savedCode.trim() !== '') {
+                        state.guestCode = savedCode.trim();
+                    } else {
+                        state.guestCode = 'FIESTA';
+                    }
                 }
 
+                // Gestion du Mot de passe Admin
                 const savedAdminCode = localStorage.getItem('dj_adminCode');
-                if (savedAdminCode) state.adminCode = savedAdminCode.trim();
+                if (savedAdminCode && savedAdminCode.trim() !== '') {
+                    state.adminCode = savedAdminCode.trim();
+                } else {
+                    state.adminCode = 'DJ';
+                }
 
+                // Chargement des chansons
                 const savedSongs = localStorage.getItem('dj_songs');
                 if (savedSongs) {
                     const parsedSongs = JSON.parse(savedSongs);
                     if (Array.isArray(parsedSongs) && parsedSongs.length === initialSongs.length) {
                         state.songs = parsedSongs;
+                    } else if (Array.isArray(parsedSongs)) {
+                        const oldVotes = {};
+                        parsedSongs.forEach(s => { if (s && s.id) oldVotes[s.id] = s.votes || 0; });
+                        state.songs = JSON.parse(JSON.stringify(initialSongs)).map(song => {
+                            if (oldVotes[song.id]) song.votes = oldVotes[song.id];
+                            return song;
+                        });
+                        saveServerData();
                     } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
-                }
+                } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
 
+                // Chargement Minuteur
                 const savedStartTime = localStorage.getItem('dj_eventStartTime');
-                if (savedStartTime && savedStartTime !== 'null') state.eventStartTime = parseInt(savedStartTime, 10);
+                if (savedStartTime && savedStartTime !== 'null') { state.eventStartTime = parseInt(savedStartTime, 10); } 
+                else { state.eventStartTime = null; }
 
                 const savedP1 = localStorage.getItem('dj_phase1');
                 if (savedP1) state.phase1Duration = parseInt(savedP1, 10);
                 const savedP2 = localStorage.getItem('dj_phase2');
                 if (savedP2) state.phase2Duration = parseInt(savedP2, 10);
                 
-                const savedForceClosed = localStorage.getItem('dj_forceClosed');
-                if (savedForceClosed) state.forceClosed = (savedForceClosed === 'true');
-                
+                // Détection de l'écran externe (HDMI/TV) pour contourner la page d'accueil
                 const publicView = urlParams.get('public');
-                if (publicView) state.view = publicView;
+                if (publicView) {
+                    state.view = publicView;
+                }
             } catch (error) {
+                console.error("Erreur de mémoire cache.", error);
                 state.songs = JSON.parse(JSON.stringify(initialSongs)); 
+                state.userVotes = {}; state.totalUserVotes = 0; state.eventStartTime = null;
             }
+            if (!Array.isArray(state.songs)) state.songs = JSON.parse(JSON.stringify(initialSongs));
         }
 
         function saveServerData() {
@@ -538,410 +506,1004 @@
                 localStorage.setItem('dj_eventStartTime', state.eventStartTime || 'null');
                 localStorage.setItem('dj_phase1', state.phase1Duration);
                 localStorage.setItem('dj_phase2', state.phase2Duration);
-                localStorage.setItem('dj_forceClosed', state.forceClosed);
                 localStorage.setItem('dj_sessionId', state.sessionId);
             } catch (error) { console.error("Erreur de sauvegarde", error); }
         }
 
         function checkPhase() {
-            if (state.forceClosed) {
-                if (state.currentPhase !== 3) { 
-                    state.currentPhase = 3;
-                    if (state.view === 'qrcode') state.view = 'monitor';
-                    if (state.view === 'user') window.scrollTo({ top: 0, behavior: 'smooth' });
-                    render(); 
-                }
-                return;
-            }
             if (!state.eventStartTime) {
                 if (state.currentPhase !== 0) { state.currentPhase = 0; render(); }
                 return;
             }
-            const elapsed = Date.now() - state.eventStartTime;
-            let newPhase = 0;
-            if (elapsed < state.phase1Duration) newPhase = 1;
-            else if (elapsed < state.phase1Duration + state.phase2Duration) newPhase = 2;
-            else newPhase = 3;
+            const now = Date.now();
+            const elapsed = now - state.eventStartTime;
+            let newPhase = 0; let timeLeft = 0;
+            const p1 = state.phase1Duration;
+            const p2 = state.phase2Duration;
 
+            if (elapsed < p1) { newPhase = 1; timeLeft = p1 - elapsed; } 
+            else if (elapsed < p1 + p2) { newPhase = 2; timeLeft = (p1 + p2) - elapsed; } 
+            else { newPhase = 3; timeLeft = 0; }
+
+            // Vérification stricte du basculement automatique
             if (state.currentPhase !== newPhase) { 
                 state.currentPhase = newPhase;
-                if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode') state.view = 'monitor';
-                if (newPhase === 3 && state.view === 'user') window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Redirection côté Écran Géant / Admin
+                if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode') {
+                    state.view = 'monitor';
+                }
+                
+                // Pour l'utilisateur : forcer un scroll en haut pour bien voir le classement final !
+                if (newPhase === 3 && state.view === 'user') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                
                 render(); 
             }
-            // Mises à jour des minuteurs
-            const format = (ms) => {
-                const s = Math.max(0, Math.floor(ms / 1000));
-                return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
-            };
-            const timeLeft = (newPhase === 1) ? state.phase1Duration - elapsed : 
-                             (newPhase === 2) ? (state.phase1Duration + state.phase2Duration) - elapsed : 0;
-            document.querySelectorAll('.dynamic-timer-display').forEach(el => el.textContent = format(timeLeft));
-            document.querySelectorAll('.global-timer-display').forEach(el => el.textContent = format((state.phase1Duration + state.phase2Duration) - elapsed));
+
+            let globalTimeLeft = (p1 + p2) - elapsed;
+            if (globalTimeLeft < 0) globalTimeLeft = 0;
+            const gh = Math.floor(globalTimeLeft / 3600000).toString().padStart(2, '0');
+            const gm = Math.floor((globalTimeLeft % 3600000) / 60000).toString().padStart(2, '0');
+            const gs = Math.floor((globalTimeLeft % 60000) / 1000).toString().padStart(2, '0');
+            const globalTimeStr = `${gh}:${gm}:${gs}`;
+
+            document.querySelectorAll('.global-timer-display').forEach(el => { if (el.textContent !== globalTimeStr) el.textContent = globalTimeStr; });
+
+            const h = Math.floor(timeLeft / 3600000).toString().padStart(2, '0');
+            const m = Math.floor((timeLeft % 3600000) / 60000).toString().padStart(2, '0');
+            const s = Math.floor((timeLeft % 60000) / 1000).toString().padStart(2, '0');
+            const timeStr = `${h}:${m}:${s}`;
+
+            document.querySelectorAll('.dynamic-timer-display').forEach(el => { if (el.textContent !== timeStr) el.textContent = timeStr; });
         }
 
-        window.addEventListener('storage', (e) => {
-            if (['dj_songs','dj_guestCode','dj_adminCode','dj_eventStartTime','dj_sessionId'].includes(e.key)) {
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'dj_songs' || e.key === 'dj_guestCode' || e.key === 'dj_adminCode' || e.key === 'dj_eventStartTime' || e.key === 'dj_sessionId') {
                 loadServerData(); checkPhase(); render(); 
             }
         });
 
         loadServerData(); setInterval(checkPhase, 1000);
 
-        // ACTIONS
-        window.checkGuestLogin = (e) => {
-            e.preventDefault();
-            const input = document.getElementById('guestPass').value.toUpperCase().trim();
-            if (input === state.guestCode.toUpperCase().trim() || !isCloudActive) { 
+        // --- METHODES D'ACTIONS UTILISATEUR ---
+
+        window.checkGuestLogin = function(event) {
+            event.preventDefault();
+            const passEl = document.getElementById('guestPass');
+            if (!passEl) return;
+            
+            const input = passEl.value.toUpperCase().trim();
+            const correctCode = state.guestCode.toUpperCase().trim();
+            
+            // Si le code est correct OU si on est en mode "Hors ligne" on force l'accès
+            if (input === correctCode || !isCloudActive) { 
                 state.view = 'user'; 
                 state.loginError = ''; 
-                render();
-            } else state.loginError = 'Code incorrect !'; 
+                
+                if (!isCloudActive) {
+                    state.guestCode = input;
+                    saveServerData();
+                }
+                
+                // Nettoyage de l'URL avec protection Try-Catch
+                try {
+                    if (window.history && window.history.replaceState) {
+                        const currentUrl = new URL(window.location.href);
+                        // On évite les erreurs de sécurité dans les iframes de test
+                        if (currentUrl.protocol !== 'blob:') {
+                            currentUrl.searchParams.delete('code');
+                            currentUrl.searchParams.delete('s');
+                            const newPath = currentUrl.pathname + currentUrl.search;
+                            window.history.replaceState({}, document.title, newPath);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Environnement restreint : nettoyage d'URL ignoré.");
+                }
+            } 
+            else { 
+                state.loginError = 'Code incorrect ou expiré !'; 
+            }
+            render();
         }
 
-        window.checkAdminLogin = (e) => {
-            e.preventDefault();
-            const input = document.getElementById('adminPass').value.toUpperCase().trim();
-            if (input === state.adminCode.toUpperCase().trim()) { state.view = 'admin'; state.loginError = ''; render(); }
-            else state.loginError = 'Code DJ incorrect !'; 
+        window.checkAdminLogin = function(event) {
+            event.preventDefault();
+            const passEl = document.getElementById('adminPass');
+            if (!passEl) return;
+            const input = passEl.value.toUpperCase().trim();
+            const correctCode = state.adminCode.toUpperCase().trim();
+            if (input === correctCode) { 
+                state.view = 'admin'; 
+                state.loginError = ''; 
+            } else { 
+                state.loginError = 'Code DJ incorrect !'; 
+            }
+            render();
         }
 
-        window.updateGuestCode = () => {
+        window.updateGuestCode = function() {
             const newCode = document.getElementById('newGuestCode').value.toUpperCase().trim();
             if (newCode) { 
-                state.guestCode = newCode; saveServerData(); 
-                if (isCloudActive && db) setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), { guestCode: newCode }, { merge: true });
-                window.showModal('alert', 'Modifié', 'Nouveau code invité : ' + newCode); 
+                state.guestCode = newCode;
+                saveServerData(); 
+                
+                if (isCloudActive && db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
+                }
+                window.showModal('alert', 'Mot de passe modifié', 'Le code invité de la soirée est désormais : <br><br><strong class="text-4xl text-magical-cyan tracking-widest">' + newCode + '</strong>'); 
+                render();
             }
         }
 
-        window.updateAdminCode = () => {
+        window.updateAdminCode = function() {
             const newCode = document.getElementById('newAdminCode').value.toUpperCase().trim();
             if (newCode) { 
-                state.adminCode = newCode; saveServerData(); 
-                if (isCloudActive && db) setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), { adminCode: newCode }, { merge: true });
-                window.showModal('alert', 'Modifié', 'Nouveau code DJ : ' + newCode); 
+                state.adminCode = newCode;
+                saveServerData(); 
+                
+                if (isCloudActive && db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    setDoc(publicRef, { adminCode: newCode }, { merge: true }).catch(e=>console.error(e));
+                }
+                window.showModal('alert', 'Mot de passe DJ modifié', 'Le code d\'accès DJ est désormais : <br><br><strong class="text-4xl text-magical-purple tracking-widest">' + newCode + '</strong><br><br>Garde-le secret !'); 
+                render();
             }
         }
 
-        window.startEventTimer = (mode) => {
-            let p1 = mode==='3H'?180 : mode==='1H'?60 : mode==='30M'?30 : 1;
-            window.showModal('confirm', `Démarrer ${mode} ?`, `Lancement de la session de vote.`, () => {
-                state.phase1Duration = p1 * 60 * 1000;
-                state.phase2Duration = (p1/2) * 60 * 1000;
+        window.startEventTimer = function(mode) {
+            let p1Min, p2Min, msg;
+            if (mode === '3H') { p1Min = 120; p2Min = 60; msg = "2 Heures : QR Code géant.<br>- 1 Heure : Top 40."; }
+            else if (mode === '1H') { p1Min = 40; p2Min = 20; msg = "40 Minutes : QR Code géant.<br>- 20 Minutes : Top 40."; }
+            else if (mode === '30M') { p1Min = 20; p2Min = 10; msg = "20 Minutes : QR Code géant.<br>- 10 Minutes : Top 40."; }
+            else if (mode === '2M') { p1Min = 1; p2Min = 1; msg = "1 Minute : QR Code géant.<br>- 1 Minute : Top 40. (TEST)"; }
+            
+            window.showModal('confirm', `Démarrer le minuteur (${mode}) ?`, `${msg}<br>- Ensuite : Clôture des votes.`, () => {
+                state.phase1Duration = p1Min * 60 * 1000;
+                state.phase2Duration = p2Min * 60 * 1000;
                 state.eventStartTime = Date.now(); 
-                state.forceClosed = false;
                 saveServerData(); 
-                if (isCloudActive && db) setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), {
-                    phase1Duration: state.phase1Duration, phase2Duration: state.phase2Duration,
-                    eventStartTime: state.eventStartTime, forceClosed: false
-                }, { merge: true });
-                state.view = 'monitor'; render();
-            });
-        }
-
-        window.stopEventTimer = () => {
-            window.showModal('confirm', "Arrêter ?", "Ceci stoppera le minuteur public.", () => {
-                state.eventStartTime = null; state.currentPhase = 0; state.forceClosed = false;
-                saveServerData();
-                if (isCloudActive && db) setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), { eventStartTime: null, forceClosed: false }, { merge: true });
+                
+                if (isCloudActive && db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    setDoc(publicRef, {
+                        phase1Duration: state.phase1Duration,
+                        phase2Duration: state.phase2Duration,
+                        eventStartTime: state.eventStartTime
+                    }, { merge: true }).catch(e=>console.error(e));
+                }
+                state.view = 'monitor'; 
+                checkPhase();
                 render();
             });
         }
 
-        window.forceEndAndShowMonitor = () => {
-            window.showModal('confirm', "Clôturer ?", "Affichage immédiat du Top 40 final.", () => {
-                state.forceClosed = true; state.eventStartTime = null;
-                saveServerData(); 
-                if (isCloudActive && db) setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), { forceClosed: true, eventStartTime: null }, { merge: true });
-                window.downloadM3U();
-                state.view = 'monitor'; render();
-            });
-        }
-
-        window.allowReVote = () => {
-            window.showModal('confirm', "Nouveau Tour ?", "Les invités recevront 30 nouveaux crédits.", () => { 
-                state.sessionId = Date.now().toString(); 
-                state.forceClosed = false;
-                saveServerData(); verifySessionAndLoadVotes(); 
-                if (isCloudActive && db) setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), { sessionId: state.sessionId, forceClosed: false }, { merge: true });
-                window.showModal('alert', 'C\'est prêt', 'Le nouveau tour est lancé !');
-            });
-        }
-
-        window.resetVotes = () => {
-            window.showModal('confirm', "Remise à zéro ?", "⚠️ Effacement TOTAL des votes de la soirée.", () => { 
-                state.eventStartTime = null; state.currentPhase = 0; state.forceClosed = false;
-                state.songs = JSON.parse(JSON.stringify(initialSongs)); 
-                state.sessionId = Date.now().toString(); 
-                saveServerData(); verifySessionAndLoadVotes(); 
-                if (isCloudActive && db) setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), {
-                    sessionId: state.sessionId, eventStartTime: null, forceClosed: false, songVotes: {} 
-                });
-            });
-        }
-
-        window.toggleQRCode = () => { state.view = state.view === 'qrcode' ? 'admin' : 'qrcode'; render(); }
-        window.toggleMonitor = function() { state.view = state.view === 'monitor' ? 'admin' : 'monitor'; render(); }
-        window.goTo = (v) => { state.view = v; state.loginError = ''; render(); }
-        window.setTheme = (t) => { state.selectedTheme = t; render(); window.scrollTo({top:0, behavior:'smooth'}); }
-        window.handleSearch = (e) => {
-            state.searchQuery = e.target.value.toLowerCase();
-            document.querySelectorAll('.song-item-card').forEach(c => {
-                c.style.display = c.getAttribute('data-search').includes(state.searchQuery) ? 'flex' : 'none';
-            });
-        }
-
-        window.vote = async (id) => {
-            if (state.forceClosed || state.currentPhase === 3) return;
-            if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
-            const currentVotes = state.userVotes[id] || 0;
-            if (currentVotes >= MAX_VOTES_PER_SONG) return;
-
-            // Update Local
-            state.userVotes[id] = currentVotes + 1;
-            state.totalUserVotes += 1;
-            const idx = state.songs.findIndex(s => s.id === id);
-            if (idx !== -1) state.songs[idx].votes += 1;
-            saveServerData(); render();
-
-            // Update Cloud de force (Même sans identification parfaite)
-            if (isCloudActive && db) {
-                if (userId) {
-                    setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'users', userId, 'userData', 'votes'), {
-                        sessionId: state.sessionId, votes: state.userVotes, total: state.totalUserVotes
-                    }).catch(e=>console.warn("Privé skip"));
+        window.stopEventTimer = function() {
+            window.showModal('confirm', "Arrêter le minuteur", "⚠️ Voulez-vous vraiment arrêter le minuteur et stopper l'affichage public ?", () => {
+                state.eventStartTime = null; 
+                state.currentPhase = 0; 
+                saveServerData();
+                
+                if (isCloudActive && db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    setDoc(publicRef, { eventStartTime: null }, { merge: true }).catch(e=>console.error(e));
                 }
-                setDoc(doc(db, 'artifacts', FIXED_APP_ID, 'public', 'data', 'playlist', 'main'), {
-                    songVotes: { [id]: increment(1) }
-                }, { merge: true }).catch(err => console.warn("Public skip"));
+                render();
+            });
+        }
+
+        window.forceEndAndShowMonitor = function() {
+            window.showModal('confirm', "Clôturer et Résultats", "⚠️ Voulez-vous clôturer définitivement les votes, afficher le classement final sur l'écran géant, et générer le fichier M3U ?", () => {
+                state.eventStartTime = Date.now() - (state.phase1Duration + state.phase2Duration + 5000);
+                saveServerData(); 
+
+                if (isCloudActive && db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    setDoc(publicRef, {
+                        eventStartTime: state.eventStartTime
+                    }, { merge: true }).catch(e=>console.error(e));
+                }
+                
+                // Téléchargement automatique du Top 40 classé
+                window.downloadM3U();
+                
+                state.view = 'monitor';
+                checkPhase(); 
+                render();
+            });
+        }
+
+        window.allowReVote = function() {
+            window.showModal('confirm', "Nouveau Tour de Votes", "Cela va générer un nouveau QR Code. En le scannant, les invités recevront 30 nouveaux crédits !<br><br><strong class='text-magical-cyan'>Les scores actuels des chansons seront CONSERVÉS.</strong>", () => { 
+                state.sessionId = Date.now().toString(); 
+                saveServerData(); 
+                verifySessionAndLoadVotes(); 
+                
+                if (isCloudActive && db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    setDoc(publicRef, { sessionId: state.sessionId }, { merge: true }).catch(e=>console.error(e));
+                }
+                window.showModal('alert', 'Succès', '✅ C\'est prêt ! Affichez le QR Code sur l\'écran géant, les invités n\'ont plus qu\'à le scanner pour revoter.');
+            });
+        }
+
+        window.resetVotes = function() {
+            window.showModal('confirm', "Remise à zéro totale", "⚠️ Attention, cela va effacer absolument tous les votes, arrêter le minuteur et réinitialiser les crédits de tout le monde. Confirmer ?", () => { 
+                state.eventStartTime = null;
+                state.currentPhase = 0;
+                state.songs = JSON.parse(JSON.stringify(initialSongs)); 
+                state.selectedTheme = 'Tous';
+                state.searchQuery = '';
+                
+                state.sessionId = Date.now().toString(); 
+                
+                localStorage.removeItem('dj_songs');
+                localStorage.removeItem('dj_eventStartTime');
+                
+                saveServerData(); 
+                verifySessionAndLoadVotes(); 
+                
+                if (isCloudActive && db && userId) {
+                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                    setDoc(publicRef, {
+                        sessionId: state.sessionId, 
+                        guestCode: state.guestCode,
+                        adminCode: state.adminCode,
+                        eventStartTime: null,
+                        phase1Duration: state.phase1Duration,
+                        phase2Duration: state.phase2Duration,
+                        songVotes: {}
+                    }).catch(e => {
+                        console.error(e);
+                        if (e.code === 'permission-denied') {
+                            window.showModal('alert', 'Sécurité Firestore', 'Opération bloquée. Avez-vous bien choisi le "Mode Test" à l\'étape 4 ?');
+                        }
+                    });
+                }
+                window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
+            });
+        }
+
+        window.toggleQRCode = function() { state.view = state.view === 'qrcode' ? 'admin' : 'qrcode'; render(); }
+        window.toggleMonitor = function() { state.view = state.view === 'monitor' ? 'admin' : 'monitor'; render(); }
+        window.goTo = function(view) { state.view = view; state.loginError = ''; render(); }
+        
+        window.setTheme = function(theme) { 
+            const container = document.getElementById('theme-scroll-container');
+            if (container) state.themeScrollPos = container.scrollLeft;
+            state.selectedTheme = theme; 
+            render(); 
+            
+            // Remonter en haut de l'écran avec une belle animation fluide
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+        
+        // --- OPTIMISATION MOBILE : Recherche en temps réel sans recharger l'écran ---
+        window.handleSearch = function(event) { 
+            state.searchQuery = event.target.value.toLowerCase(); 
+            const cards = document.querySelectorAll('.song-item-card');
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const searchData = card.getAttribute('data-search');
+                if (searchData.includes(state.searchQuery)) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            const emptyMsg = document.getElementById('empty-search-msg');
+            if (emptyMsg) {
+                emptyMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
+        }
+
+        window.vote = async function(id) {
+            if (state.currentPhase === 3) { window.showModal('alert', 'Votes clôturés', 'Les votes sont terminés pour cette session ! Regardez l\'écran géant.'); return; }
+            if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
+            const votesForSong = state.userVotes[id] || 0;
+            if (votesForSong >= MAX_VOTES_PER_SONG) return;
+
+            // ⚠️ SÉCURITÉ FIREBASE : Vérification avant toute chose
+            if (isCloudActive && db && !userId) {
+                try {
+                    // On tente de forcer la reconnexion anonyme si elle avait échoué
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                    await new Promise(r => setTimeout(r, 600)); // Laisse le temps au système de valider l'ID
+                    if (!userId) throw new Error("Connexion annulée");
+                } catch (error) {
+                    console.error("Auth error on vote:", error);
+                    if (error.code === 'auth/unauthorized-domain') {
+                         window.showModal('alert', 'Sécurité Firebase (Domaines)', 'Firebase bloque le site Github !<br><br>Dans Firebase > Authentication > Paramètres > <strong>Domaines Autorisés</strong>, ajoutez :<br><br><strong class="text-magical-cyan text-xs sm:text-sm">airfilmstudio-collab.github.io</strong>');
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                         window.showModal('alert', 'Erreur Firebase (Étape 3)', 'L\'authentification Anonyme n\'est pas activée.<br>Vérifiez Firebase > Authentication > Sign-in method.');
+                    } else {
+                         window.showModal('alert', 'Erreur de Connexion', '⚠️ Impossible de contacter le Cloud Firebase.<br>' + error.message);
+                    }
+                    return; // Stoppe le vote pour ne pas faire perdre le crédit à l'utilisateur
+                }
             }
 
+            // 1. Mise à jour Locale IMMÉDIATE
+            state.userVotes[id] = votesForSong + 1; 
+            state.totalUserVotes += 1;
+            const songIndex = state.songs.findIndex(s => s.id === id);
+            if (songIndex !== -1) { state.songs[songIndex].votes += 1; }
+            
+            saveServerData();
+            render();
+
+            // 2. Envoi sur le Cloud
+            if (isCloudActive && db && userId) {
+                const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
+                setDoc(privateRef, {
+                    sessionId: state.sessionId,
+                    votes: state.userVotes,
+                    total: state.totalUserVotes
+                }).catch(e=>console.error(e));
+
+                const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                setDoc(publicRef, {
+                    songVotes: {
+                        [id]: increment(1)
+                    }
+                }, { merge: true }).catch(err => {
+                    console.error("Erreur PublicRef:", err);
+                    if (err.code === 'permission-denied') {
+                        window.showModal('alert', 'Sécurité Firestore', 'Vos votes sont bloqués par Firebase. Avez-vous bien choisi le "Mode Test" à l\'étape 4 ?');
+                    }
+                });
+            }
+
+            // 3. Vérification de la limite finale
             if (state.totalUserVotes >= MAX_TOTAL_VOTES) {
-                window.showModal('goodbye', 'Merci !', 'Vos votes sont enregistrés.');
-                setTimeout(() => window.location.href = "https://www.universal-dj.com/bar-a-vinyles-normandie/", 2000);
+                window.showModal('goodbye', 'Merci pour votre participation !', 'Vos 30 votes ont été enregistrés avec succès.<br><br>L\'application va se fermer pour laisser place à la musique !');
+                setTimeout(() => {
+                    window.location.href = "https://www.universal-dj.com/bar-a-vinyles-normandie/";
+                }, 3000);
             }
         }
 
         function render() {
             const root = document.getElementById('root');
             if (!root) return;
+            
+            // Permet de savoir si on est sur la fenêtre détachée de la TV
             const isExternalDisplay = new URLSearchParams(window.location.search).get('public') !== null;
-            const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
-            let html = '';
+            
+            let htmlToRender = '';
 
+            // 1. VUE QR CODE GEANT
             if (state.view === 'qrcode' && state.currentPhase !== 1) {
-                html = `
-                    <div class="h-screen w-screen flex flex-col items-center justify-between p-4 relative animate-fade-in overflow-hidden py-8">
-                        <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-8 right-8 text-white/50 neo-glass p-3 rounded-full"><i class="ph-bold ph-x text-2xl"></i></button>
-                        <div class="text-center">
-                            <img src="${LOGO_URL}" class="h-20 object-contain mx-auto mb-4">
-                            <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">VOTRE PLAYLIST IDÉALE</h1>
+                htmlToRender = `
+                    <div class="h-screen w-screen flex flex-col items-center justify-between p-2 md:p-4 relative animate-fade-in overflow-hidden py-4 sm:py-6 lg:py-8">
+                        <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white z-20 neo-glass p-2 md:p-3 rounded-full hover:bg-white/10 transition-all">
+                            <i class="ph-bold ph-x text-xl md:text-2xl"></i>
+                        </button>
+                        
+                        <!-- EN-TÊTE -->
+                        <div class="flex flex-col items-center justify-center shrink-0 w-full">
+                            <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('admin')" class="h-12 sm:h-16 md:h-20 lg:h-24 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform mb-2 md:mb-4 shrink-0" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                            
+                            <h1 class="text-[7vw] md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] whitespace-nowrap leading-none pb-1 shrink-0">
+                                VOTRE PLAYLIST IDÉALE
+                            </h1>
                         </div>
-                        <div class="flex flex-col items-center gap-6">
-                            ${state.eventStartTime ? `<div class="neo-glass px-8 py-3 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.4)]"><span class="text-3xl font-black text-magical-pink dynamic-timer-display text-glow-pink">--:--:--</span></div>` : ''}
-                            <div class="neo-glass p-6 rounded-[3rem] border-2 border-white/20 text-center">
-                                <div class="bg-white p-4 rounded-2xl mb-4 shadow-xl"><img src="${getQRCodeUrl()}" class="w-64 h-64"></div>
-                                <p class="text-sm text-magical-cyan uppercase font-bold tracking-widest mb-1">Code de la soirée :</p>
-                                <p class="text-6xl font-black text-white tracking-[0.2em] text-glow-white leading-none">${state.guestCode}</p>
+                        
+                        <!-- CORPS (Minuteur + QR) -->
+                        <div class="flex flex-col items-center justify-center flex-1 min-h-0 w-full gap-2 sm:gap-4 md:gap-6 shrink">
+                            ${state.eventStartTime ? `
+                            <div class="flex items-center justify-center gap-3 neo-glass px-6 py-2 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.2)] shrink-0">
+                                <span class="text-white/80 text-[10px] sm:text-xs md:text-sm uppercase tracking-widest font-bold">Affichage dans :</span>
+                                <i class="ph-fill ph-timer text-magical-pink animate-pulse text-xl md:text-2xl drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                <span class="text-xl md:text-3xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink leading-none">--:--:--</span>
+                            </div>
+                            ` : ''}
+                            
+                            <h2 class="text-lg md:text-2xl lg:text-4xl font-light text-white/90 tracking-tight text-glow-white shrink-0 ${state.eventStartTime ? '' : 'mb-2'}">
+                                Flashez pour <span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-magical-gold to-magical-pink drop-shadow-md">voter !</span>
+                            </h2>
+                            
+                            <div class="neo-glass p-3 md:p-5 lg:p-6 rounded-[2rem] lg:rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] border-2 border-white/20 flex flex-col items-center justify-center shrink min-h-0">
+                                <div class="bg-white p-2 md:p-3 lg:p-4 rounded-xl lg:rounded-2xl mb-4 h-full aspect-square flex items-center justify-center">
+                                    <img src="${getQRCodeUrl()}" alt="QR Code" class="w-full h-full max-h-[45vh] max-w-[45vh] lg:max-h-[50vh] lg:max-w-[50vh] object-contain rounded-lg">
+                                </div>
+                                <div class="text-center shrink-0">
+                                    <p class="text-xs md:text-sm lg:text-base text-magical-cyan/90 mb-1 font-medium uppercase tracking-widest">Code de la soirée :</p>
+                                    <p class="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-widest text-glow-white leading-none">${state.guestCode}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             } 
+            // 2. VUE ECRAN GEANT (MONITOR)
             else if (state.view === 'monitor' || (state.view === 'qrcode' && state.currentPhase === 1)) {
                 if (state.currentPhase === 1) {
-                    html = `<div class="h-screen w-screen flex flex-col items-center justify-center p-8 animate-fade-in">
-                        <h1 class="text-6xl font-black mb-8 text-glow-white">DÉMARRAGE DANS : <span class="dynamic-timer-display text-magical-pink text-glow-pink">--:--:--</span></h1>
-                        <div class="bg-white p-8 rounded-3xl shadow-2xl"><img src="${getQRCodeUrl()}" class="w-80 h-80"></div>
-                        <p class="text-4xl mt-8 font-bold tracking-widest uppercase">Code : ${state.guestCode}</p>
-                    </div>`;
-                } else {
-                    const top40 = [...state.songs].filter(s => s.votes > 0).sort((a,b) => b.votes - a.votes).slice(0, 40);
-                    html = `
-                        <div class="h-screen w-screen flex flex-col p-6 relative overflow-hidden">
-                            <div class="flex justify-between items-center mb-8 px-4">
-                                <div class="flex items-center gap-6">
-                                    <img src="${LOGO_URL}" class="h-16 drop-shadow-lg">
-                                    <h1 class="text-5xl font-black uppercase text-glow-white tracking-tight">LE CLASSEMENT FINAL</h1>
-                                </div>
-                                <div class="btn-liquid px-10 py-4 rounded-2xl font-black text-3xl uppercase tracking-widest shadow-lg pulse-magical">Votes Clôturés</div>
+                    htmlToRender = `
+                        <div class="h-screen w-screen flex flex-col items-center justify-between p-2 md:p-4 relative animate-fade-in overflow-hidden py-4 sm:py-6 lg:py-8">
+                            <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white z-20 neo-glass p-2 md:p-3 rounded-full hover:bg-white/10 transition-all">
+                                <i class="ph-bold ph-x text-2xl"></i>
+                            </button>
+                            
+                            <!-- EN-TÊTE -->
+                            <div class="flex flex-col items-center justify-center shrink-0 w-full">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('admin')" class="h-12 sm:h-16 md:h-20 lg:h-24 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform mb-2 md:mb-4 shrink-0" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                
+                                <h1 class="text-[7vw] md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] whitespace-nowrap leading-none pb-1 shrink-0">
+                                    VOTRE PLAYLIST IDÉALE
+                                </h1>
                             </div>
-                            <div class="flex-1 neo-glass rounded-[3rem] p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-y-auto no-scrollbar">
-                                ${top40.map((s, i) => `
-                                    <div class="neo-card rounded-2xl p-5 flex items-center justify-between border-white/10">
-                                        <div class="flex items-center gap-4 min-w-0 pr-2">
-                                            <span class="text-3xl font-black ${i<3?'text-magical-gold text-glow-white':'text-white/30'} w-10 text-center">${i+1}</span>
-                                            <div class="min-w-0 pr-1">
-                                                <p class="font-bold truncate text-lg leading-tight text-white">${s.title}</p>
-                                                <p class="text-xs text-white/50 truncate uppercase tracking-widest font-medium">${s.artist}</p>
-                                            </div>
-                                        </div>
-                                        <div class="bg-black/40 px-4 py-2 rounded-xl border border-white/5"><span class="text-3xl font-black text-magical-cyan text-glow-cyan">${s.votes}</span></div>
+                            
+                            <!-- CORPS (Minuteur + QR) -->
+                            <div class="flex flex-col items-center justify-center flex-1 min-h-0 w-full gap-2 sm:gap-4 md:gap-6 shrink">
+                                <div class="flex items-center justify-center gap-3 neo-glass px-6 py-2 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.2)] shrink-0">
+                                    <span class="text-white/80 text-[10px] sm:text-xs md:text-sm uppercase tracking-widest font-bold">Affichage dans :</span>
+                                    <i class="ph-fill ph-timer text-magical-pink animate-pulse text-xl md:text-2xl drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                    <span class="text-xl md:text-3xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink leading-none">--:--:--</span>
+                                </div>
+                                
+                                <h2 class="text-lg md:text-2xl lg:text-4xl font-light text-white/90 tracking-tight text-glow-white shrink-0">
+                                    Flashez pour <span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-magical-gold to-magical-pink drop-shadow-md">voter !</span>
+                                </h2>
+                                
+                                <div class="neo-glass p-3 md:p-5 lg:p-6 rounded-[2rem] lg:rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] border-2 border-white/20 flex flex-col items-center justify-center shrink min-h-0">
+                                    <div class="bg-white p-2 md:p-3 lg:p-4 rounded-xl lg:rounded-2xl mb-4 h-full aspect-square flex items-center justify-center">
+                                        <img src="${getQRCodeUrl()}" alt="QR Code" class="w-full h-full max-h-[45vh] max-w-[45vh] lg:max-h-[50vh] lg:max-w-[50vh] object-contain rounded-lg">
                                     </div>
-                                `).join('')}
-                                ${top40.length === 0 ? '<div class="col-span-full flex items-center justify-center text-3xl font-light opacity-30 italic">Aucun vote enregistré...</div>' : ''}
+                                    <div class="text-center shrink-0">
+                                        <p class="text-xs md:text-sm lg:text-base text-magical-cyan/90 mb-1 font-medium uppercase tracking-widest">Code de la soirée :</p>
+                                        <p class="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-widest text-glow-white leading-none">${state.guestCode}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
+                    htmlToRender = `
+                        <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden">
+                            <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-4 right-4 text-white/0 hover:text-white/50 transition-colors z-50 p-3 rounded-full hover:bg-white/10">
+                                <i class="ph-bold ph-x text-2xl"></i>
+                            </button>
+                            <div class="relative z-10 flex justify-between items-center mb-6 px-2">
+                                <div class="flex items-center gap-6">
+                                    <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                    <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
+                                        ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
+                                    </h1>
+                                </div>
+                                <div class="flex items-center gap-6">
+                                    ${state.currentPhase === 2 ? `
+                                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
+                                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
+                                            <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
+                                        </div>
+                                    ` : state.currentPhase === 3 ? `
+                                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
+                                        </div>
+                                    ` : ''}
+                                    ${state.currentPhase === 2 ? `
+                                    <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
+                                        <div class="bg-white p-2 rounded-2xl">
+                                            <img src="${getQRCodeUrl()}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
+                                        </div>
+                                        <div class="flex flex-col justify-center">
+                                            <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
+                                            <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
+                                ${top40Songs.length > 0 ? `
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
+                                        ${top40Songs.map((song, index) => {
+                                            const isTop3 = index < 3;
+                                            let rankStyle = "text-white/40 text-xl font-bold"; let boxStyle = "neo-card bg-white/[0.01]";
+                                            if (index === 0) { rankStyle = "text-magical-gold text-2xl sm:text-3xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-magical-gold/20 to-transparent border-magical-gold/40 shadow-[0_0_20px_rgba(255,215,0,0.3)]"; }
+                                            else if (index === 1) { rankStyle = "text-slate-300 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-white/10 to-transparent border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]"; }
+                                            else if (index === 2) { rankStyle = "text-orange-500 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-orange-500/20 to-transparent border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"; }
+                                            return `
+                                                <div class="flex items-center ${boxStyle} rounded-2xl px-3 sm:px-4 overflow-hidden h-full">
+                                                    <div class="w-8 sm:w-10 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
+                                                    <div class="flex-1 min-w-0 px-2 sm:px-4 border-l border-white/10 ml-2 sm:ml-3 py-1">
+                                                        <div class="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
+                                                        <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
+                                                    </div>
+                                                    <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 border border-white/10 shadow-inner">
+                                                        <span class="text-lg sm:text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                ` : `
+                                    <div class="flex flex-col items-center justify-center h-full text-center">
+                                        <i class="ph-duotone ${state.currentPhase === 3 ? 'ph-check-circle text-magical-cyan' : 'ph-disc text-magical-pink/50 animate-spin-slow'} text-9xl mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                        <h3 class="text-4xl font-bold text-white mb-3 text-glow-white">
+                                            ${state.currentPhase === 3 ? 'Playlist Terminée' : 'En attente des votes...'}
+                                        </h3>
+                                        <p class="text-2xl text-white/60 font-light">
+                                            ${state.currentPhase === 3 ? 'Le Top 40 est vide car aucun vote n\'a été enregistré.' : 'La playlist idéale se prépare !'}
+                                        </p>
+                                    </div>
+                                `}
                             </div>
                         </div>
                     `;
                 }
-            }
+            } 
+            // 3. VUES DE CONNEXION
             else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
-                html = `
-                    <div class="min-h-screen flex items-center justify-center p-4">
-                        <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-10 text-center border-t-magical-pink/40 shadow-2xl">
-                            <img src="${LOGO_URL}" class="h-24 mx-auto mb-8 drop-shadow-xl">
-                            <h1 class="text-3xl font-black mb-10 text-glow-white tracking-tight">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
-                            <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-8">
-                                <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="CODE" class="w-full bg-black/60 border border-white/20 rounded-2xl py-5 text-center text-4xl text-white uppercase font-black tracking-widest focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/30 outline-none shadow-inner">
-                                ${state.loginError ? `<p class="text-magical-pink font-bold animate-pulse">${state.loginError}</p>` : ''}
-                                <button type="submit" class="w-full btn-liquid font-black py-5 rounded-2xl text-xl uppercase tracking-[0.2em] shadow-lg">ENTRER</button>
+                
+                // Pré-remplir le code invité si on arrive depuis le QR Code
+                const urlParams = new URLSearchParams(window.location.search);
+                const codeFromUrl = urlParams.get('code');
+                let autoFillCode = "";
+                if (!isAdmin && codeFromUrl) {
+                    autoFillCode = codeFromUrl.toUpperCase();
+                }
+
+                htmlToRender = `
+                    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
+                        <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative z-10 text-center border-t-magical-pink/50">
+                            <div class="mb-8 relative inline-block">
+                                <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('login')" class="h-20 md:h-28 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.5)] mx-auto cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
+                                ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-magical-purple rounded-full p-3 shadow-[0_0_20px_rgba(112,0,255,0.8)]"><i class="ph-fill ph-lock-key text-white text-lg"></i></div>' : ''}
+                            </div>
+                            <h1 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
+                            <p class="text-white/70 mb-10 font-medium text-lg">${isAdmin ? 'Entrez le code administrateur.' : 'Entrez le mot de passe de la soirée.'}</p>
+                            <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-6">
+                                <div>
+                                    <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="${isAdmin ? 'Code DJ secret' : 'Mot de passe'}" 
+                                        value="${autoFillCode}"
+                                        class="w-full bg-black/60 border border-white/20 rounded-2xl py-4 px-6 text-center text-2xl text-white uppercase tracking-[0.3em] focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all placeholder:text-white/30 font-black shadow-inner">
+                                </div>
+                                ${state.loginError ? `<p class="text-magical-pink font-bold animate-fade-in drop-shadow-md">${state.loginError}</p>` : ''}
+                                <button type="submit" class="w-full btn-liquid font-black py-4 px-6 rounded-2xl text-lg tracking-widest uppercase">
+                                    ${isAdmin ? 'Accéder au Dashboard' : 'Rejoindre la soirée !'}
+                                </button>
                             </form>
-                            <button onclick="goTo('${isAdmin?'login':'adminLogin'}')" class="mt-12 text-white/20 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors underline decoration-white/10 underline-offset-8">${isAdmin?'← Retour à l\'accès invité':'Accès Administrateur DJ'}</button>
+                            <div class="mt-10 pt-8 border-t border-white/10">
+                                <button onclick="goTo('${isAdmin ? 'login' : 'adminLogin'}')" class="text-sm font-bold text-white/50 hover:text-white transition-colors uppercase tracking-widest">
+                                    ${isAdmin ? '← Retour à l\'accès invité' : 'Accès DJ (Admin)'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } 
+            // 4. VUES UTILISATEUR & ADMIN PRINCIPALES
+            else {
+                const isScrolled = window.scrollY > 20;
+                const navScrolledClass = isScrolled ? 'glass-scrolled-nav' : '';
+                const panelScrolledClass = isScrolled ? 'glass-scrolled-panel' : '';
+                const isTimerActive = state.eventStartTime !== null && state.currentPhase > 0 && state.currentPhase < 3;
+
+                const headerHTML = `
+                    <div class="fixed top-4 left-0 w-full z-50 px-2 sm:px-4 md:px-8 pointer-events-none">
+                        <nav id="main-nav" class="max-w-7xl mx-auto neo-glass rounded-full px-2 sm:px-4 py-2 sm:py-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-between pointer-events-auto w-full transition-all duration-300 ${navScrolledClass}">
+                            
+                            <!-- LEFT: Logo + Socials -->
+                            <div class="flex items-center gap-2 sm:gap-6 overflow-hidden">
+                                <button onclick="${state.view === 'user' ? "resetUserView()" : "goTo('admin')"}" class="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none text-left shrink-0">
+                                    <img src="${LOGO_URL}" alt="Universal DJ" class="h-6 sm:h-8 md:h-10 object-contain drop-shadow-[0_0_10px_rgba(255,0,122,0.4)]" onerror="this.onerror=null; this.src='https://via.placeholder.com/150x50/FF007A/ffffff?text=Universal+DJ';">
+                                    ${state.view === 'admin' ? '<h1 class="text-sm md:text-xl font-black text-white hidden lg:block border-l border-white/20 pl-4 ml-1 tracking-widest uppercase text-glow-white">Dashboard</h1>' : ''}
+                                </button>
+                                
+                                <div class="flex items-center gap-1.5 sm:gap-3 border-l border-white/10 pl-2 sm:pl-4">
+                                    <a href="https://www.universal-dj.com" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-white transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]" title="Site Web">
+                                        <i class="ph-bold ph-globe text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.facebook.com/profile.php?id=100054386763284#" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#1877F2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(24,119,242,0.8)]" title="Facebook">
+                                        <i class="ph-fill ph-facebook-logo text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.instagram.com/barvinylesnormandie/" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#E1306C] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(225,48,108,0.8)]" title="Instagram">
+                                        <i class="ph-fill ph-instagram-logo text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
+                                        <i class="ph-fill ph-linkedin-logo text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                    <a href="https://www.google.com/maps/place/Universal-Dj/@49.1957276,0.3528108,1993m/data=!3m2!1e3!4b1!4m6!3m5!1s0x47e1b804f70153e1:0xcd52e46766ad4111!8m2!3d49.1957276!4d0.3553857!16s%2Fg%2F11bx285nwj?entry=ttu&g_ep=EgoyMDI2MDIyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#EA4335] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(234,67,53,0.8)]" title="Google Maps">
+                                        <i class="ph-fill ph-map-pin text-[11px] sm:text-lg md:text-xl"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <!-- RIGHT: Timer + Quit -->
+                            <div class="flex items-center gap-1.5 sm:gap-4 shrink-0">
+                                ${isTimerActive ? `
+                                    <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
+                                        <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
+                                        <span class="text-[10px] sm:text-sm font-black tabular-nums tracking-widest text-magical-cyan global-timer-display text-glow-cyan">--:--:--</span>
+                                    </div>
+                                ` : state.currentPhase === 3 ? `
+                                    <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-pink/40 shadow-inner">
+                                        <i class="ph-fill ph-check-circle text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-[10px] sm:text-sm font-black tracking-widest text-magical-pink text-glow-pink uppercase">Clôturé</span>
+                                    </div>
+                                ` : ''}
+
+                                <button onclick="goTo('login')" class="flex shrink-0 items-center gap-1.5 sm:gap-2 text-white/80 hover:text-white transition-all bg-white/5 border border-white/10 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full text-[9px] sm:text-sm font-bold hover:bg-white/20 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] uppercase tracking-wider ml-1 sm:ml-0">
+                                    <i class="ph-bold ph-sign-out text-xs sm:text-lg"></i> <span class="hidden sm:inline">Quitter</span>
+                                </button>
+                            </div>
+                        </nav>
+                    </div>
+                `;
+
+                let mainContent = '';
+
+                if (state.view === 'user') {
+                    // Pour éviter de perdre le focus de la barre de recherche et optimiser la vitesse, 
+                    // on applique uniquement le filtre des thèmes au rendu initial.
+                    const filteredSongs = state.songs.filter(song => {
+                        return state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
+                    });
+                    const searchLower = (state.searchQuery || '').toLowerCase();
+
+                    const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
+                    const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
+                    const isClosed = state.currentPhase === 3;
+
+                    if (isClosed) {
+                        const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
+                        
+                        mainContent = `
+                            <div id="user-view-container" class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
+                                <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
+                                    <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Le Classement Final</h2>
+                                    <p class="text-white/90 text-base md:text-lg mt-2 font-medium">Voici la playlist idéale de la soirée !</p>
+                                </div>
+                                
+                                <div class="relative z-10 w-full neo-glass rounded-[2.5rem] p-4">
+                                    ${top40Songs.length > 0 ? `
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
+                                            ${top40Songs.map((song, index) => {
+                                                const isTop3 = index < 3;
+                                                let rankStyle = "text-white/40 text-xl font-bold"; let boxStyle = "neo-card bg-white/[0.01]";
+                                                if (index === 0) { rankStyle = "text-magical-gold text-2xl sm:text-3xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-magical-gold/20 to-transparent border-magical-gold/40 shadow-[0_0_20px_rgba(255,215,0,0.3)]"; }
+                                                else if (index === 1) { rankStyle = "text-slate-300 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-white/10 to-transparent border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.1)]"; }
+                                                else if (index === 2) { rankStyle = "text-orange-500 text-xl sm:text-2xl text-glow-white"; boxStyle = "neo-card bg-gradient-to-r from-orange-500/20 to-transparent border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.2)]"; }
+                                                return `
+                                                    <div class="flex items-center ${boxStyle} rounded-2xl px-3 sm:px-4 overflow-hidden py-3">
+                                                        <div class="w-8 sm:w-10 text-center font-black shrink-0 ${rankStyle}">${index + 1}</div>
+                                                        <div class="flex-1 min-w-0 px-2 sm:px-4 border-l border-white/10 ml-2 sm:ml-3">
+                                                            <div class="text-sm sm:text-base font-bold text-white truncate leading-tight">${song.title}</div>
+                                                            <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
+                                                        </div>
+                                                        <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 border border-white/10 shadow-inner">
+                                                            <span class="text-lg sm:text-xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="flex flex-col items-center justify-center py-16 text-center">
+                                            <i class="ph-duotone ph-check-circle text-magical-cyan text-8xl mb-6 drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                            <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Playlist Terminée</h3>
+                                            <p class="text-lg text-white/60 font-light">Le classement est vide car aucun vote n'a été enregistré.</p>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        mainContent = `
+                            <!-- RETRAIT DU ANIMATE-FADE-IN POUR RÉSOUDRE LA LENTEUR DE CLICS SUR MOBILE -->
+                            <div id="user-view-container" class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
+                                
+                                <!-- ZONE STICKY -->
+                                <div id="sticky-control-panel" class="sticky top-16 sm:top-24 z-40 neo-glass bg-black/40 p-3 sm:p-6 rounded-[2rem] mb-6 sm:mb-8 shadow-[0_20px_40px_rgba(0,0,0,0.6)] border-t border-t-white/20 backdrop-blur-2xl -mx-2 sm:mx-0 transition-all duration-300 ${panelScrolledClass}">
+                                    <div class="flex flex-col gap-3 sm:gap-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2 sm:gap-4">
+                                                <h2 class="text-sm sm:text-xl font-bold text-white/90 uppercase tracking-widest text-glow-white">À vous de jouer</h2>
+                                                <div class="px-2 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-white/10 border border-white/20 flex items-center gap-1.5 sm:gap-2 shadow-inner">
+                                                    <i class="ph-fill ph-ticket ${votesLeft === 0 ? 'text-magical-pink' : 'text-magical-cyan'} text-[10px] sm:text-base"></i>
+                                                    <span class="text-xs sm:text-sm font-black ${votesLeft === 0 ? 'text-magical-pink text-glow-pink' : 'text-white'}">${votesLeft} <span class="hidden sm:inline">Crédits</span><span class="sm:hidden">/ ${MAX_TOTAL_VOTES}</span></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="relative w-36 sm:w-64 focus-within:w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] group">
+                                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-magical-cyan group-focus-within:text-magical-pink transition-colors text-sm sm:text-lg"></i>
+                                            <input id="searchInput" type="text" placeholder="Rechercher..." 
+                                                value="${(state.searchQuery || '').replace(/"/g, '&quot;')}" oninput="handleSearch(event)"
+                                                class="w-full bg-black/60 border border-white/20 rounded-full py-2 sm:py-3 pl-9 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm text-white focus:outline-none focus:border-magical-pink focus:ring-1 focus:ring-magical-pink/50 transition-all placeholder:text-white/40 shadow-inner">
+                                        </div>
+
+                                        <div id="theme-scroll-container" class="flex overflow-x-auto gap-2 sm:gap-3 no-scrollbar pb-1 -mx-1 px-1 sm:-mx-2 sm:px-2">
+                                            ${themes.map(theme => `
+                                                <button onclick="setTheme('${(theme || '').replace(/'/g, "\\'")}')" class="whitespace-nowrap px-4 py-1.5 sm:px-6 sm:py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 border ${state.selectedTheme === theme ? 'bg-gradient-to-r from-magical-purple/40 to-magical-pink/40 border-magical-pink text-white shadow-[0_0_15px_rgba(255,0,122,0.4)]' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/20 hover:text-white hover:border-white/30'}">
+                                                    ${theme}
+                                                </button>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- FIN ZONE STICKY -->
+
+                                ${filteredSongs.length > 0 ? `
+                                    <div id="songs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                                        ${filteredSongs.map(song => {
+                                            const votesForThisSong = state.userVotes[song.id] || 0;
+                                            const isSongMaxed = votesForThisSong >= MAX_VOTES_PER_SONG;
+                                            const isTotalMaxed = state.totalUserVotes >= MAX_TOTAL_VOTES;
+                                            const isDisabled = isSongMaxed || isTotalMaxed;
+                                            
+                                            const matchSearch = (song.title || '').toLowerCase().includes(searchLower) || (song.artist || '').toLowerCase().includes(searchLower);
+                                            const displayStyle = matchSearch ? 'flex' : 'none';
+                                            
+                                            let btnClasses = ""; let btnText = "Voter"; let iconColor = "";
+
+                                            if (isSongMaxed) {
+                                                btnClasses = "bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 cursor-default shadow-[0_0_15px_rgba(0,240,255,0.3)]";
+                                                btnText = "Max (2/2)"; iconColor = "text-magical-cyan";
+                                            } else if (votesForThisSong === 1) {
+                                                btnClasses = isDisabled ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" : "bg-magical-pink/20 text-white border border-magical-pink/50 hover:bg-magical-pink hover:shadow-[0_0_20px_rgba(255,0,122,0.5)]";
+                                                btnText = "Voté (1/2)"; iconColor = "text-white";
+                                            } else {
+                                                btnClasses = isDisabled ? "bg-black/60 text-white/30 border border-white/5 cursor-not-allowed" : "btn-liquid border-transparent";
+                                                btnText = "Voter"; iconColor = "";
+                                            }
+
+                                            return `
+                                                <div class="song-item-card neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3 sm:p-5 items-center justify-between" style="display: ${displayStyle};" data-search="${(song.title + ' ' + song.artist).toLowerCase().replace(/"/g, '&quot;')}">
+                                                    <div class="flex items-center overflow-hidden flex-1 pr-1">
+                                                        <div class="min-w-0 flex-1 pl-1 sm:pl-2">
+                                                            <h3 class="font-bold text-white text-sm sm:text-lg truncate mb-0.5 tracking-wide">${song.title}</h3>
+                                                            <p class="text-[10px] sm:text-sm font-light text-white/60 truncate tracking-wider">${song.artist}</p>
+                                                        </div>
+                                                    </div>
+                                                    <button onclick="vote(${song.id})" ${isDisabled ? 'disabled' : ''} class="shrink-0 ml-2 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 md:px-8 py-2 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest transition-all ${btnClasses}">
+                                                        <i class="ph-fill ph-heart ${iconColor} text-[10px] sm:text-xl"></i>
+                                                        ${btnText}
+                                                    </button>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                    <div id="empty-search-msg" class="text-center py-20 sm:py-32 neo-glass rounded-[2rem] sm:rounded-[3rem] mt-4" style="display: ${filteredSongs.some(s => (s.title + ' ' + s.artist).toLowerCase().includes(searchLower)) ? 'none' : 'block'};">
+                                        <i class="ph-duotone ph-music-notes text-6xl sm:text-8xl text-magical-cyan/40 mb-4 sm:mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                        <h3 class="text-xl sm:text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
+                                        <p class="text-sm sm:text-lg text-white/60 font-light">Essayez une autre recherche.</p>
+                                    </div>
+                                ` : `<div class="text-center py-20 sm:py-32 neo-glass rounded-[2rem] sm:rounded-[3rem] mt-4">
+                                        <i class="ph-duotone ph-music-notes text-6xl sm:text-8xl text-magical-cyan/40 mb-4 sm:mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
+                                        <h3 class="text-xl sm:text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
+                                        <p class="text-sm sm:text-lg text-white/60 font-light">Essayez une autre catégorie.</p>
+                                     </div>`}
+                            </div>
+                        `;
+                    }
+                } 
+                else if (state.view === 'admin') {
+                    const rankedSongs = [...state.songs].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+                    const totalVotes = state.songs.reduce((acc, song) => acc + (song.votes || 0), 0);
+
+                    mainContent = `
+                        <!-- RETRAIT DU ANIMATE-FADE-IN SUR LA VUE ADMIN POUR PLUS DE FLUIDITÉ -->
+                        <div class="max-w-5xl mx-auto pb-24 pt-28 px-4 w-full">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                                <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
+                                <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
+                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? (userId ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_#EF4444] animate-pulse') : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
+                                    <span class="text-xs font-bold ${isCloudActive ? (userId ? 'text-magical-cyan' : 'text-red-500') : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? (userId ? 'Cloud Actif' : 'Erreur Auth (Étape 3)') : 'Mode Local'}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- FIREBASE CONFIG INSTRUCTION POUR LE MODE LOCAL -->
+                            ${!isCloudActive ? `
+                            <div class="neo-glass border border-orange-500/30 rounded-2xl p-4 mb-8">
+                                <p class="text-orange-200 text-sm font-medium">⚠️ <strong>Attention :</strong> Vous êtes en Mode Local. Les votes des téléphones ne remonteront pas sur cet écran. Pour activer le Temps Réel sur votre site Github, ajoutez les clés de votre projet Firebase dans le code.</p>
+                            </div>
+                            ` : ''}
+
+                            <div class="neo-glass border-t-magical-pink/50 rounded-[2.5rem] p-8 md:p-10 mb-8 relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                                <h3 class="text-3xl font-black text-white mb-2 flex items-center gap-4 tracking-tight relative z-10 text-glow-white">
+                                    <i class="ph-fill ph-timer text-magical-pink text-4xl drop-shadow-[0_0_15px_rgba(255,0,122,0.8)]"></i> Minuteurs Automatiques
+                                </h3>
+                                <p class="text-white/70 text-lg mb-8 font-light relative z-10">Automatise l'écran géant : Affichage du QR Code, puis du Top 40, puis clôture définitive.</p>
+                                <div class="flex flex-col md:flex-row gap-6 items-center justify-between bg-black/50 p-8 rounded-[2rem] border border-white/10 relative z-10 shadow-inner backdrop-blur-md">
+                                    <div class="w-full md:w-auto">
+                                        <span class="block text-sm text-white/50 font-bold mb-2 uppercase tracking-widest">Statut actuel :</span>
+                                        ${state.currentPhase === 0 ? '<span class="text-white/60 font-black text-2xl">Non démarré</span>' :
+                                          state.currentPhase === 1 ? '<span class="text-magical-cyan font-black text-2xl flex items-center gap-3 text-glow-cyan"><i class="ph-bold ph-spinner animate-spin"></i> Phase 1 : QR Code (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
+                                          state.currentPhase === 2 ? '<span class="text-magical-gold font-black text-2xl flex items-center gap-3 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)]"><i class="ph-bold ph-spinner animate-spin"></i> Phase 2 : Top 40 (<span class="dynamic-timer-display tabular-nums">--:--:--</span>)</span>' :
+                                          '<span class="text-magical-pink font-black text-2xl flex items-center gap-3 text-glow-pink"><i class="ph-fill ph-check-circle"></i> Clôturé définitivement</span>'}
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3 mt-4 md:mt-0 flex-wrap justify-end">
+                                        ${state.currentPhase === 0 ? 
+                                            `<button onclick="startEventTimer('3H')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
+                                                <i class="ph-fill ph-play-circle text-xl"></i> 3H
+                                            </button>
+                                            <button onclick="startEventTimer('1H')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
+                                                <i class="ph-fill ph-play-circle text-xl"></i> 1H
+                                            </button>
+                                            <button onclick="startEventTimer('30M')" class="w-full sm:w-auto btn-liquid text-white font-black py-3 px-6 rounded-2xl flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase shadow-lg">
+                                                <i class="ph-fill ph-play-circle text-xl"></i> 30 Min
+                                            </button>
+                                            <button onclick="startEventTimer('2M')" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                                <i class="ph-fill ph-flask text-xl text-magical-cyan"></i> Test 2M
+                                            </button>` : 
+                                            `<button onclick="stopEventTimer()" class="w-full md:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-10 rounded-2xl transition-all flex items-center justify-center gap-3 text-xl tracking-widest uppercase hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                                                <i class="ph-bold ph-stop"></i> Arrêter / Annuler
+                                            </button>`}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                                <div class="neo-glass rounded-[2.5rem] p-8 relative overflow-hidden">
+                                    <h3 class="text-2xl font-black text-white mb-2 flex items-center gap-3 tracking-tight text-glow-white">
+                                        <i class="ph-fill ph-monitor-play text-magical-cyan text-3xl drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i> Écrans Publics
+                                    </h3>
+                                    <p class="text-white/70 text-base mb-8 font-light">Contrôle l'affichage sur vidéoprojecteur/TV.</p>
+                                    <div class="flex flex-col gap-4">
+                                        <div class="flex gap-4">
+                                            <button onclick="forceEndAndShowMonitor()" class="flex-1 btn-liquid font-black px-4 py-5 rounded-2xl flex items-center justify-center gap-3 text-sm md:text-lg uppercase tracking-widest border-transparent shadow-[0_0_20px_rgba(255,0,122,0.4)] hover:shadow-[0_0_30px_rgba(255,0,122,0.6)]">
+                                                <i class="ph-bold ph-monitor text-xl md:text-2xl"></i> Clôturer & Résultat
+                                            </button>
+                                            <button onclick="downloadM3U()" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-4 py-5 rounded-2xl transition-colors flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]" title="Télécharger la Playlist M3U">
+                                                <i class="ph-bold ph-download-simple text-xl md:text-2xl"></i>
+                                            </button>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <button onclick="openExternalDisplay('monitor')" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                                <i class="ph-bold ph-screencast text-lg"></i> Fenêtre Classement
+                                            </button>
+                                            <button onclick="openExternalDisplay('qrcode')" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                                <i class="ph-bold ph-screencast text-lg"></i> Fenêtre QR Code
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="neo-glass rounded-[2.5rem] p-8 flex flex-col justify-center">
+                                    <h3 class="text-2xl font-black text-white mb-6 flex items-center gap-3 text-glow-white">
+                                        <i class="ph-fill ph-lock-key text-white/50 text-3xl"></i> Mots de passe
+                                    </h3>
+                                    <div class="flex flex-col gap-6">
+                                        <!-- Guest Code -->
+                                        <div>
+                                            <span class="block text-xs sm:text-sm text-white/50 uppercase tracking-[0.2em] mb-2 font-bold">Code Invité (Public)</span>
+                                            <div class="flex flex-col sm:flex-row gap-4 items-center">
+                                                <input id="newGuestCode" type="text" value="${state.guestCode}" 
+                                                    class="w-full bg-black/60 border border-white/20 rounded-2xl py-4 px-6 text-white uppercase tracking-[0.2em] font-black text-xl focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all text-center sm:text-left shadow-inner">
+                                                <button onclick="updateGuestCode()" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-6 py-4 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] text-sm">
+                                                    Mettre à jour
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Admin Code -->
+                                        <div class="border-t border-white/10 pt-6">
+                                            <span class="block text-xs sm:text-sm text-white/50 uppercase tracking-[0.2em] mb-2 font-bold">Code DJ (Admin)</span>
+                                            <div class="flex flex-col sm:flex-row gap-4 items-center">
+                                                <input id="newAdminCode" type="text" value="${state.adminCode}" 
+                                                    class="w-full bg-black/60 border border-white/20 rounded-2xl py-4 px-6 text-white uppercase tracking-[0.2em] font-black text-xl focus:outline-none focus:border-magical-purple focus:ring-2 focus:ring-magical-purple/40 transition-all text-center sm:text-left shadow-inner">
+                                                <button onclick="updateAdminCode()" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-6 py-4 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] text-sm">
+                                                    Mettre à jour
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="neo-glass rounded-[2.5rem] p-8 mb-8 flex flex-col relative overflow-hidden">
+                                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+                                    <div class="relative z-10 text-left">
+                                        <h2 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">Gestion des Votes DJ</h2>
+                                        <p class="text-white/70 font-medium text-lg">Contrôle absolu sur la soirée.</p>
+                                    </div>
+                                    <div class="bg-black/50 rounded-[1.5rem] px-10 py-5 border border-white/10 shadow-inner text-center shrink-0 w-full md:w-auto relative z-10">
+                                        <span class="block text-sm text-white/50 uppercase tracking-[0.2em] mb-1 font-bold">Total votes</span>
+                                        <span class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink drop-shadow-md">${totalVotes}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
+                                    <button onclick="allowReVote()" class="w-full bg-white/5 hover:bg-magical-cyan/20 text-magical-cyan hover:text-white border border-magical-cyan/30 hover:border-magical-cyan font-bold py-5 px-6 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+                                        <i class="ph-bold ph-arrows-clockwise text-2xl"></i> Nouveau Tour
+                                    </button>
+                                    <button onclick="resetVotes()" class="w-full bg-white/5 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 font-bold py-5 px-6 rounded-[1.5rem] transition-all flex justify-center items-center gap-3 uppercase tracking-widest hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                                        <i class="ph-bold ph-trash text-2xl"></i> Remise à zéro
+                                    </button>
+                                </div>
+                                <p class="text-xs text-white/40 text-center mt-4 uppercase tracking-widest relative z-10">⚠️ Note: Les invités doivent flasher le nouveau QR Code pour récupérer 30 crédits.</p>
+                            </div>
+
+                            <!-- Classement des votes pour le DJ -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                ${rankedSongs.filter(s => s.votes > 0).map((song, index) => `
+                                    <div class="neo-card rounded-[1.5rem] p-5 flex items-center justify-between">
+                                        <div class="flex items-center gap-4 min-w-0 pr-4">
+                                            <div class="w-12 h-12 shrink-0 rounded-xl bg-black/60 flex items-center justify-center font-black text-xl border border-white/10 ${index < 3 ? 'text-magical-gold shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-white/50'}">
+                                                ${index + 1}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <h4 class="font-bold text-white text-lg tracking-wide truncate">${song.title}</h4>
+                                                <p class="text-sm font-light text-white/60 truncate">${song.artist}</p>
+                                            </div>
+                                        </div>
+                                        <div class="bg-black/50 px-5 py-2.5 rounded-xl border border-white/10 shrink-0">
+                                            <span class="text-2xl font-black text-magical-cyan drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">${song.votes}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                htmlToRender = headerHTML + mainContent;
+            }
+
+            // --- RENDU DU POP-UP DESIGN ---
+            let modalHTML = '';
+            if (state.modal) {
+                modalHTML = `
+                    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+                        <div class="neo-glass p-8 md:p-10 rounded-[2.5rem] w-full max-w-lg text-center border-t border-t-magical-pink/50 shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+                            <h3 class="text-3xl font-black text-white mb-6 text-glow-white">${state.modal.title}</h3>
+                            <p class="text-white/80 font-medium mb-8 text-lg leading-relaxed">${state.modal.message}</p>
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                ${state.modal.type === 'goodbye' ? `
+                                    <i class="ph-duotone ph-spinner-gap animate-spin text-5xl text-magical-cyan mx-auto mt-2 block drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
+                                ` : state.modal.type === 'confirm' ? `
+                                    <button onclick="window.closeModal()" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">Annuler</button>
+                                    <button onclick="window.confirmModal()" class="flex-1 btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Confirmer</button>
+                                ` : `
+                                    <button onclick="window.closeModal()" class="w-full sm:w-2/3 mx-auto btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg">Compris</button>
+                                `}
+                            </div>
                         </div>
                     </div>
                 `;
             }
-            else {
-                // NAVBAR
-                html = `<div class="fixed top-4 left-0 w-full z-50 px-4 pointer-events-none">
-                    <nav class="max-w-7xl mx-auto neo-glass rounded-full px-6 py-3 flex items-center justify-between pointer-events-auto shadow-2xl border-t-white/10">
-                        <div class="flex items-center gap-4">
-                            <img src="${LOGO_URL}" class="h-8 drop-shadow-md">
-                            ${state.view==='user' ? `<div class="bg-magical-pink/20 border border-magical-pink/50 px-4 py-1.5 rounded-full text-sm font-black shadow-inner">${votesLeft} / 30 <span class="hidden sm:inline ml-1 opacity-60">Crédits</span></div>` : ''}
-                        </div>
-                        <div class="flex items-center gap-6">
-                            <div class="hidden md:flex gap-5 text-white/40 text-xl"><i class="ph ph-facebook-logo hover:text-white cursor-pointer transition-colors"></i><i class="ph ph-instagram-logo hover:text-white cursor-pointer transition-colors"></i><i class="ph ph-linkedin-logo hover:text-white cursor-pointer transition-colors"></i></div>
-                            <button onclick="goTo('login')" class="bg-white/5 border border-white/10 hover:bg-white/10 px-5 py-2 rounded-full text-xs font-black tracking-widest uppercase transition-all">QUITTER</button>
-                        </div>
-                    </nav>
-                </div>`;
 
-                if (state.view === 'user') {
-                    const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
-                    const isClosed = state.currentPhase === 3 || state.forceClosed;
-                    if (isClosed) {
-                         const top40 = [...state.songs].filter(s => s.votes > 0).sort((a,b) => b.votes - a.votes).slice(0, 40);
-                         html += `<div class="pt-28 px-4 pb-20 max-w-7xl mx-auto">
-                            <div class="btn-liquid rounded-[2rem] p-10 mb-12 text-center shadow-2xl relative overflow-hidden">
-                                <h2 class="text-4xl font-black uppercase text-glow-white tracking-widest mb-2">Le Classement Final</h2>
-                                <p class="text-lg font-light opacity-90 italic">Voici la playlist idéale de votre soirée !</p>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                ${top40.map((s,i) => `<div class="neo-card rounded-2xl p-5 flex items-center justify-between border-white/10 shadow-lg">
-                                    <div class="flex items-center gap-4 min-w-0 pr-2"><span class="text-2xl font-black ${i<3?'text-magical-gold':'text-white/20'} w-8">${i+1}</span><div class="min-w-0 truncate"><p class="font-bold text-base leading-tight truncate text-white">${s.title}</p><p class="text-[10px] text-white/40 uppercase tracking-widest truncate font-medium">${s.artist}</p></div></div>
-                                    <div class="bg-black/40 px-4 py-2 rounded-xl"><span class="text-xl font-black text-magical-cyan text-glow-cyan">${s.votes}</span></div>
-                                </div>`).join('')}
-                            </div>
-                         </div>`;
-                    } else {
-                        html += `<div class="pt-24 px-4 pb-20 max-w-7xl mx-auto">
-                            <div class="sticky top-20 z-40 neo-glass p-5 rounded-[2.5rem] mb-10 space-y-5 shadow-2xl border-t-white/10">
-                                <div class="relative"><i class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-white/30 text-xl"></i>
-                                <input type="text" placeholder="RECHERCHER UN TITRE, UN ARTISTE..." oninput="handleSearch(event)" class="w-full bg-black/40 border border-white/10 rounded-full py-4 pl-14 pr-6 text-base focus:outline-none focus:border-magical-pink focus:ring-1 focus:ring-magical-pink/30 shadow-inner tracking-wide"></div>
-                                <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1 px-1">
-                                    ${themes.map(t => `<button onclick="setTheme('${t}')" class="whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-bold border transition-all duration-300 ${state.selectedTheme===t ? 'bg-magical-pink border-magical-pink text-white shadow-[0_0_15px_rgba(255,0,122,0.5)]' : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'}">${t}</button>`).join('')}
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-                                ${state.songs.filter(s => state.selectedTheme==='Tous' || s.theme===state.selectedTheme).map(s => {
-                                    const v = state.userVotes[s.id] || 0;
-                                    const disabled = v>=2 || state.totalUserVotes>=30;
-                                    return `<div class="song-item-card neo-card rounded-[1.75rem] p-5 flex items-center justify-between border-white/5 transition-transform" data-search="${(s.title+' '+s.artist).toLowerCase()}">
-                                        <div class="min-w-0 pr-4"><p class="font-bold truncate text-lg text-white mb-0.5">${s.title}</p><p class="text-xs text-white/50 uppercase tracking-widest font-medium truncate">${s.artist}</p></div>
-                                        <button onclick="vote(${s.id})" ${disabled?'disabled':''} class="shrink-0 px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${v===2?'bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 shadow-inner':v===1?'bg-magical-pink text-white shadow-lg':'btn-liquid shadow-md'}">
-                                            ${v===2?'MAX (2/2)':v===1?'VOTÉ (1/2)':'VOTER'}
-                                        </button>
-                                    </div>`;
-                                }).join('')}
-                            </div>
-                        </div>`;
-                    }
-                } 
-                else if (state.view === 'admin') {
-                    const ranked = [...state.songs].sort((a,b) => b.votes - a.votes);
-                    html += `<div id="admin-dashboard" class="pt-28 px-4 pb-20 max-w-5xl mx-auto space-y-10 animate-fade-in">
-                        <div class="neo-glass rounded-[3rem] p-10 border-t-magical-pink/50 shadow-2xl relative overflow-hidden">
-                            <h2 class="text-3xl font-black mb-8 flex items-center gap-4 tracking-tight"><i class="ph ph-timer text-magical-pink text-4xl"></i> SESSIONS AUTOMATIQUES</h2>
-                            <div class="flex flex-wrap gap-5">
-                                <button onclick="startEventTimer('3H')" class="btn-liquid px-8 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg">3 HEURES</button>
-                                <button onclick="startEventTimer('1H')" class="btn-liquid px-8 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg">1 HEURE</button>
-                                <button onclick="startEventTimer('30M')" class="btn-liquid px-8 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg">30 MIN</button>
-                                <button onclick="stopEventTimer()" class="bg-white/5 hover:bg-white/10 px-8 py-4 rounded-2xl font-black uppercase text-sm border border-white/20 tracking-widest transition-colors shadow-md">STOP / RESET</button>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div class="neo-glass rounded-[3rem] p-10 shadow-2xl border-white/5"><h3 class="text-2xl font-black mb-8 tracking-tight flex items-center gap-3"><i class="ph ph-projector-screen text-magical-cyan"></i> ÉCRAN GÉANT</h3>
-                                <div class="space-y-5">
-                                    <button onclick="forceEndAndShowMonitor()" class="w-full btn-liquid py-5 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl pulse-magical">CLÔTURER & RÉSULTATS</button>
-                                    <button onclick="openExternalDisplay('qrcode')" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-colors">AFFICHER QR CODE SEUL</button>
-                                </div>
-                            </div>
-                            <div class="neo-glass rounded-[3rem] p-10 shadow-2xl border-white/5"><h3 class="text-2xl font-black mb-8 tracking-tight flex items-center gap-3"><i class="ph ph-lock-key text-white/40"></i> CODES D'ACCÈS</h3>
-                                <div class="space-y-6">
-                                    <div><p class="text-[10px] uppercase font-black tracking-widest mb-2 opacity-50 ml-1">Code Invités</p>
-                                    <div class="flex gap-3"><input id="newGuestCode" type="text" value="${state.guestCode}" class="flex-1 bg-black/60 border border-white/10 rounded-2xl px-5 py-3 text-center font-black uppercase text-xl tracking-[0.2em] shadow-inner focus:border-magical-cyan transition-colors outline-none"><button onclick="updateGuestCode()" class="bg-white/10 hover:bg-magical-cyan/40 px-5 rounded-2xl border border-white/10 transition-colors"><i class="ph-bold ph-check text-xl"></i></button></div></div>
-                                    <div><p class="text-[10px] uppercase font-black tracking-widest mb-2 opacity-50 ml-1">Code DJ Admin</p>
-                                    <div class="flex gap-3"><input id="newAdminCode" type="text" value="${state.adminCode}" class="flex-1 bg-black/60 border border-white/10 rounded-2xl px-5 py-3 text-center font-black uppercase text-xl tracking-[0.2em] shadow-inner focus:border-magical-purple transition-colors outline-none"><button onclick="updateAdminCode()" class="bg-white/10 hover:bg-magical-purple/40 px-5 rounded-2xl border border-white/10 transition-colors"><i class="ph-bold ph-check text-xl"></i></button></div></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="neo-glass rounded-[3rem] p-10 text-center shadow-2xl border-white/5 relative overflow-hidden">
-                            <h2 class="text-sm text-white/40 font-black uppercase mb-4 tracking-[0.3em]">VOTES EN DIRECT</h2>
-                            <div class="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink drop-shadow-[0_0_20px_rgba(0,240,255,0.3)]">${state.songs.reduce((a,s)=>a+s.votes, 0)}</div>
-                            <div class="flex justify-center gap-6 mt-10">
-                                <button onclick="allowReVote()" class="text-magical-cyan font-black uppercase text-xs border border-magical-cyan/30 px-10 py-4 rounded-2xl hover:bg-magical-cyan/20 hover:border-magical-cyan transition-all tracking-[0.2em] shadow-lg">Nouveau Tour</button>
-                                <button onclick="resetVotes()" class="text-red-400 font-black uppercase text-xs border border-red-400/30 px-10 py-4 rounded-2xl hover:bg-red-400/20 hover:border-red-400 transition-all tracking-[0.2em] shadow-lg">Remise à zéro</button>
-                            </div>
-                        </div>
-                        <div class="space-y-4 pt-4">
-                            <h3 class="text-xl font-bold uppercase tracking-widest mb-6 ml-4">Classement Temps Réel</h3>
-                            ${ranked.filter(s=>s.votes>0).map((s,i)=>`
-                                <div class="neo-card rounded-2xl p-6 flex items-center justify-between border-white/5 shadow-md">
-                                    <div class="flex items-center gap-6 min-w-0">
-                                        <span class="w-12 h-12 flex items-center justify-center bg-black/60 rounded-xl font-black text-xl border border-white/5 ${i<3?'text-magical-gold shadow-[0_0_15px_rgba(255,215,0,0.2)]':'text-white/20'}">${i+1}</span>
-                                        <div class="min-w-0"><p class="font-bold text-xl text-white leading-none truncate mb-1.5">${s.title}</p><p class="text-xs font-black opacity-40 uppercase tracking-[0.2em] truncate">${s.artist}</p></div>
-                                    </div>
-                                    <div class="bg-black/40 px-6 py-3 rounded-2xl border border-white/5 shadow-inner"><span class="text-3xl font-black text-magical-cyan text-glow-cyan leading-none">${s.votes}</span></div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
+            root.innerHTML = htmlToRender + modalHTML;
+
+            // Restaure la position de défilement des thèmes sur mobile
+            if (state.view === 'user') {
+                const container = document.getElementById('theme-scroll-container');
+                if (container && state.themeScrollPos !== undefined) {
+                    container.scrollLeft = state.themeScrollPos;
                 }
             }
-
-            // MODAL DESIGN
-            let modalHtml = '';
-            if (state.modal) {
-                modalHtml = `<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in">
-                    <div class="neo-glass p-12 rounded-[3rem] w-full max-w-xl text-center border-t border-t-magical-pink/50 shadow-2xl">
-                        <h3 class="text-4xl font-black mb-8 text-glow-white tracking-tight">${state.modal.title}</h3>
-                        <p class="text-white/70 font-medium mb-10 text-xl leading-relaxed">${state.modal.message}</p>
-                        <div class="flex flex-col sm:flex-row gap-5 justify-center">
-                            ${state.modal.type==='confirm'?`
-                                <button onclick="closeModal()" class="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 py-5 rounded-2xl font-bold uppercase tracking-widest transition-colors">Annuler</button>
-                                <button onclick="confirmModal()" class="flex-1 btn-liquid py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg">Confirmer</button>
-                            ` : state.modal.type === 'goodbye' ? `
-                                <i class="ph-duotone ph-spinner-gap animate-spin text-6xl text-magical-cyan mx-auto"></i>
-                            ` : `
-                                <button onclick="closeModal()" class="w-full sm:w-2/3 mx-auto btn-liquid py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg">Compris</button>
-                            `}
-                        </div>
-                    </div>
-                </div>`;
-            }
-
-            root.innerHTML = html + modalHtml;
         }
 
+        // Gestionnaire global pour opacifier le menu et la barre de recherche au scroll
         window.addEventListener('scroll', () => {
             const panel = document.getElementById('sticky-control-panel');
             const nav = document.getElementById('main-nav');
-            if (panel) window.scrollY > 20 ? panel.classList.add('glass-scrolled-panel') : panel.classList.remove('glass-scrolled-panel');
-            if (nav) window.scrollY > 20 ? nav.classList.add('glass-scrolled-nav') : nav.classList.remove('glass-scrolled-nav');
+            
+            if (window.scrollY > 20) {
+                if (panel) panel.classList.add('glass-scrolled-panel');
+                if (nav) nav.classList.add('glass-scrolled-nav');
+            } else {
+                if (panel) panel.classList.remove('glass-scrolled-panel');
+                if (nav) nav.classList.remove('glass-scrolled-nav');
+            }
         }, { passive: true });
 
+        // Initialisation de l'affichage
         render();
     </script>
 </body>
