@@ -330,6 +330,16 @@
                 db = getFirestore(app);
                 isCloudActive = true;
 
+                // COUPE-CIRCUIT DE SÉCURITÉ POUR SAFARI / IPHONE
+                // Si Firebase ne répond pas au bout de 3 secondes, on force l'ouverture
+                setTimeout(() => {
+                    if (isCloudActive && !state.isCloudSynced) {
+                        console.warn("Forçage de la synchronisation (Safari a bloqué ou réseau lent)");
+                        state.isCloudSynced = true;
+                        render();
+                    }
+                }, 3000);
+
                 const initAuth = async () => {
                     try {
                         if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -339,6 +349,9 @@
                         }
                     } catch (error) {
                         console.error("Erreur d'authentification Firebase:", error);
+                        // En cas d'échec de la connexion fantôme, on débloque quand même l'interface
+                        state.isCloudSynced = true;
+                        render();
                     }
                 };
                 initAuth();
@@ -358,6 +371,8 @@
             }
         } catch(error) {
             console.error("Erreur d'initialisation Firebase:", error);
+            state.isCloudSynced = true; // Déblocage d'urgence
+            render();
         }
 
         function setupListeners() {
@@ -397,7 +412,11 @@
                         songVotes: {}
                     }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
                 }
-            }, (error) => console.error("Erreur lecture Cloud :", error));
+            }, (error) => {
+                console.error("Erreur lecture Cloud :", error);
+                state.isCloudSynced = true; // Débloque l'interface même si la lecture échoue
+                render();
+            });
 
             const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
             
@@ -710,10 +729,10 @@
 
         window.startEventTimer = function(mode) {
             let p1Min, p2Min, msg;
-            if (mode === '3H') { p1Min = 120; p2Min = 60; msg = "2 Heures : QR Code géant.<br>- 1 Heure : Top 40."; }
-            else if (mode === '1H') { p1Min = 40; p2Min = 20; msg = "40 Minutes : QR Code géant.<br>- 20 Minutes : Top 40."; }
-            else if (mode === '30M') { p1Min = 20; p2Min = 10; msg = "20 Minutes : QR Code géant.<br>- 10 Minutes : Top 40."; }
-            else if (mode === '2M') { p1Min = 1; p2Min = 1; msg = "1 Minute : QR Code géant.<br>- 1 Minute : Top 40. (TEST)"; }
+            if (mode === '3H') { p1Min = 180; p2Min = 30; msg = "3 Heures : Votes (QR Code).<br>- 30 Minutes : Résultat (Top 40)."; }
+            else if (mode === '1H') { p1Min = 60; p2Min = 15; msg = "1 Heure : Votes (QR Code).<br>- 15 Minutes : Résultat (Top 40)."; }
+            else if (mode === '30M') { p1Min = 30; p2Min = 10; msg = "30 Minutes : Votes (QR Code).<br>- 10 Minutes : Résultat (Top 40)."; }
+            else if (mode === '2M') { p1Min = 1; p2Min = 1; msg = "1 Minute : Votes (QR Code).<br>- 1 Minute : Résultat (Top 40). (TEST)"; }
             
             window.showModal('confirm', `Démarrer le minuteur (${mode}) ?`, `${msg}<br>- Ensuite : Clôture des votes.`, () => {
                 state.phase1Duration = p1Min * 60 * 1000;
