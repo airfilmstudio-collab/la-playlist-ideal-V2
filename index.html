@@ -900,13 +900,7 @@
         }
 
         window.vote = async function(id) {
-            // VERROU ABSOLU NUMÉRO 1 : Est-ce que le DJ a officiellement lancé les votes ?
-            if (state.currentPhase === 0) { 
-                window.showModal('alert', 'Patience...', 'Le DJ n\'a pas encore officiellement ouvert les votes pour cette session.'); 
-                return; 
-            }
-
-            // VERROU ABSOLU NUMÉRO 2 : Est-ce que le DJ a clôturé les votes ?
+            // VERROU ABSOLU DE CLÔTURE : Est-ce que le DJ a définitivement fermé la session ?
             if (state.forceClosed || state.currentPhase === 3) { 
                 window.showModal('alert', 'Votes clôturés', 'Les votes sont définitivement terminés pour cette session ! Regardez l\'écran géant.'); 
                 return; 
