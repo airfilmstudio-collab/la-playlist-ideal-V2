@@ -147,26 +147,16 @@
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
         // =========================================================================
-        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES (Protection Chrome/Safari)
+        // 🚨 NOUVELLE VERSION 3.0 : LE GRAND NETTOYAGE (Anti-Fantôme)
         // =========================================================================
+        const APP_VERSION = "3.0";
         try {
-            const urlParamsInitial = new URLSearchParams(window.location.search);
-            const newSessionId = urlParamsInitial.get('s');
-            if (newSessionId) {
-                const currentSession = localStorage.getItem('dj_client_session');
-                if (currentSession !== newSessionId) {
-                    console.log("Nouvelle session détectée via QR Code. Nettoyage absolu...");
-                    localStorage.removeItem('dj_songs');
-                    localStorage.removeItem('dj_userVotes');
-                    localStorage.removeItem('dj_eventStartTime');
-                    localStorage.removeItem('dj_forceClosed');
-                    localStorage.removeItem('dj_phase1');
-                    localStorage.removeItem('dj_phase2');
-                    localStorage.setItem('dj_client_session', newSessionId);
-                    localStorage.setItem('dj_sessionId', newSessionId);
-                }
+            if (localStorage.getItem('dj_app_version') !== APP_VERSION) {
+                console.log("Mise à jour v3.0 détectée : Nettoyage intégral du cache !");
+                localStorage.clear();
+                localStorage.setItem('dj_app_version', APP_VERSION);
             }
-        } catch(e) { console.warn("Erreur Anti-Cache:", e); }
+        } catch(e) { console.error(e); }
         // =========================================================================
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -345,9 +335,6 @@
                 
                 state.isCloudSynced = true; 
 
-                // Lancement immédiat de l'écoute publique pour s'assurer que les téléphones se mettent à jour
-                setupPublicListener();
-
                 const initAuth = async () => {
                     try {
                         if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -359,6 +346,7 @@
                         console.warn("Auth Firebase bloquée (Mode dégradé toléré).", error);
                         cloudErrorMsg = error.code;
                         state.authStatus = 'failed';
+                        setupPublicListener(); // On écoute quand même en mode public
                         render();
                     }
                 };
@@ -369,6 +357,8 @@
                     state.authStatus = 'ready'; 
                     if (user) {
                         userId = user.uid;
+                        // On lance les écouteurs UNIQUEMENT quand Firebase a donné le badge (UID)
+                        setupPublicListener();
                         setupPrivateListener();
                     } else {
                         userId = null;
@@ -436,7 +426,7 @@
                 render(); 
             }, (error) => {
                 console.warn("Écoute du Cloud refusée ou interrompue :", error.message);
-                // 🚨 ALERTE POUR LE DJ SI LE MODE TEST EST EXPIRÉ
+                // 🚨 ALERTE POUR LE DJ SEULEMENT
                 if ((error.code === 'permission-denied' || error.message.includes('Missing or insufficient permissions'))) {
                     state.authStatus = 'failed';
                     cloudErrorMsg = 'Règles Firebase expirées';
@@ -1066,22 +1056,18 @@
                                                         <div class="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
                                                         <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
                                                     </div>
-                                                    <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 border border-white/10 shadow-inner">
-                                                        <span class="text-lg sm:text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
+                                                    <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 border border-white/10 shadow-inner">
+                                                        <span class="text-lg sm:text-xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
                                                     </div>
                                                 </div>
                                             `;
                                         }).join('')}
                                     </div>
                                 ` : `
-                                    <div class="flex flex-col items-center justify-center h-full text-center">
+                                    <div class="flex flex-col items-center justify-center py-16 text-center">
                                         <i class="ph-duotone ${state.currentPhase === 3 ? 'ph-check-circle text-magical-cyan' : 'ph-disc text-magical-pink/50 animate-spin-slow'} text-9xl mb-6 inline-block drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]"></i>
-                                        <h3 class="text-4xl font-bold text-white mb-3 text-glow-white">
-                                            ${state.currentPhase === 3 ? 'Playlist Terminée' : 'En attente des votes...'}
-                                        </h3>
-                                        <p class="text-2xl text-white/60 font-light">
-                                            ${state.currentPhase === 3 ? 'Le Top 40 est vide car aucun vote n\'a été enregistré.' : 'La playlist idéale se prépare !'}
-                                        </p>
+                                        <h3 class="text-3xl font-black text-white mb-2 text-glow-white">Playlist Terminée</h3>
+                                        <p class="text-lg text-white/60 font-light">Le classement est vide car aucun vote n'a été enregistré.</p>
                                     </div>
                                 `}
                             </div>
@@ -1161,26 +1147,18 @@
                                     <a href="https://www.linkedin.com/in/universal-dj" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-[#0A66C2] transition-all hover:scale-110 hover:drop-shadow-[0_0_10px_rgba(10,102,194,0.8)]" title="LinkedIn">
                                         <i class="ph-fill ph-linkedin-logo text-[11px] sm:text-lg md:text-xl"></i>
                                     </a>
-                                    
-                                    <!-- 🔥 COMPTEUR DE VOTES EN HAUT & ALERTE FIREBASE -->
-                                    ${state.view === 'user' ? `
-                                    <div class="ml-1 sm:ml-4 flex items-center gap-1 sm:gap-2 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-magical-pink/20 border border-magical-pink/50 shadow-inner">
-                                        <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
-                                        <span class="text-[10px] sm:text-sm font-black text-white whitespace-nowrap">${votesLeft} / ${MAX_TOTAL_VOTES}</span>
-                                    </div>
-                                    ` : ''}
-
-                                    ${state.authStatus === 'failed' ? `
-                                        <button onclick="window.showModal('alert', '🚨 Connexion bloquée par Firebase', 'Google Firebase refuse la connexion de ce téléphone.<br><br><b>Code erreur :</b> <i>${cloudErrorMsg || 'Non autorisé'}</i><br><br><b>Solution pour le DJ :</b> Allez sur votre console Firebase > Authentication > Paramètres > Domaines autorisés, et ajoutez-y <b>airfilmstudio-collab.github.io</b>')" class="ml-1 sm:ml-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50 shadow-inner animate-pulse cursor-pointer">
-                                            <i class="ph-bold ph-warning text-red-500 text-[10px] sm:text-base"></i>
-                                            <span class="text-[10px] sm:text-xs font-bold text-red-500 hidden sm:inline">Erreur Firebase</span>
-                                        </button>
-                                    ` : ''}
                                 </div>
                             </div>
                             
                             <!-- RIGHT: Timer + Quit -->
                             <div class="flex items-center gap-1.5 sm:gap-4 shrink-0">
+                                ${state.view === 'user' ? `
+                                    <div class="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-3 py-0.5 sm:py-1.5 rounded-full bg-magical-pink/20 border border-magical-pink/50 shadow-[0_0_10px_rgba(255,0,122,0.2)]">
+                                        <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                        <span class="text-[10px] sm:text-sm font-black text-white whitespace-nowrap">${votesLeft} / ${MAX_TOTAL_VOTES}</span>
+                                    </div>
+                                ` : ''}
+
                                 ${isTimerActive ? `
                                     <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
                                         <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
@@ -1218,9 +1196,6 @@
                         mainContent = `
                             <div id="user-view-container" class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
                                 <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical relative">
-                                    <button onclick="window.location.reload()" class="absolute top-4 right-4 md:top-6 md:right-6 text-white/50 hover:text-white p-2 transition-all hover:rotate-180" title="Actualiser en cas de bug réseau">
-                                        <i class="ph-bold ph-arrows-clockwise text-2xl md:text-3xl drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]"></i>
-                                    </button>
                                     <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white pr-8 pl-8">Le Classement Final</h2>
                                     <p class="text-white/90 text-base md:text-lg mt-2 font-medium">Voici la playlist idéale de la soirée !</p>
                                 </div>
