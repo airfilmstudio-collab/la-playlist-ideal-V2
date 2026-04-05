@@ -147,12 +147,12 @@
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
         // =========================================================================
-        // 🚨 NOUVELLE VERSION 5.0 : LA BOMBE NUCLÉAIRE ANTI-FANTÔME
+        // 🚨 VERSION 6.0 : FORCAGE ABSOLU DE LA CONNEXION DIRECTE ET NETTOYAGE
         // =========================================================================
-        const APP_VERSION = "5.0";
+        const APP_VERSION = "6.0";
         try {
             if (localStorage.getItem('dj_app_version') !== APP_VERSION) {
-                console.log("Mise à jour v5.0 détectée : Destruction intégrale du cache !");
+                console.log("Mise à jour v6.0 détectée : Destruction intégrale du cache !");
                 localStorage.clear();
                 localStorage.setItem('dj_app_version', APP_VERSION);
             }
@@ -177,8 +177,8 @@
         // =========================================================================
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =========================================================================
         // 🔄 AUTO-ACTUALISATION (ANTI-FANTÔMES) POUR SMARTPHONES
@@ -197,7 +197,6 @@
 
         // =========================================================================
         // 🔴🔴🔴 ÉTAPE CRUCIALE : VOS CLÉS FIREBASE 🔴🔴🔴
-        // Remplacez obligatoirement les valeurs ci-dessous par celles de VOTRE projet Firebase
         // =========================================================================
         const MY_FIREBASE_CONFIG = {
             apiKey: "COLLEZ_VOTRE_CLE_API_ICI",
@@ -334,23 +333,12 @@
         let unsubscribePrivate = null;
 
         try {
+            // 🔥 ON FORCE L'UTILISATION DES CLÉS CUSTOM (Fini les deux mondes séparés)
             let firebaseConfig = null;
-            let useCanvasAuth = false;
-            let isRunningInCanvas = typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== '{}';
-
-            // 1. SI ON EST DANS L'ÉDITEUR GOOGLE (CANVAS)
-            if (isRunningInCanvas) {
-                firebaseConfig = JSON.parse(__firebase_config);
-                appId = typeof __app_id !== 'undefined' ? __app_id : appId;
-                useCanvasAuth = true;
-            } 
-            // 2. SI ON EST SUR LE SITE EN LIGNE (GITHUB) : ON UTILISE VOS CLÉS
-            else if (!MY_FIREBASE_CONFIG.apiKey.includes("COLLEZ_VOTRE")) {
+            if (!MY_FIREBASE_CONFIG.apiKey.includes("COLLEZ_VOTRE")) {
                 firebaseConfig = MY_FIREBASE_CONFIG;
                 appId = MY_FIREBASE_CONFIG.appId;
-            } 
-            // 3. SI VOUS AVEZ OUBLIÉ DE METTRE VOS CLÉS SUR GITHUB
-            else {
+            } else {
                 console.warn("Clés Firebase manquantes ! L'application tourne en mode hors-ligne.");
                 state.authStatus = 'missing_keys';
             }
@@ -363,16 +351,9 @@
                 
                 state.isCloudSynced = true; 
 
-                // Lancement de l'écoute publique pour s'assurer que les téléphones se mettent à jour
-                setupPublicListener();
-
                 const initAuth = async () => {
                     try {
-                        if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        await signInAnonymously(auth);
                     } catch (error) {
                         console.warn("Auth Firebase bloquée.", error);
                         cloudErrorMsg = error.code;
@@ -387,9 +368,12 @@
                     state.authStatus = 'ready'; 
                     if (user) {
                         userId = user.uid;
+                        // On lance les écouteurs UNIQUEMENT quand Firebase a donné le badge (UID)
+                        setupPublicListener();
                         setupPrivateListener();
                     } else {
                         userId = null;
+                        if (unsubscribePublic) { unsubscribePublic(); unsubscribePublic = null; }
                         if (unsubscribePrivate) { unsubscribePrivate(); unsubscribePrivate = null; }
                     }
                 });
@@ -676,7 +660,6 @@
                         const currentUrl = new URL(window.location.href);
                         if (currentUrl.protocol !== 'blob:') {
                             currentUrl.searchParams.delete('code');
-                            // 🔥 On NE SUPPRIME PLUS le 's=' pour que le rafraîchissement fonctionne !
                             const newPath = currentUrl.pathname + currentUrl.search;
                             window.history.replaceState({}, document.title, newPath);
                         }
@@ -1164,10 +1147,11 @@
                                     </div>
                                     ` : ''}
 
+                                    <!-- 🚨 ALERTE DE DIAGNOSTIC POUR MOBILE -->
                                     ${state.authStatus === 'failed' || state.authStatus === 'missing_keys' ? `
-                                        <button onclick="window.showModal('alert', '🚨 Connexion bloquée', 'Pour le DJ : Vos clés Firebase ne sont pas configurées ou sont bloquées par Google.<br><br><b>Code erreur :</b> <i>${cloudErrorMsg || 'Clés non trouvées'}</i><br><br><b>Solution :</b> Modifiez le fichier Github et insérez VOS clés Firebase vers la ligne 150.')" class="ml-1 sm:ml-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50 shadow-inner animate-pulse cursor-pointer">
+                                        <button onclick="window.showModal('alert', '🚨 Erreur de Connexion au Cloud', 'Le vote fonctionne, mais n\\'est pas synchronisé avec l\\'écran DJ.<br><br><b>Code erreur :</b> <i>${cloudErrorMsg || 'Clés non trouvées'}</i><br><br><b>Si vous êtes le DJ :</b><br>1. Avez-vous collé VOS clés Firebase dans le code Github (Ligne 155) ?<br>2. Avez-vous ajouté <b>airfilmstudio-collab.github.io</b> dans les domaines autorisés de Firebase ?')" class="ml-1 sm:ml-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50 shadow-inner animate-pulse cursor-pointer">
                                             <i class="ph-bold ph-warning text-red-500 text-[10px] sm:text-base"></i>
-                                            <span class="text-[10px] sm:text-xs font-bold text-red-500 hidden sm:inline">Erreur Réseau</span>
+                                            <span class="text-[10px] sm:text-xs font-bold text-red-500 hidden sm:inline">Tapez ici</span>
                                         </button>
                                     ` : ''}
                                 </div>
@@ -1357,7 +1341,7 @@
                             ${state.authStatus === 'missing_keys' ? `
                             <div class="neo-glass border border-red-500/50 bg-red-500/10 rounded-2xl p-6 mb-8 text-center animate-pulse">
                                 <h3 class="text-red-400 font-black text-2xl mb-2 flex items-center justify-center gap-2"><i class="ph-bold ph-warning"></i> ACTION VITALE REQUISE</h3>
-                                <p class="text-white/90 font-medium text-lg">Pour que vos téléphones puissent se synchroniser, vous devez remplacer la mention <strong class="text-magical-cyan">"COLLEZ_VOTRE_CLE_API_ICI"</strong> par <b>VOS clés Firebase</b> dans le code Github (vers la ligne 150).</p>
+                                <p class="text-white/90 font-medium text-lg">Pour que vos téléphones puissent se synchroniser avec cet écran, vous devez insérer <b>VOS clés Firebase</b> dans le code Github (vers la ligne 155).</p>
                             </div>
                             ` : ''}
 
