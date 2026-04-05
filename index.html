@@ -610,13 +610,9 @@
             if (isCloudActive && db && !userId) {
                 try {
                     const userCredential = await signInAnonymously(auth); userId = userCredential.user.uid;
-                    await new Promise(r => setTimeout(r, 600)); if (!userId) throw new Error("Connexion annulée");
+                    await new Promise(r => setTimeout(r, 600));
                 } catch (error) {
-                    console.error("Auth error on vote:", error);
-                    if (error.code === 'auth/unauthorized-domain') { window.showModal('alert', 'Sécurité Firebase (Domaines)', 'Firebase bloque le site Github !<br><br>Dans Firebase > Authentication > Paramètres > <strong>Domaines Autorisés</strong>, ajoutez :<br><br><strong class="text-magical-cyan text-xs sm:text-sm">airfilmstudio-collab.github.io</strong>'); }
-                    else if (error.code === 'auth/operation-not-allowed') { window.showModal('alert', 'Erreur Firebase (Étape 3)', 'L\'authentification Anonyme n\'est pas activée.<br>Vérifiez Firebase > Authentication > Sign-in method.'); }
-                    else { window.showModal('alert', 'Erreur de Connexion', '⚠️ Impossible de contacter le Cloud Firebase.<br>' + error.message); }
-                    return;
+                    console.warn("Auth error on vote, continuing locally:", error);
                 }
             }
             state.userVotes[id] = votesForSong + 1; state.totalUserVotes += 1;
