@@ -27,7 +27,7 @@
         }
     </script>
 
-    <!-- Phosphor Icons pour les icônes -->
+    <!-- Phosphor Icons pour les icônes (en defer pour ne pas bloquer le chargement) -->
     <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
     
     <style>
@@ -35,15 +35,17 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
+        /* Fallbacks de sécurité pour éviter la page blanche au chargement */
         html, body { background-color: #050212; color: #ffffff; }
 
+        /* Animations fluides d'apparition (réservées aux changements de vues complets) */
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn {
             from { opacity: 0; filter: blur(5px); }
             to { opacity: 1; filter: blur(0); }
         }
         
-        /* Lumières Vivantes (Aurora Background) */
+        /* Lumières Vivantes (Aurora / Holographic Background) */
         .orb {
             position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.6;
             animation: orbFloat 25s infinite cubic-bezier(0.4, 0, 0.2, 1) alternate;
@@ -61,6 +63,7 @@
             100% { transform: translate(0, 0) scale(1) rotate(0deg); }
         }
         
+        /* HOLOGRAPHIC GLASSMORPHISM (Verre Premium) */
         .neo-glass {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
             backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
@@ -68,6 +71,7 @@
             box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.05);
         }
 
+        /* OPACIFICATION AU SCROLL (Pour le menu et les thèmes) */
         .glass-scrolled-panel {
             background: linear-gradient(135deg, rgba(5, 2, 18, 0.95) 0%, rgba(0, 0, 0, 0.98) 100%) !important;
             border-top: 1px solid rgba(0, 240, 255, 0.4) !important;
@@ -81,6 +85,7 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.9) !important;
         }
         
+        /* Cartes Interactives (Chansons) */
         .neo-card {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
             backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -93,6 +98,7 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 240, 255, 0.15), 0 0 30px rgba(255, 0, 122, 0.15);
         }
 
+        /* Boutons "Candy / Liquid" */
         .btn-liquid {
             background: linear-gradient(135deg, #FF007A 0%, #7000FF 100%); color: white;
             border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 4px 15px rgba(255, 0, 122, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.4);
@@ -109,16 +115,19 @@
         }
         .btn-liquid:active { transform: translateY(2px) scale(0.95); }
 
+        /* Textes lumineux / Typographie */
         .text-glow-white { text-shadow: 0 0 20px rgba(255, 255, 255, 0.6); }
         .text-glow-pink { text-shadow: 0 0 20px rgba(255, 0, 122, 0.8); }
         .text-glow-cyan { text-shadow: 0 0 20px rgba(0, 240, 255, 0.8); }
 
+        /* Animation de respiration pour les minuteurs / alertes */
         .pulse-magical { animation: pulseMagical 3s ease-in-out infinite alternate; }
         @keyframes pulseMagical {
             0% { box-shadow: 0 0 20px rgba(255,0,122,0.2); border-color: rgba(255,0,122,0.3); }
             100% { box-shadow: 0 0 40px rgba(0,240,255,0.4); border-color: rgba(0,240,255,0.6); }
         }
 
+        /* Safe area padding pour smartphones */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
             .pb-safe { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
         }
@@ -126,34 +135,61 @@
 </head>
 <body class="text-slate-100 font-sans selection:bg-magical-pink/50 min-h-screen relative overflow-x-hidden">
 
+    <!-- LUMIERES HOLOGRAPHIQUES (GPU-Safe) -->
     <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#050212]">
         <div class="orb orb-pink"></div><div class="orb orb-cyan"></div>
         <div class="orb orb-purple"></div><div class="orb orb-gold"></div>
     </div>
 
+    <!-- CONTENEUR PRINCIPAL -->
     <div id="root" class="relative z-10 min-h-screen flex flex-col"></div>
 
+    <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
+        // =========================================================================
+        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES (Protection Chrome/Safari)
+        // =========================================================================
+        try {
+            const urlParamsInitial = new URLSearchParams(window.location.search);
+            const newSessionId = urlParamsInitial.get('s');
+            if (newSessionId) {
+                const currentSession = localStorage.getItem('dj_client_session');
+                if (currentSession && currentSession !== newSessionId) {
+                    console.log("Nouvelle session détectée via QR Code. Nettoyage absolu...");
+                    localStorage.removeItem('dj_songs');
+                    localStorage.removeItem('dj_userVotes');
+                    localStorage.removeItem('dj_eventStartTime');
+                    localStorage.removeItem('dj_forceClosed');
+                    localStorage.removeItem('dj_phase1');
+                    localStorage.removeItem('dj_phase2');
+                    localStorage.setItem('dj_client_session', newSessionId);
+                    localStorage.setItem('dj_sessionId', newSessionId);
+                }
+            }
+        } catch(e) { console.error("Erreur Anti-Cache:", e); }
+        // =========================================================================
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =========================================================================
-        // 🔄 ANTI-FANTÔMES VERSION FINALE
+        // 🔄 AUTO-ACTUALISATION (ANTI-FANTÔMES) POUR SMARTPHONES
         // =========================================================================
         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
+            if (document.visibilityState === "hidden") {
+                localStorage.setItem('dj_sleep_time', Date.now().toString());
+            } else if (document.visibilityState === "visible") {
                 const sleepTime = localStorage.getItem('dj_sleep_time');
                 if (sleepTime && (Date.now() - parseInt(sleepTime)) > 2 * 60 * 1000) {
                     window.location.reload(); 
                 }
-            } else {
-                localStorage.setItem('dj_sleep_time', Date.now().toString());
             }
         });
+        // =========================================================================
 
         // =========================================================================
-        // 🔴🔴🔴 CONFIGURATION FIREBASE (RESTAURÉE) 🔴🔴🔴
+        // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
         // =========================================================================
         const MY_FIREBASE_CONFIG = {
             apiKey: "AIzaSyCCrcyE5HbYE-fjiVwqnzmVmhg_zCvXb5k",
@@ -165,6 +201,7 @@
             measurementId: "G-S96KYBT8CN"
         };
         const FIXED_APP_ID = "laplaylistideale"; 
+        // =========================================================================
 
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
         
@@ -182,13 +219,13 @@
             [619,"PARISIENNE","GIMS","Urbain 2020's"],[620,"SPA","GIMS","Urbain 2020's"],[621,"CIEL","GIMS","Urbain 2020's"],[622,"NINAO","GIMS","Urbain 2020's"],[623,"SPIDER","GIMS","Urbain 2020's"],[624,"melodrama","disiz theodora","Urbain 2020's"],[625,"Tic","Maureen","Urbain 2020's"],[626,"Laptop","Kalash & Maureen","Urbain 2020's"],[627,"Money Pull Up","Blaiz Fayah & Maureen","Urbain 2020's"],[628,"Mode Avion","DJ Kawest & Attachingboy","Urbain 2020's"],[629,"Chambre 04","DJ Kawest & Attachingboy","Urbain 2020's"],[630,"A la Mode","PLL","Urbain 2020's"],[631,"Pas Jalouse","Bamby & Kerchak","Urbain 2020's"],[632,"Balthazar Mode Vs Gal A Bubble","LeKid & Konshens","Urbain 2020's"],[633,"Shatta Confessions","Meryl","Urbain 2020's"],[634,"Vite Fait","Meryl","Urbain 2020's"],[635,"Coco Chanel","Meryl & Eva","Urbain 2020's"],[636,"Fecat’ji","Fecat’ji","Urbain 2020's"],[637,"La Piraterie","K-Rosif, Bigda & Loeil","Urbain 2020's"],[638,"Whine (Chelero Punchy Remix)","TKS 2G","Urbain 2020's"],
             [87,"Toute première fois","Jeanne Mas","Hits Français"],[88,"Johnny, Johnny","Jeanne Mas","Hits Français"],[89,"En Rouge Et Noir","Jeanne Mas","Hits Français"],[90,"J't'emmène au vent","Louise Attaque","Hits Français"],[91,"Ton invitation","Louise Attaque","Hits Français"],[92,"Femmes Que J'aime !!!","Jean Luc Lahaye","Hits Français"],[93,"J'irai où tu iras","Céline Dion","Hits Français"],[94,"Sans contrefaçon","Mylène Farmer","Hits Français"],[95,"Désenchantée","Mylène Farmer","Hits Français"],[96,"Le Jerk","Thierry Hazard","Hits Français"],[97,"Tomber La Chemise","Zebda","Hits Français"],[98,"Il jouait du piano debout","France Gall","Hits Français"],[99,"Besoin De Rien Envie De Toi","Peter Sloane","Hits Français"],[100,"Les Démons de minuit","Images","Hits Français"],[101,"Nuit de folie","Début de soirée","Hits Français"],[102,"La Tribu De Dana","Manau","Hits Français"],[103,"Confidences pour confidences","Jean Schultheis","Hits Français"],[104,"Pourvu qu'elles soient douces","Mylène Farmer","Hits Français"],[105,"Je te donne","Jean-Jacques Goldman","Hits Français"],[106,"Il suffira d'un signe","Jean-Jacques Goldman","Hits Français"],[107,"Au bout de mes rêves","Jean-Jacques Goldman","Hits Français"],[108,"Quand la musique est bonne","Jean-Jacques Goldman","Hits Français"],[109,"La Groupie du pianiste","Michel Berger","Hits Français"],[110,"Les lacs du Connemara","Michel Sardou","Hits Français"],[111,"Laissez-moi danser","Dalida","Hits Français"],[112,"On va s'aimer","Gilbert Montagné","Hits Français"],[113,"Voyage Voyage","Desireless","Hits Français"],[114,"Lambé An Dro","Matmatah","Hits Français"],[115,"L'apologie","Matmatah","Hits Français"],[116,"Résiste","France Gall","Hits Français"],[117,"J'ai Vu","Niagara","Hits Français"],[118,"Femme Like U","K.Maro","Hits Français"],[119,"Ca m'énerve","Helmut Fritz","Hits Français"],[120,"Joue pas","Francois Feldman","Hits Français"],[121,"Aimons‐nous vivants","François Valéry","Hits Français"],[122,"Elle danse marie","François Valéry","Hits Français"],[123,"Capitaine abandonné","Gold","Hits Français"],[124,"Cendrillon","Téléphone","Hits Français"],[125,"Un autre monde","Téléphone","Hits Français"],[126,"La grenade","Clara Luciani","Hits Français"],[127,"SOS d'un terrien en détresse","Daniel Balavoine","Hits Français"],[128,"D.I.S.C.O.","Ottawan","Hits Français"],[129,"Tahiti","Keen'V","Hits Français"],[130,"Partenaire particulier","Partenaire particulier","Hits Français"],[131,"À nos souvenirs","Trois Cafés Gourmands","Hits Français"],[132,"Marcia Baïla","Rita Mitsouko","Hits Français"],[133,"L'amour à la plage","Niagara","Hits Français"],[134,"Tout Oublier","Angèle feat. Roméo Elvis","Hits Français"],[135,"Week-end à Rome","Étienne Daho","Hits Français"],[136,"Tombé du ciel","Jacques Higelin","Hits Français"],[137,"Étienne","Guesch Patti","Hits Français"],[138,"Vacances j'oublie tout","Élégance","Hits Français"],[139,"Femme libérée","Cookie Dingler","Hits Français"],[140,"Chante","Les Forbans","Hits Français"],[141,"Je suis bien","Gazoline","Hits Français"],[142,"Chacun fait (c'qui lui plaît)","Chagrin d'amour","Hits Français"],[143,"Andy","Les Rita Mitsouko","Hits Français"],[144,"Elle a les yeux revolver","Marc Lavoine","Hits Français"],[145,"Sensualité","Axelle Red","Hits Français"],[146,"Il tape sur des bambous","Philippe Lavil","Hits Français"],[147,"La Boîte de jazz","Michel Jonasz","Hits Français"],[148,"Où sont les femmes ?","Patrick Juvet","Hits Français"],[149,"Du côté de chez Swann","Dave","Hits Français"],[150,"Mélissa","Julien Clerc","Hits Français"],[151,"Canary Bay","Indochine","Hits Français"],[152,"Le chant des cygnes","Indochine","Hits Français"],[153,"L'aventurier","Indochine","Hits Français"],[154,"3e sexe","Indochine","Hits Français"],[155,"Antisocial","Trust","Hits Français"],[156,"Joe Le Taxi","Vanessa Paradis","Hits Français"],[157,"Le bal masqué","La Compagnie Créole","Hits Français"],[158,"Africa","Rose Laurens","Hits Français"],[159,"T'es ok","Ottawan","Hits Français"],[160,"Banana Split","Lio","Hits Français"],[161,"C'est bon pour le moral","La Compagnie Créole","Hits Français"],[162,"Vive le Douanier Rousseau","La Compagnie Créole","Hits Français"],[163,"Alexandrie Alexandra","Claude Francois","Hits Français"],[164,"Magnolias for ever","Claude Francois","Hits Français"],[165,"Rock Amadour","Gerard Blanchard","Hits Français"],[166,"Ça Plane Pour Moi","Plastic Bertrand","Hits Français"],[167,"Tropique","Muriel Dacq","Hits Français"],[168,"C'est toi qui m'a fait","Francois Feldman","Hits Français"],[169,"Eve Lève Toi","JULIE PIETRI","Hits Français"],[170,"C'est la ouate","Caroline Loeb","Hits Français"],
             [171,"Lambada","Kaoma","Classic 80s"],[172,"Fotonovela","Ivan","Classic 80s"],[173,"Ghostbusters","Ray Parker Jr.","Classic 80s"],[174,"Like a Virgin","Madonna","Classic 80s"],[175,"Smalltown Boy","Bronski Beat","Classic 80s"],[176,"You Spin Me Round","Dead or Alive","Classic 80s"],[177,"Relax","Frankie Goes to Hollywood","Classic 80s"],[178,"Wake Me Up Before You Go-Go","Wham!","Classic 80s"],[179,"Billie Jean","Michael Jackson","Classic 80s"],[180,"Purple Rain","Prince","Classic 80s"],[181,"Tarzan Boy","Baltimora","Classic 80s"],[182,"Self Control","Laura Branigan","Classic 80s"],[183,"Just Can't Get Enough","Depeche Mode","Classic 80s"],[184,"Blue Monday","New Order","Classic 80s"],[185,"Shout","Tears for Fears","Classic 80s"],[186,"Take On Me","A-ha","Classic 80s"],[187,"West End Girls","Pet Shop Boys","Classic 80s"],[188,"I Will Survive","Gloria Gaynor","Classic 80s"],[189,"Hot Stuff","Donna Summer","Classic 80s"],[190,"I Feel for You","Chaka Khan","Classic 80s"],[191,"Celebration","Kool & The Gang","Classic 80s"],[192,"How Will I Know","Whitney Houston","Classic 80s"],[193,"Girls Just Want to Have Fun","Cyndi Lauper","Classic 80s"],[194,"Kiss","Prince & The Revolution","Classic 80s"],[195,"Livin' on a Prayer","Bon Jovi","Classic 80s"],[196,"Sweet Dreams","Eurythmics","Classic 80s"],[197,"Never Gonna Give You Up","Rick Astley","Classic 80s"],[198,"Careless Whisper","George Michael","Classic 80s"],[199,"Another One Bites the Dust","Queen","Classic 80s"],[200,"Rio","Duran Duran","Classic 80s"],[201,"Just Like Heaven","The Cure","Classic 80s"],[202,"Enjoy the Silence","Depeche Mode","Classic 80s"],[203,"Everybody Wants to Rule the World","Tears for Fears","Classic 80s"],[204,"Don't You (Forget About Me)","Simple Minds","Classic 80s"],[205,"Jump","Van Halen","Classic 80s"],[206,"Cruel Summer","Bananarama","Classic 80s"],[207,"Karma Chameleon","Culture Club","Classic 80s"],[208,"Gloria","Laura Branigan","Classic 80s"],[209,"Conga","Gloria Estefan","Classic 80s"],[210,"Thriller","Michael Jackson","Classic 80s"],[211,"Dancing Queen","ABBA","Classic 80s"],[212,"Give Me the Night","George Benson","Classic 80s"],[213,"Into the Groove","Madonna","Classic 80s"],[214,"The Final Countdown","Europe","Classic 80s"],
-            [215,"Freed from desire","GALA","Hits 90s"],[216,"The Rhythm of the Night","Corona","Hits 90s"],[217,"Rhythm Is a Dancer","Snap!","Hits 90s"],[218,"The Power","Snap!","Hits 90s"],[219,"Vogue","Madonna","Hits 90s"],[220,"What Is Love","Haddaway","Hits 90s"],[221,"No Limit","2 Unlimited","Hits 90s"],[222,"Be My Lover","La Bouche","Hits 90s"],[223,"Show Me Love","Robin S","Hits 90s"],[224,"Around the World","Daft Punk","Hits 90s"],[225,"Firestarter","The Prodigy","Hits 90s"],[226,"Insomnia","Faithless","Hits 90s"],[227,"Boom, Boom, Boom, Boom!!","Vengaboys","Hits 90s"],[228,"Blue (Da Ba Dee)","Eiffel 65","Hits 90s"],[229,"Believe","Cher","Hits 90s"],[230,"Wannabe","Spice Girls","Hits 90s"],[231,"Baby One More Time","Britney Spears","Hits 90s"],[232,"The Sign","Ace of Base","Hits 90s"],[233,"Another Night","Real McCoy","Hits 90s"],[234,"Mr. Vain","Culture Beat","Hits 90s"],[235,"It's My Life","Dr. Alban","Hits 90s"],[236,"Pump Up the Jam","Technotronic","Hits 90s"],[237,"Music Sounds Better with You","Stardust","Hits 90s"],[238,"Saturday Night","Whigfield","Hits 90s"],[239,"Finally","CeCe Peniston","Hits 90s"],[240,"Scatman","Scatman John","Hits 90s"],[241,"Barbie Girl","Aqua","Hits 90s"],[242,"Cotton Eye Joe","Rednex","Hits 90s"],[243,"Ooh Aah... Just a Little Bit","Gina G","Hits 90s"],[244,"Ride on Time","Black Box","Hits 90s"],[245,"Push It","Salt-N-Pepa","Hits 90s"],[246,"No Scrubs","TLC","Hits 90s"],[247,"Bills, Bills, Bills","Destiny's Child","Hits 90s"],[248,"Together Again","Janet Jackson","Hits 90s"],[249,"Freedom! '90","George Michael","Hits 90s"],[250,"Black or White","Michael Jackson","Hits 90s"],[251,"Praise You","Fatboy Slim","Hits 90s"],[252,"Sing It Back","Moloko","Hits 90s"],[253,"Groove Is in the Heart","Deee-Lite","Hits 90s"],[254,"Children","Robert Miles","Hits 90s"],[255,"Dreamer","Livin' Joy","Hits 90s"],[256,"Feel the Heat of the Night","Masterboy","Hits 90s"],[257,"Captain Jack","Captain Jack","Hits 90s"],[258,"Think About the Way","Ice MC","Hits 90s"],[259,"Ecuador","Sash!","Hits 90s"],[260,"Better Off Alone","Alice Deejay","Hits 90s"],[261,"9 PM (Till I Come)","ATB","Hits 90s"],[262,"L'Amour Toujours","Gigi D'Agostino","Hits 90s"],[263,"Hey Boy Hey Girl","The Chemical Brothers","Hits 90s"],[264,"Born Slippy","Underworld","Hits 90s"],[265,"Lovefool","The Cardigans","Hits 90s"],[266,"Torn","Natalie Imbruglia","Hits 90s"],[267,"Don't Speak","No Doubt","Hits 90s"],[268,"Bitter Sweet Symphony","The Verve","Hits 90s"],[269,"Wonderwall","Oasis","Hits 90s"],[270,"Song 2","Blur","Hits 90s"],
+            [215,"Freed from desire","GALA","Hits 90s"],[216,"The Rhythm of the Night","Corona","Hits 90s"],[217,"Rhythm Is a Dancer","Snap!","Hits 90s"],[218,"The Power","Snap!","Hits 90s"],[219,"Vogue","Madonna","Hits 90s"],[220,"What Is Love","Haddaway","Hits 90s"],[221,"No Limit","2 Unlimited","Hits 90s"],[222,"Be My Lover","La Bouche","Hits 90s"],[223,"Show Me Love","Robin S","Hits 90s"],[224,"Around the World","Daft Punk","Hits 90s"],[225,"Firestarter","The Prodigy","Hits 90s"],[226,"Insomnia","Faithless","Hits 90s"],[227,"Boom, Boom, Boom, Boom!!","Vengaboys","Hits 90s"],[228,"Blue (Da Ba Dee)","Eiffel 65","Hits 90s"],[228,"Believe","Cher","Hits 90s"],[230,"Wannabe","Spice Girls","Hits 90s"],[231,"Baby One More Time","Britney Spears","Hits 90s"],[232,"The Sign","Ace of Base","Hits 90s"],[233,"Another Night","Real McCoy","Hits 90s"],[234,"Mr. Vain","Culture Beat","Hits 90s"],[235,"It's My Life","Dr. Alban","Hits 90s"],[236,"Pump Up the Jam","Technotronic","Hits 90s"],[237,"Music Sounds Better with You","Stardust","Hits 90s"],[238,"Saturday Night","Whigfield","Hits 90s"],[239,"Finally","CeCe Peniston","Hits 90s"],[240,"Scatman","Scatman John","Hits 90s"],[241,"Barbie Girl","Aqua","Hits 90s"],[242,"Cotton Eye Joe","Rednex","Hits 90s"],[243,"Ooh Aah... Just a Little Bit","Gina G","Hits 90s"],[244,"Ride on Time","Black Box","Hits 90s"],[245,"Push It","Salt-N-Pepa","Hits 90s"],[246,"No Scrubs","TLC","Hits 90s"],[247,"Bills, Bills, Bills","Destiny's Child","Hits 90s"],[248,"Together Again","Janet Jackson","Hits 90s"],[249,"Freedom! '90","George Michael","Hits 90s"],[250,"Black or White","Michael Jackson","Hits 90s"],[251,"Praise You","Fatboy Slim","Hits 90s"],[252,"Sing It Back","Moloko","Hits 90s"],[253,"Groove Is in the Heart","Deee-Lite","Hits 90s"],[254,"Children","Robert Miles","Hits 90s"],[255,"Dreamer","Livin' Joy","Hits 90s"],[256,"Feel the Heat of the Night","Masterboy","Hits 90s"],[257,"Captain Jack","Captain Jack","Hits 90s"],[258,"Think About the Way","Ice MC","Hits 90s"],[259,"Ecuador","Sash!","Hits 90s"],[260,"Better Off Alone","Alice Deejay","Hits 90s"],[261,"9 PM (Till I Come)","ATB","Hits 90s"],[262,"L'Amour Toujours","Gigi D'Agostino","Hits 90s"],[263,"Hey Boy Hey Girl","The Chemical Brothers","Hits 90s"],[264,"Born Slippy","Underworld","Hits 90s"],[265,"Lovefool","The Cardigans","Hits 90s"],[266,"Torn","Natalie Imbruglia","Hits 90s"],[267,"Don't Speak","No Doubt","Hits 90s"],[268,"Bitter Sweet Symphony","The Verve","Hits 90s"],[269,"Wonderwall","Oasis","Hits 90s"],[270,"Song 2","Blur","Hits 90s"],
             [271,"I'm Outta Love","Anastacia","Hits 2000s"],[272,"When Love Takes Over","David Guetta","Hits 2000s"],[273,"Hips Don't Lie","Shakira","Hits 2000s"],[274,"Umbrella","Rihanna","Hits 2000s"],[275,"Just Dance","Lady Gaga","Hits 2000s"],[276,"I Gotta Feeling","Black Eyed Peas","Hits 2000s"],[277,"Single Ladies","Beyoncé","Hits 2000s"],[278,"Crazy in Love","Beyoncé","Hits 2000s"],[279,"We Found Love","Rihanna","Hits 2000s"],[280,"Can't Get You Out of My Head","Kylie Minogue","Hits 2000s"],[281,"One More Time","Daft Punk","Hits 2000s"],[282,"Call on Me","Eric Prydz","Hits 2000s"],[283,"Love Generation","Bob Sinclar","Hits 2000s"],[284,"Everytime We Touch","Cascada","Hits 2000s"],[285,"From Paris to Berlin","Infernal","Hits 2000s"],[286,"Put Your Hands Up for Detroit","Fedde Le Grand","Hits 2000s"],[287,"Sun Is Shining","Axwell /\\ Ingrosso","Hits 2000s"],[288,"Don't You Worry Child","Swedish House Mafia","Hits 2000s"],[289,"Summer","Calvin Harris","Hits 2000s"],[290,"Levels","Avicii","Hits 2000s"],[291,"Party Rock Anthem","LMFAO","Hits 2000s"],[292,"Give Me Everything","Pitbull","Hits 2000s"],[293,"Get Busy","Sean Paul","Hits 2000s"],[294,"It Wasnt Me","Shaggy","Hits 2000s"],[295,"Harder, Better, Faster, Stronger","Daft Punk","Hits 2000s"],[296,"Toxic","Britney Spears","Hits 2000s"],[297,"Hung Up","Madonna","Hits 2000s"],[298,"Hey Ya!","OutKast","Hits 2000s"],[299,"Beggin","Madcon","Hits 2000s"],[300,"In da Club","50 Cent","Hits 2000s"],[301,"Yeah!","Usher","Hits 2000s"],[302,"Dilemma","Nelly","Hits 2000s"],[303,"Rock Your Body","Justin Timberlake","Hits 2000s"],[304,"I'm Real","Jennifer Lopez","Hits 2000s"],[305,"Without Me","Eminem","Hits 2000s"],[306,"Pon de Replay","Rihanna","Hits 2000s"],[307,"Viva La Vida","Coldplay","Hits 2000s"],[308,"This Love","Maroon 5","Hits 2000s"],[309,"Low","Flo Rida","Hits 2000s"],[310,"Dynamite","Taio Cruz","Hits 2000s"],[311,"In My Head","Jason Derulo","Hits 2000s"],[312,"I Like It","Enrique Iglesias","Hits 2000s"],[313,"Wild Ones","Flo Rida ft. Sia","Hits 2000s"],[314,"Tik Tok","Kesha","Hits 2000s"],[315,"SexyBack","Justin Timberlake","Hits 2000s"],[316,"Jenny from the Block","Jennifer Lopez","Hits 2000s"],[317,"Family Affair","Mary J. Blige","Hits 2000s"],
             [318,"Titanium","David Guetta","Hits 2010s"],[319,"Poker Face","Lady Gaga","Hits 2010s"],[320,"Only Girl","Rihanna","Hits 2010s"],[321,"Shape of You","Ed Sheeran","Hits 2010s"],[322,"Uptown Funk","Mark Ronson","Hits 2010s"],[323,"Happy","Pharrell Williams","Hits 2010s"],[324,"Lean On","Major Lazer","Hits 2010s"],[325,"Firestone","Kygo","Hits 2010s"],[326,"Clarity","Zedd","Hits 2010s"],[327,"Animals","Martin Garrix","Hits 2010s"],[328,"Ocean Drive","Duke Dumont","Hits 2010s"],[329,"Rather Be","Clean Bandit","Hits 2010s"],[330,"Latch","Disclosure","Hits 2010s"],[331,"Wake Me Up","Avicii","Hits 2010s"],[332,"This Is What You Came For","Calvin Harris","Hits 2010s"],[333,"Get Lucky","Daft Punk","Hits 2010s"],[334,"Prayer in C","Robin Schulz","Hits 2010s"],[335,"Closer","The Chainsmokers","Hits 2010s"],[336,"Let Me Love You","DJ Snake","Hits 2010s"],[337,"Alone","Marshmello","Hits 2010s"],[338,"Lush Life","Zara Larsson","Hits 2010s"],[339,"Faded","Alan Walker","Hits 2010s"],[340,"Fast Car","Jonas Blue","Hits 2010s"],[341,"Easy Love","Sigala","Hits 2010s"],[342,"Runaway (U & I)","Galantis","Hits 2010s"],[343,"This Girl","Kungs","Hits 2010s"],[344,"Feel So Close","Calvin Harris","Hits 2010s"],[345,"Stole the Show","Kygo","Hits 2010s"],[654,"Barbra Streisand","Duck Sauce","Hits 2010s"],[655,"Club Can’t Handle Me","Flo Rida","Hits 2010s"],[656,"DJ Got Got Us Fallin’ In Love","Usher","Hits 2010s"],[657,"Empire State of Mind","Jay-Z & Alicia Keys","Hits 2010s"],[658,"On The Floor","Jennifer Lopez","Hits 2010s"],[659,"Mr. Saxobeat","Alexandra Stan","Hits 2010s"],[660,"Rolling In The Deep","Adele","Hits 2010s"],[661,"Sexy And I Know It","LMFAO","Hits 2010s"],[662,"Call Me Maybe","Carly Rae Jepsen","Hits 2010s"],[663,"Starships","Nicki Minaj","Hits 2010s"],[664,"Gangnam Style","PSY","Hits 2010s"],[665,"Balada","Gusttavo Lima","Hits 2010s"],[666,"Turn Me On","David Guetta ft. Nicki Minaj","Hits 2010s"],[667,"Diamonds","Rihanna","Hits 2010s"],[668,"Blurred Lines","Robin Thicke","Hits 2010s"],[669,"Can’t Hold Us","Macklemore & Ryan Lewis","Hits 2010s"],[670,"Timber","Pitbull ft. Kesha","Hits 2010s"],[671,"Treasure","Bruno Mars","Hits 2010s"],[672,"Shake It Off","Taylor Swift","Hits 2010s"],[673,"All About That Bass","Meghan Trainor","Hits 2010s"],[674,"Cheerleader (Remix)","OMI","Hits 2010s"],[675,"Sugar","Maroon 5","Hits 2010s"],[676,"Worth It","Fifth Harmony","Hits 2010s"],[677,"Rockstar","Post Malone","Hits 2010s"],[678,"Feels","Calvin Harris","Hits 2010s"],[679,"It Ain’t Me","Kygo","Hits 2010s"],[680,"Symphony","Clean Bandit","Hits 2010s"],[681,"What About Us","P!nk","Hits 2010s"],[682,"One Kiss","Calvin Harris & Dua Lipa","Hits 2010s"],[683,"Señorita","Shawn Mendes & Camila Cabello","Hits 2010s"],[684,"Old Town Road","Lil Nas X","Hits 2010s"],[685,"Bad Guy","Billie Eilish","Hits 2010s"],[686,"I Don’t Care","Ed Sheeran & Justin Bieber","Hits 2010s"],[687,"Memories","Maroon 5","Hits 2010s"],[688,"Higher Love","Kygo & Whitney Houston","Hits 2010s"],
             [639,"APT.","ROSÉ & Bruno Mars","Hits 2020s"],[640,"DtMF","Bad Bunny","Hits 2020s"],[641,"BAILE INoLVIDABLE","Bad Bunny","Hits 2020s"],[642,"Cold Heart (Pnau Remix)","Elton John & Dua Lipa","Hits 2020s"],[643,"Flowers","Miley Cyrus","Hits 2020s"],[644,"Dance The Night","Dua Lipa","Hits 2020s"],[645,"Can’t Stop The Feeling","Justin Timberlake","Hits 2020s"],[646,"Levitating","Dua Lipa","Hits 2020s"],[647,"Stay","The Kid LAROI & Justin Bieber","Hits 2020s"],[648,"Pepas","Farruko","Hits 2020s"],[649,"Beggin’","Måneskin","Hits 2020s"],[650,"Shivers","Ed Sheeran","Hits 2020s"],[651,"Don’t Go Yet","Camila Cabello","Hits 2020s"],[652,"Calm Down","Rema","Hits 2020s"],[653,"Espresso","Sabrina Carpenter","Hits 2020s"],[346,"Don't Start Now","Dua Lipa","Hits 2020s"],[347,"Blinding Lights","The Weeknd","Hits 2020s"],[348,"Roses (Imanbek Remix)","SAINt JHN","Hits 2020s"],[349,"Head & Heart","Joel Corry","Hits 2020s"],[350,"Breaking Me","Topic","Hits 2020s"],[351,"Ride It","Regard","Hits 2020s"],[352,"Dynamite","BTS","Hits 2020s"],[353,"As It Was","Harry Styles","Hits 2020s"],[354,"Titi Me Preguntó","Bad Bunny","Hits 2020s"],[355,"Juro Que","Rosalía","Hits 2020s"],[356,"I'm Good (Blue)","David Guetta","Hits 2020s"],[357,"The Business","Tiësto","Hits 2020s"],[358,"Piece of Your Heart","Meduza","Hits 2020s"],[359,"Montero (Call Me by Your Name)","Lil Nas X","Hits 2020s"],[360,"Say So","Doja Cat","Hits 2020s"],[361,"Rain on Me","Lady Gaga","Hits 2020s"],[362,"I Wanna Be Your Slave","Måneskin","Hits 2020s"],[363,"Good 4 U","Olivia Rodrigo","Hits 2020s"],[364,"Therefore I Am","Billie Eilish","Hits 2020s"],[365,"Franchise","Travis Scott","Hits 2020s"],
             [366,"Gasolina","Daddy Yankee","Reggaeton & Latin"],[367,"Chantaje","Shakira","Reggaeton & Latin"],[368,"Mi Gente","J Balvin","Reggaeton & Latin"],[369,"Despacito","Luis Fonsi","Reggaeton & Latin"],[370,"Dakiti","Bad Bunny","Reggaeton & Latin"],[371,"Tusa","Karol G","Reggaeton & Latin"],[372,"Baila Baila Baila","Ozuna","Reggaeton & Latin"],[373,"Hawái","Maluma","Reggaeton & Latin"],[374,"Con Altura","Rosalía","Reggaeton & Latin"],[375,"China","Anuel AA","Reggaeton & Latin"],
-            [376,"Jerusalema","Master KG","Hits Soleil"],[377,"C'est la vie","Khaled","Hits Soleil"],[378,"Danza Kuduro","Don Omar","Hits Soleil"],[379,"Waka Waka","Shakira","Hits Soleil"],[380,"Bailando","Enrique Iglesias","Hits Soleil"],[381,"El Perdón","Nicky Jam","Hits Soleil"],[382,"La Gozadera","Gente de Zona","Hits Soleil"],[383,"Subeme la Radio","Enrique Iglesias","Hits Soleil"],[384,"Taki Taki","DJ Snake","Hits Soleil"],[385,"Calma (Remix)","Pedro Capó","Hits Soleil"],[386,"Con Calma","Daddy Yankee","Hits Soleil"],[387,"Obsesión","Aventura","Hits Soleil"],[388,"Maldòn","Zouk Machine","Hits Soleil"],[389,"Kolé séré","Philippe Lavil","Hits Soleil"],[390,"Angela","Saïan Supa Crew","Hits Soleil"],[391,"Les Sunlights des Tropiques","Gilbert Montagné","Hits Soleil"],[392,"Flamme","Slaï","Hits Soleil"],[393,"Enamórame","Papi Sánchez","Hits Soleil"],[394,"Petites îles","Neg' Marrons","Hits Soleil"],[395,"Temperature","Sean Paul","Hits Soleil"],[396,"Cheap Thrills","Sia","Hits Soleil"],[397,"One Dance","Drake","Hits Soleil"],[398,"Sorry","Justin Bieber","Hits Soleil"],[399,"Havana","Camila Cabello","Hits Soleil"],[400,"Bum Bum Tam Tam","MC Fioti","Hits Soleil"],[401,"Safari","J Balvin","Hits Soleil"],[402,"Gyal You a Party Animal","Charly Black","Hits Soleil"],[403,"Te Boté","Nio García","Hits Soleil"],[404,"X (Equis)","Nicky Jam","Hits Soleil"],[405,"Felices los 4","Maluma","Hits Soleil"],[406,"Vivir Mi Vida","Marc Anthony","Hits Soleil"],[407,"Bailar","Deorro","Hits Soleil"],[408,"El Taxi","Osmani Garcia","Hits Soleil"],[409,"Ginza","J Balvin","Hits Soleil"],[410,"Duele el Corazón","Enrique Iglesias","Hits Soleil"],[411,"Reggaetón Lento (Bailemos)","CNCO","Hits Soleil"],[412,"Je vais à Rio","Claude François","Hits Soleil"],[413,"Could You Be Loved","Bob Marley","Hits Soleil"],[414,"L'amour à la plage","Niagara","Hits Soleil"],[415,"Un, Dos, Tres, Maria","Ricky Martin","Hits Soleil"],[416,"Macumba","Jean-Pierre Mader","Hits Soleil"],[417,"Macarena","Los Del Rio","Hits Soleil"],[418,"Mambo No. 5","Lou Bega","Hits Soleil"],[419,"Paris Latino","Bandolero","Hits Soleil"],[420,"J'veux du soleil","Au P'tit Bonheur","Hits Soleil"],[421,"Is This Love","Bob Marley","Hits Soleil"],[422,"Samba de Janeiro","Bellini","Hits Soleil"],[423,"Soca Dance","Charles D. Lewis","Hits Soleil"],[424,"Bamboleo","Gipsy Kings","Hits Soleil"],[425,"Alane","Wes","Hits Soleil"],[426,"Vamos a la Playa","Righeira","Hits Soleil"],[427,"You'll Be Mine (Party Time)","Gloria Estefan","Hits Soleil"],[428,"Yaka Dansé","Raft","Hits Soleil"],[429,"Don't Let Me Be Misunderstood","Santa Esmeralda","Hits Soleil"],[430,"Gimme Hope Jo'Anna","Eddy Grant","Hits Soleil"],[431,"Yé Ké Yé Ké","Mory Kanté","Hits Soleil"],[432,"Club Tropicana","Wham!","Hits Soleil"],[433,"Cuba","Gibson Brothers","Hits Soleil"],[434,"Amor de Mis Amores","Paco","Hits Soleil"],
-            [435,"Save the World","Swedish House Mafia","Électro / Club"],[436,"Hey Brother","Avicii","Électro / Club"],[437,"Stay the Night","Zedd","Électro / Club"],[438,"Hear Me Now","Alok","Électro / Club"],[439,"Hello","Martin Solveig","Électro / Club"],[440,"Take Over Control","Afrojack","Électro / Club"],[441,"Boneless","Steve Aoki","Électro / Club"],[442,"You Don't Know Me","Armand Van Helden","Électro / Club"],[443,"Where's Your Head At","Basement Jaxx","Électro / Club"],[444,"Go","Moby","Électro / Club"],[445,"God Is a DJ","Faithless","Électro / Club"],[446,"Southern Sun","Paul Oakenfold","Électro / Club"],
+            [376,"Jerusalema","Master KG","Hits Soleil"],[377,"C'est la vie","Khaled","Hits Soleil"],[378,"Danza Kuduro","Don Omar","Hits Soleil"],[379,"Waka Waka","Shakira","Hits Soleil"],[380,"Bailando","Enrique Iglesias","Hits Soleil"],[381,"El Perdón","Nicky Jam","Hits Soleil"],[382,"La Gozadera","Gente de Zone","Hits Soleil"],[383,"Subeme la Radio","Enrique Iglesias","Hits Soleil"],[384,"Taki Taki","DJ Snake","Hits Soleil"],[385,"Calma (Remix)","Pedro Capó","Hits Soleil"],[386,"Con Calma","Daddy Yankee","Hits Soleil"],[387,"Obsesión","Aventura","Hits Soleil"],[388,"Maldòn","Zouk Machine","Hits Soleil"],[389,"Kolé séré","Philippe Lavil","Hits Soleil"],[390,"Angela","Saïan Supa Crew","Hits Soleil"],[391,"Les Sunlights des Tropiques","Gilbert Montagné","Hits Soleil"],[392,"Flamme","Slaï","Hits Soleil"],[393,"Enamórame","Papi Sánchez","Hits Soleil"],[394,"Petites îles","Neg' Marrons","Hits Soleil"],[395,"Temperature","Sean Paul","Hits Soleil"],[396,"Cheap Thrills","Sia","Hits Soleil"],[397,"One Dance","Drake","Hits Soleil"],[398,"Sorry","Justin Bieber","Hits Soleil"],[399,"Havana","Camila Cabello","Hits Soleil"],[400,"Bum Bum Tam Tam","MC Fioti","Hits Soleil"],[401,"Safari","J Balvin","Hits Soleil"],[402,"Gyal You a Party Animal","Charly Black","Hits Soleil"],[403,"Te Boté","Nio García","Hits Soleil"],[404,"X (Equis)","Nicky Jam","Hits Soleil"],[405,"Felices los 4","Maluma","Hits Soleil"],[406,"Vivir Mi Vida","Marc Anthony","Hits Soleil"],[407,"Bailar","Deorro","Hits Soleil"],[408,"El Taxi","Osmani Garcia","Hits Soleil"],[409,"Ginza","J Balvin","Hits Soleil"],[410,"Duele el Corazón","Enrique Iglesias","Hits Soleil"],[411,"Reggaetón Lento (Bailemos)","CNCO","Hits Soleil"],[412,"Je vais à Rio","Claude François","Hits Soleil"],[413,"Could You Be Loved","Bob Marley","Hits Soleil"],[414,"L'amour à la plage","Niagara","Hits Soleil"],[415,"Un, Dos, Tres, Maria","Ricky Martin","Hits Soleil"],[416,"Macumba","Jean-Pierre Mader","Hits Soleil"],[417,"Macarena","Los Del Rio","Hits Soleil"],[418,"Mambo No. 5","Lou Bega","Hits Soleil"],[419,"Paris Latino","Bandolero","Hits Soleil"],[420,"J'veux du soleil","Au P'tit Bonheur","Hits Soleil"],[421,"Is This Love","Bob Marley","Hits Soleil"],[422,"Samba de Janeiro","Bellini","Hits Soleil"],[423,"Soca Dance","Charles D. Lewis","Hits Soleil"],[424,"Bamboleo","Gipsy Kings","Hits Soleil"],[425,"Alane","Wes","Hits Soleil"],[426,"Vamos a la Playa","Righeira","Hits Soleil"],[427,"You'll Be Mine (Party Time)","Gloria Estefan","Hits Soleil"],[428,"Yaka Dansé","Raft","Hits Soleil"],[429,"Don't Let Me Be Misunderstood","Santa Esmeralda","Hits Soleil"],[430,"Gimme Hope Jo'Anna","Eddy Grant","Hits Soleil"],[431,"Yé Ké Yé Ké","Mory Kanté","Hits Soleil"],[432,"Club Tropicana","Wham!","Hits Soleil"],[433,"Cuba","Gibson Brothers","Hits Soleil"],[434,"Amor de Mis Amores","Paco","Hits Soleil"],
+            [435,"Save the World","Swedish House Mafia","Électro / Club"],[436,"Hey Brother","Avicii","Électro / Club"],[437,"Stay the Night","Zedd","Électro / Club"],[438,"Hear Me Now","Alok","Électro / Club"],[440,"Hello","Martin Solveig","Électro / Club"],[440,"Take Over Control","Afrojack","Électro / Club"],[441,"Boneless","Steve Aoki","Électro / Club"],[442,"You Don't Know Me","Armand Van Helden","Électro / Club"],[443,"Where's Your Head At","Basement Jaxx","Électro / Club"],[444,"Go","Moby","Électro / Club"],[445,"God Is a DJ","Faithless","Électro / Club"],[446,"Southern Sun","Paul Oakenfold","Électro / Club"],
             [447,"In the Mood","Glenn Miller and His Orchestra","Rock n' Roll & Soul"],[448,"Blue Suede Shoes","Elvis Presley","Rock n' Roll & Soul"],[449,"What'd I Say","Ray Charles","Rock n' Roll & Soul"],[450,"Green Onions","Booker T. & The M.G.","Rock n' Roll & Soul"],[451,"Just a Gigolo / I Ain't Got Nobody","David Lee Roth","Rock n' Roll & Soul"],[452,"La Bamba","Los Lobos","Rock n' Roll & Soul"],[453,"Rock Around The Clock","Valentin Asenov","Rock n' Roll & Soul"],[454,"Let's Twist Again","Chubby Checker","Rock n' Roll & Soul"],[455,"Les cactus","Jacques Dutronc","Rock n' Roll & Soul"],[456,"Et moi, et moi, et moi","Jacques Dutronc","Rock n' Roll & Soul"],[457,"Respect","Aretha Franklin","Rock n' Roll & Soul"],[458,"Gimme Some Lovin'","The Spencer Davis Group","Rock n' Roll & Soul"],[459,"Think","Aretha Franklin","Rock n' Roll & Soul"],[460,"Jumpin' Jack Flash","The Rolling Stones","Rock n' Roll & Soul"],[461,"Get Back","The Beatles","Rock n' Roll & Soul"],[462,"Bad Moon Rising","Creedence Clearwater Revival","Rock n' Roll & Soul"],[463,"Proud Mary","Creedence Clearwater Revival","Rock n' Roll & Soul"],[464,"Green River","Creedence Clearwater Revival","Rock n' Roll & Soul"],[465,"Sugar, Sugar","The Archies","Rock n' Roll & Soul"],[466,"Surfin' U.S.A.","The Beach Boys","Rock n' Roll & Soul"],[467,"Da Doo Ron Ron","The Crystals","Rock n' Roll & Soul"],[468,"Memphis","Johnny Rivers","Rock n' Roll & Soul"],[469,"Twist and Shout","The Beatles","Rock n' Roll & Soul"],[470,"Papa's Got a Brand New Bag","James Brown","Rock n' Roll & Soul"],[471,"California Dreamin'","The Mamas & The Papas","Rock n' Roll & Soul"],[472,"Good Vibrations","The Beach Boys","Rock n' Roll & Soul"],[473,"You Keep Me Hangin' On","The Supremes","Rock n' Roll & Soul"],[474,"Black Is Black","Los Bravos","Rock n' Roll & Soul"],[475,"Light My Fire","The Doors","Rock n' Roll & Soul"],[476,"Soul Man","Sam & Dave","Rock n' Roll & Soul"],[477,"Can't Take My Eyes Off You","Frankie Valli","Rock n' Roll & Soul"],[478,"Sunny","Bobby Hebb","Rock n' Roll & Soul"],[479,"Take Five","Dave Brubeck","Rock n' Roll & Soul"],[480,"Shout","Lulu & The Luvvers","Rock n' Roll & Soul"],[481,"Rum & Coca Cola","The Andrews Sisters","Rock n' Roll & Soul"],[482,"Rock-A-Bye Your Baby With a Dixie Melody","Al Jolson","Rock n' Roll & Soul"],[483,"Don't Be That Way","Benny Goodman","Rock n' Roll & Soul"],[484,"Goody Goody","Benny Goodman","Rock n' Roll & Soul"],[485,"Mambo italiano","Rosemary Clooney","Rock n' Roll & Soul"],[486,"Le lundi au soleil","Claude François","Rock n' Roll & Soul"],[487,"Knock On Wood","Eddie Floyd","Rock n' Roll & Soul"],[488,"Cette année-là","Claude François","Rock n' Roll & Soul"],[489,"Noir c'est noir","Johnny Hallyday","Rock n' Roll & Soul"],[490,"Paint It, Black","The Rolling Stones","Rock n' Roll & Soul"],[491,"Twist à Saint-Tropez","Dick Rivers","Rock n' Roll & Soul"],[492,"Dactylo Rock","Les Chaussettes Noires","Rock n' Roll & Soul"],[493,"Peggy Sue","Buddy Holly","Rock n' Roll & Soul"],[494,"La Bamba","Ritchie Valens","Rock n' Roll & Soul"],[495,"Daniela","Les Chaussettes Noires","Rock n' Roll & Soul"],[496,"Mirza","Nino Ferrer","Rock n' Roll & Soul"],[497,"Buena Sera","Louis Prima","Rock n' Roll & Soul"],[498,"Just a Gigolo","Louis Prima","Rock n' Roll & Soul"],[499,"Baby Love","The Supremes","Rock n' Roll & Soul"],[500,"Everybody Needs Somebody to Love","Solomon Burke","Rock n' Roll & Soul"],[501,"California Girls","The Beach Boys","Rock n' Roll & Soul"],[502,"Jailhouse Rock","Elvis Presley","Rock n' Roll & Soul"],[503,"Hold On, I'm Comin'","Sam & Dave","Rock n' Roll & Soul"],[504,"Hound Dog","Elvis Presley","Rock n' Roll & Soul"],[505,"Johnny B. Goode","Chuck Berry","Rock n' Roll & Soul"],[506,"Tutti Frutti","Little Richard","Rock n' Roll & Soul"],[507,"Maybellene","Chuck Berry","Rock n' Roll & Soul"],[508,"Heartbreak Hotel","Elvis Presley","Rock n' Roll & Soul"],[509,"Great Balls Of Fire","Jerry Lee Lewis","Rock n' Roll & Soul"],[510,"Long Tall Sally","Little Richard","Rock n' Roll & Soul"],[511,"Lucille","Little Richard","Rock n' Roll & Soul"],[512,"Shake, Rattle and Roll","Bill Haley and His Comets","Rock n' Roll & Soul"],[513,"Sweet Little Sixteen","Chuck Berry","Rock n' Roll & Soul"],[514,"Whole Lotta Shakin' Going On","Jerry Lee Lewis","Rock n' Roll & Soul"],[515,"C’Mon Everybody","Eddie Cochran","Rock n' Roll & Soul"],[516,"Don't Be Cruel","Elvis Presley","Rock n' Roll & Soul"],[517,"Be-Bop-a-Lula","Gene Vincent","Rock n' Roll & Soul"],[518,"Good Golly Miss Molly","Little Richard","Rock n' Roll & Soul"],[519,"Grease","Frankie Valli","Rock n' Roll & Soul"],[520,"Your Song","Billy Paul","Rock n' Roll & Soul"],[521,"You Can't hurry Love","The Supremes","Rock n' Roll & Soul"],[522,"Born to Be Wild","Steppenwolf","Rock n' Roll & Soul"],[523,"Susie Q.","Creedence Clearwater Revival","Rock n' Roll & Soul"],[524,"Jimmy Mack","Martha Reeves & The Vandellas","Rock n' Roll & Soul"],[525,"Venus","Shocking Blue","Rock n' Roll & Soul"],[526,"Spirit In the Sky","Norman Greenbaum","Rock n' Roll & Soul"],[527,"Eloise","Barry Ryan","Rock n' Roll & Soul"],
             [528,"Enjoy the Silence","Depeche Mode","Pop Rock"],[529,"Tainted Love","Soft Cell","Pop Rock"],[530,"Relax","Frankie Goes to Hollywood","Pop Rock"],[531,"London Calling","The Clash","Pop Rock"],[532,"Why ?","Bronski Beat","Pop Rock"],[533,"Smalltown Boy","Bronski Beat","Pop Rock"],[534,"99 Luftballons","Nena","Pop Rock"],[535,"In Between Days","The Cure","Pop Rock"],[536,"Enola Gay","Orchestral Manoeuvres In the Dark","Pop Rock"],[537,"L'aventurier","Indochine","Pop Rock"],[538,"Long Train Running","Traks","Pop Rock"],[539,"Sweet Dreams (Are Made of This)","Eurythmics","Pop Rock"],[540,"Another Brick In the Wall, Pt. 2","Pink Floyd","Pop Rock"],[541,"Boys Don't Cry","The Cure","Pop Rock"],[542,"Highway to Hell","AC/DC","Pop Rock"],[543,"I Love Rock 'N' Roll","Joan Jett & The Blackhearts","Pop Rock"],[544,"J'ai Vu","Niagara","Pop Rock"],[545,"Pride (In the Name of Love)","U2","Pop Rock"],[546,"Seven Nation Army","The White Stripes","Pop Rock"],[547,"Sunday Bloody Sunday","U2","Pop Rock"],[548,"Take Me Out","Franz Ferdinand","Pop Rock"],[549,"Shout","Tears for Fears","Pop Rock"],[550,"Just Can't Get Enough","Depeche Mode","Pop Rock"],[551,"Everybody Wants to Rule the World","Tears for Fears","Pop Rock"],[552,"Don't You (Forget About Me)","Simple Minds","Pop Rock"],[553,"Let's Dance","David Bowie","Pop Rock"],[554,"Need You Tonight","INXS","Pop Rock"],[555,"Kiss","Prince & The Revolution","Pop Rock"],[556,"Take On Me","a-ha","Pop Rock"],[557,"Heart of Glass","Blondie","Pop Rock"],[558,"Under Pressure","Queen & David Bowie","Pop Rock"],[559,"I'm Still Standing","Elton John","Pop Rock"],[560,"Video Killed the Radio Star","The Buggles","Pop Rock"],[561,"One Step Beyond","Madness","Pop Rock"],[562,"I Will Survive","Gloria Gaynor","Pop Rock"],[563,"Love You Madly","CAKE","Pop Rock"],[564,"Viva la Vida","Coldplay","Pop Rock"],[565,"Creep","Radiohead","Pop Rock"],[566,"Banquet","Bloc Party","Pop Rock"],[567,"Song 2","Blur","Pop Rock"],[568,"Girls and Boys","Blur","Pop Rock"],[569,"Paint It, Black","The Rolling Stones","Pop Rock"],[570,"Start Me Up","The Rolling Stones","Pop Rock"],[571,"Wonderwall","Oasis","Pop Rock"],[572,"Town Called Malice","The Jam","Pop Rock"],[573,"Charmless Man","Blur","Pop Rock"],[574,"Mr. Brightside","The Killers","Pop Rock"],[575,"No Fun","The Stooges","Pop Rock"],[576,"Sex on Fire","Kings of Leon","Pop Rock"],[577,"Fortunate Son","Creedence Clearwater Revival","Pop Rock"],[578,"Born to Be Wild","Steppenwolf","Pop Rock"],[579,"Jump","Van Halen","Pop Rock"],[580,"Don't Stop Me Now","Queen","Pop Rock"],[581,"Sweet Home Alabama","Lynyrd Skynyrd","Pop Rock"],[582,"Long Train Runnin'","The Doobie Brothers","Pop Rock"],[583,"Crocodile Rock","Elton John","Pop Rock"],[584,"Killing In the Name","Rage Against the Machine","Pop Rock"],[585,"Smells Like Teen Spirit","Nirvana","Pop Rock"],[586,"Under the Bridge","Red Hot Chili Peppers","Pop Rock"],[587,"Bohemian Rhapsody","Queen","Pop Rock"],[588,"La Grange","ZZ Top","Pop Rock"],[589,"Roxanne","The Police","Pop Rock"],[590,"Sultans Of Swing","Dire Straits","Pop Rock"],[591,"Back In Black","AC/DC","Pop Rock"],[592,"Losing My Religion","R.E.M.","Pop Rock"],[593,"The Logical Song","Supertramp","Pop Rock"],[594,"Hold the Line","Toto","Pop Rock"],[595,"Hysteria","Muse","Pop Rock"],[596,"You Really Got Me","The Kinks","Pop Rock"],[597,"Smoke on the Water","Deep Purple","Pop Rock"],[598,"Born to Run","Bruce Springsteen","Pop Rock"],[599,"Are You Gonna Go My Way","Lenny Kravitz","Pop Rock"],[600,"Owner of a Lonely Heart","Yes","Pop Rock"],[601,"Every You Every Me","Placebo","Pop Rock"],[602,"A Kind of Magic","Queen","Pop Rock"],[603,"Another One Bites the Dust","Queen Factory","Pop Rock"],[604,"We Are The Champions","Queen","Pop Rock"],[605,"With or Without You","U2","Pop Rock"],[606,"Desire","U2","Pop Rock"],[607,"New Year's Day","U2","Pop Rock"],[608,"Gimme All Your Lovin'","ZZ Top","Pop Rock"],[609,"The Final Countdown","Europe","Pop Rock"],[610,"It's Raining Men","The Weather Girls","Pop Rock"],[611,"Africa","Toto","Pop Rock"],[612,"I Want To Break Free","Queen","Pop Rock"],[613,"Footloose","Kenny Loggins","Pop Rock"],[614,"Blue Monday","New Order","Pop Rock"],[615,"Maniac","Michael Sembello","Pop Rock"],[616,"China Girl","David Bowie","Pop Rock"],[617,"Da Ya Think I'm Sexy?","Rod Stewart","Pop Rock"],[618,"Bad News","Moon Martin","Pop Rock"]
         ].map(s => ({
@@ -248,7 +285,6 @@
             window.closeModal();
         }
 
-        // Fonction pour générer et télécharger le fichier M3U (Top 40)
         window.downloadM3U = function() {
             const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
             if (top40Songs.length === 0) {
@@ -277,7 +313,6 @@
             }, 100);
         };
 
-        // Fonction pour réinitialiser la vue utilisateur et revenir en haut
         window.resetUserView = function() {
             state.searchQuery = '';
             state.selectedTheme = 'Tous';
@@ -294,7 +329,7 @@
         let unsubscribePrivate = null;
 
         try {
-            // 🔥 RESTAURATION DES CLÉS ET DU CHEMIN UNIQUE
+            // 🔥 RESTAURATION DES CLÉS ET DU CHEMIN UNIQUE DANS VOTRE BASE
             const firebaseConfig = MY_FIREBASE_CONFIG;
             appId = FIXED_APP_ID;
 
@@ -321,7 +356,7 @@
                 console.warn("Auth Firebase bloquée (Mode dégradé).", err);
                 state.authStatus = 'failed';
                 cloudErrorMsg = err.code;
-                // En mode dégradé, on tente quand même l'écoute publique
+                // En mode dégradé (Safari), on tente quand même l'écoute publique
                 setupPublicListener();
                 render();
             });
@@ -359,7 +394,7 @@
                     checkPhase();
                     verifySessionAndLoadVotes(); 
                 } else {
-                    // Création initiale Cloud
+                    // Création initiale Cloud si besoin
                     setDoc(publicRef, {
                         sessionId: Date.now().toString(),
                         guestCode: state.guestCode || 'FIESTA',
@@ -647,7 +682,7 @@
         }
 
         window.toggleQRCode = () => { state.view = state.view === 'qrcode' ? 'admin' : 'qrcode'; render(); }
-        window.toggleMonitor = () => { state.view = state.view === 'monitor' ? 'admin' : 'monitor'; render(); }
+        window.toggleMonitor = function() { state.view = state.view === 'monitor' ? 'admin' : 'monitor'; render(); }
         window.goTo = (v) => { state.view = v; state.loginError = ''; render(); }
         window.setTheme = (t) => { state.selectedTheme = t; render(); window.scrollTo({top:0, behavior:'smooth'}); }
         window.handleSearch = (e) => {
@@ -701,14 +736,14 @@
                         <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-8 right-8 text-white/50 neo-glass p-3 rounded-full"><i class="ph-bold ph-x text-2xl"></i></button>
                         <div class="text-center">
                             <img src="${LOGO_URL}" class="h-20 object-contain mx-auto mb-4">
-                            <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest">VOTRE PLAYLIST IDÉALE</h1>
+                            <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">VOTRE PLAYLIST IDÉALE</h1>
                         </div>
                         <div class="flex flex-col items-center gap-6">
-                            ${state.eventStartTime ? `<div class="neo-glass px-8 py-3 rounded-full border-magical-pink/40"><span class="text-3xl font-black text-magical-pink dynamic-timer-display">--:--:--</span></div>` : ''}
+                            ${state.eventStartTime ? `<div class="neo-glass px-8 py-3 rounded-full border-magical-pink/40 shadow-[0_0_15px_rgba(255,0,122,0.4)]"><span class="text-3xl font-black text-magical-pink dynamic-timer-display text-glow-pink">--:--:--</span></div>` : ''}
                             <div class="neo-glass p-6 rounded-[3rem] border-2 border-white/20 text-center">
-                                <div class="bg-white p-4 rounded-2xl mb-4"><img src="${getQRCodeUrl()}" class="w-64 h-64"></div>
-                                <p class="text-sm text-magical-cyan uppercase font-bold">Code :</p>
-                                <p class="text-6xl font-black text-white tracking-widest">${state.guestCode}</p>
+                                <div class="bg-white p-4 rounded-2xl mb-4 shadow-xl"><img src="${getQRCodeUrl()}" class="w-64 h-64"></div>
+                                <p class="text-sm text-magical-cyan uppercase font-bold tracking-widest mb-1">Code de la soirée :</p>
+                                <p class="text-6xl font-black text-white tracking-[0.2em] text-glow-white leading-none">${state.guestCode}</p>
                             </div>
                         </div>
                     </div>
@@ -717,31 +752,35 @@
             else if (state.view === 'monitor' || (state.view === 'qrcode' && state.currentPhase === 1)) {
                 if (state.currentPhase === 1) {
                     html = `<div class="h-screen w-screen flex flex-col items-center justify-center p-8 animate-fade-in">
-                        <h1 class="text-6xl font-black mb-8 text-glow-white">DÉMARRAGE DANS : <span class="dynamic-timer-display text-magical-pink">--:--:--</span></h1>
-                        <div class="bg-white p-8 rounded-3xl"><img src="${getQRCodeUrl()}" class="w-80 h-80"></div>
-                        <p class="text-4xl mt-8 font-bold">Code : ${state.guestCode}</p>
+                        <h1 class="text-6xl font-black mb-8 text-glow-white">DÉMARRAGE DANS : <span class="dynamic-timer-display text-magical-pink text-glow-pink">--:--:--</span></h1>
+                        <div class="bg-white p-8 rounded-3xl shadow-2xl"><img src="${getQRCodeUrl()}" class="w-80 h-80"></div>
+                        <p class="text-4xl mt-8 font-bold tracking-widest uppercase">Code : ${state.guestCode}</p>
                     </div>`;
                 } else {
                     const top40 = [...state.songs].filter(s => s.votes > 0).sort((a,b) => b.votes - a.votes).slice(0, 40);
                     html = `
-                        <div class="h-screen w-screen flex flex-col p-6 relative">
-                            <div class="flex justify-between items-center mb-8">
+                        <div class="h-screen w-screen flex flex-col p-6 relative overflow-hidden">
+                            <div class="flex justify-between items-center mb-8 px-4">
                                 <div class="flex items-center gap-6">
-                                    <img src="${LOGO_URL}" class="h-16">
-                                    <h1 class="text-4xl font-black uppercase text-glow-white">LE CLASSEMENT FINAL</h1>
+                                    <img src="${LOGO_URL}" class="h-16 drop-shadow-lg">
+                                    <h1 class="text-5xl font-black uppercase text-glow-white tracking-tight">LE CLASSEMENT FINAL</h1>
                                 </div>
-                                <div class="btn-liquid px-8 py-3 rounded-2xl font-black text-2xl uppercase">Votes Clôturés</div>
+                                <div class="btn-liquid px-10 py-4 rounded-2xl font-black text-3xl uppercase tracking-widest shadow-lg pulse-magical">Votes Clôturés</div>
                             </div>
-                            <div class="flex-1 neo-glass rounded-[2.5rem] p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-hidden">
+                            <div class="flex-1 neo-glass rounded-[3rem] p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-y-auto no-scrollbar">
                                 ${top40.map((s, i) => `
-                                    <div class="neo-card rounded-2xl p-4 flex items-center justify-between">
-                                        <div class="flex items-center gap-3 min-w-0">
-                                            <span class="text-2xl font-black ${i<3?'text-magical-gold':'text-white/40'}">${i+1}</span>
-                                            <div class="min-w-0"><p class="font-bold truncate">${s.title}</p><p class="text-xs text-white/50 truncate">${s.artist}</p></div>
+                                    <div class="neo-card rounded-2xl p-5 flex items-center justify-between border-white/10">
+                                        <div class="flex items-center gap-4 min-w-0 pr-2">
+                                            <span class="text-3xl font-black ${i<3?'text-magical-gold text-glow-white':'text-white/30'} w-10 text-center">${i+1}</span>
+                                            <div class="min-w-0 pr-1">
+                                                <p class="font-bold truncate text-lg leading-tight text-white">${s.title}</p>
+                                                <p class="text-xs text-white/50 truncate uppercase tracking-widest font-medium">${s.artist}</p>
+                                            </div>
                                         </div>
-                                        <span class="text-2xl font-black text-magical-cyan">${s.votes}</span>
+                                        <div class="bg-black/40 px-4 py-2 rounded-xl border border-white/5"><span class="text-3xl font-black text-magical-cyan text-glow-cyan">${s.votes}</span></div>
                                     </div>
                                 `).join('')}
+                                ${top40.length === 0 ? '<div class="col-span-full flex items-center justify-center text-3xl font-light opacity-30 italic">Aucun vote enregistré...</div>' : ''}
                             </div>
                         </div>
                     `;
@@ -751,15 +790,15 @@
                 const isAdmin = state.view === 'adminLogin';
                 html = `
                     <div class="min-h-screen flex items-center justify-center p-4">
-                        <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-10 text-center">
-                            <img src="${LOGO_URL}" class="h-24 mx-auto mb-8">
-                            <h1 class="text-3xl font-black mb-10 text-glow-white">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
-                            <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-6">
-                                <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="CODE" class="w-full bg-black/60 border border-white/20 rounded-2xl py-4 text-center text-3xl text-white uppercase font-black">
-                                ${state.loginError ? `<p class="text-magical-pink font-bold">${state.loginError}</p>` : ''}
-                                <button type="submit" class="w-full btn-liquid font-black py-4 rounded-2xl text-lg uppercase">ENTRER</button>
+                        <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-10 text-center border-t-magical-pink/40 shadow-2xl">
+                            <img src="${LOGO_URL}" class="h-24 mx-auto mb-8 drop-shadow-xl">
+                            <h1 class="text-3xl font-black mb-10 text-glow-white tracking-tight">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
+                            <form onsubmit="${isAdmin ? 'checkAdminLogin(event)' : 'checkGuestLogin(event)'}" class="space-y-8">
+                                <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="CODE" class="w-full bg-black/60 border border-white/20 rounded-2xl py-5 text-center text-4xl text-white uppercase font-black tracking-widest focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/30 outline-none shadow-inner">
+                                ${state.loginError ? `<p class="text-magical-pink font-bold animate-pulse">${state.loginError}</p>` : ''}
+                                <button type="submit" class="w-full btn-liquid font-black py-5 rounded-2xl text-xl uppercase tracking-[0.2em] shadow-lg">ENTRER</button>
                             </form>
-                            <button onclick="goTo('${isAdmin?'login':'adminLogin'}')" class="mt-8 text-white/30 text-xs font-bold uppercase tracking-widest hover:text-white">${isAdmin?'Retour':'DJ Access'}</button>
+                            <button onclick="goTo('${isAdmin?'login':'adminLogin'}')" class="mt-12 text-white/20 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors underline decoration-white/10 underline-offset-8">${isAdmin?'← Retour à l\'accès invité':'Accès Administrateur DJ'}</button>
                         </div>
                     </div>
                 `;
@@ -767,14 +806,14 @@
             else {
                 // NAVBAR
                 html = `<div class="fixed top-4 left-0 w-full z-50 px-4 pointer-events-none">
-                    <nav class="max-w-7xl mx-auto neo-glass rounded-full px-6 py-3 flex items-center justify-between pointer-events-auto shadow-2xl">
+                    <nav class="max-w-7xl mx-auto neo-glass rounded-full px-6 py-3 flex items-center justify-between pointer-events-auto shadow-2xl border-t-white/10">
                         <div class="flex items-center gap-4">
-                            <img src="${LOGO_URL}" class="h-8">
-                            ${state.view==='user' ? `<div class="bg-magical-pink/20 border border-magical-pink/50 px-3 py-1 rounded-full text-xs font-black">${votesLeft} / 30</div>` : ''}
+                            <img src="${LOGO_URL}" class="h-8 drop-shadow-md">
+                            ${state.view==='user' ? `<div class="bg-magical-pink/20 border border-magical-pink/50 px-4 py-1.5 rounded-full text-sm font-black shadow-inner">${votesLeft} / 30 <span class="hidden sm:inline ml-1 opacity-60">Crédits</span></div>` : ''}
                         </div>
-                        <div class="flex items-center gap-4">
-                            <div class="hidden sm:flex gap-4 text-white/40"><i class="ph ph-facebook-logo"></i><i class="ph ph-instagram-logo"></i></div>
-                            <button onclick="goTo('login')" class="bg-white/5 border border-white/10 px-4 py-2 rounded-full text-xs font-black">QUITTER</button>
+                        <div class="flex items-center gap-6">
+                            <div class="hidden md:flex gap-5 text-white/40 text-xl"><i class="ph ph-facebook-logo hover:text-white cursor-pointer transition-colors"></i><i class="ph ph-instagram-logo hover:text-white cursor-pointer transition-colors"></i><i class="ph ph-linkedin-logo hover:text-white cursor-pointer transition-colors"></i></div>
+                            <button onclick="goTo('login')" class="bg-white/5 border border-white/10 hover:bg-white/10 px-5 py-2 rounded-full text-xs font-black tracking-widest uppercase transition-all">QUITTER</button>
                         </div>
                     </nav>
                 </div>`;
@@ -785,34 +824,34 @@
                     if (isClosed) {
                          const top40 = [...state.songs].filter(s => s.votes > 0).sort((a,b) => b.votes - a.votes).slice(0, 40);
                          html += `<div class="pt-28 px-4 pb-20 max-w-7xl mx-auto">
-                            <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
-                                <h2 class="text-2xl font-black uppercase">Le Classement Final</h2>
-                                <p class="text-sm opacity-80">Merci pour vos votes !</p>
+                            <div class="btn-liquid rounded-[2rem] p-10 mb-12 text-center shadow-2xl relative overflow-hidden">
+                                <h2 class="text-4xl font-black uppercase text-glow-white tracking-widest mb-2">Le Classement Final</h2>
+                                <p class="text-lg font-light opacity-90 italic">Voici la playlist idéale de votre soirée !</p>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                ${top40.map((s,i) => `<div class="neo-card rounded-2xl p-4 flex items-center justify-between">
-                                    <div class="flex items-center gap-3"><span class="text-xl font-black text-white/40">${i+1}</span><div><p class="font-bold text-sm">${s.title}</p><p class="text-[10px] text-white/50">${s.artist}</p></div></div>
-                                    <span class="text-xl font-black text-magical-cyan">${s.votes}</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                ${top40.map((s,i) => `<div class="neo-card rounded-2xl p-5 flex items-center justify-between border-white/10 shadow-lg">
+                                    <div class="flex items-center gap-4 min-w-0 pr-2"><span class="text-2xl font-black ${i<3?'text-magical-gold':'text-white/20'} w-8">${i+1}</span><div class="min-w-0 truncate"><p class="font-bold text-base leading-tight truncate text-white">${s.title}</p><p class="text-[10px] text-white/40 uppercase tracking-widest truncate font-medium">${s.artist}</p></div></div>
+                                    <div class="bg-black/40 px-4 py-2 rounded-xl"><span class="text-xl font-black text-magical-cyan text-glow-cyan">${s.votes}</span></div>
                                 </div>`).join('')}
                             </div>
                          </div>`;
                     } else {
                         html += `<div class="pt-24 px-4 pb-20 max-w-7xl mx-auto">
-                            <div class="sticky top-20 z-40 neo-glass p-4 rounded-3xl mb-8 space-y-4 shadow-2xl">
-                                <div class="relative"><i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-white/30"></i>
-                                <input type="text" placeholder="RECHERCHER..." oninput="handleSearch(event)" class="w-full bg-black/40 border border-white/10 rounded-full py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-magical-pink"></div>
-                                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                    ${themes.map(t => `<button onclick="setTheme('${t}')" class="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold border ${state.selectedTheme===t ? 'bg-magical-pink border-magical-pink shadow-[0_0_15px_rgba(255,0,122,0.5)]' : 'bg-white/5 border-white/10'}">${t}</button>`).join('')}
+                            <div class="sticky top-20 z-40 neo-glass p-5 rounded-[2.5rem] mb-10 space-y-5 shadow-2xl border-t-white/10">
+                                <div class="relative"><i class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-white/30 text-xl"></i>
+                                <input type="text" placeholder="RECHERCHER UN TITRE, UN ARTISTE..." oninput="handleSearch(event)" class="w-full bg-black/40 border border-white/10 rounded-full py-4 pl-14 pr-6 text-base focus:outline-none focus:border-magical-pink focus:ring-1 focus:ring-magical-pink/30 shadow-inner tracking-wide"></div>
+                                <div class="flex gap-3 overflow-x-auto no-scrollbar pb-1 px-1">
+                                    ${themes.map(t => `<button onclick="setTheme('${t}')" class="whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-bold border transition-all duration-300 ${state.selectedTheme===t ? 'bg-magical-pink border-magical-pink text-white shadow-[0_0_15px_rgba(255,0,122,0.5)]' : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'}">${t}</button>`).join('')}
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
                                 ${state.songs.filter(s => state.selectedTheme==='Tous' || s.theme===state.selectedTheme).map(s => {
                                     const v = state.userVotes[s.id] || 0;
                                     const disabled = v>=2 || state.totalUserVotes>=30;
-                                    return `<div class="song-item-card neo-card rounded-2xl p-4 flex items-center justify-between" data-search="${(s.title+' '+s.artist).toLowerCase()}">
-                                        <div class="min-w-0 pr-4"><p class="font-bold truncate text-sm">${s.title}</p><p class="text-[10px] text-white/50 truncate">${s.artist}</p></div>
-                                        <button onclick="vote(${s.id})" ${disabled?'disabled':''} class="shrink-0 px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all ${v===2?'bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40':v===1?'bg-magical-pink text-white':'btn-liquid'}">
-                                            ${v===2?'MAX':v===1?'1/2':'VOTER'}
+                                    return `<div class="song-item-card neo-card rounded-[1.75rem] p-5 flex items-center justify-between border-white/5 transition-transform" data-search="${(s.title+' '+s.artist).toLowerCase()}">
+                                        <div class="min-w-0 pr-4"><p class="font-bold truncate text-lg text-white mb-0.5">${s.title}</p><p class="text-xs text-white/50 uppercase tracking-widest font-medium truncate">${s.artist}</p></div>
+                                        <button onclick="vote(${s.id})" ${disabled?'disabled':''} class="shrink-0 px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${v===2?'bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 shadow-inner':v===1?'bg-magical-pink text-white shadow-lg':'btn-liquid shadow-md'}">
+                                            ${v===2?'MAX (2/2)':v===1?'VOTÉ (1/2)':'VOTER'}
                                         </button>
                                     </div>`;
                                 }).join('')}
@@ -822,57 +861,72 @@
                 } 
                 else if (state.view === 'admin') {
                     const ranked = [...state.songs].sort((a,b) => b.votes - a.votes);
-                    html += `<div id="admin-dashboard" class="pt-28 px-4 pb-20 max-w-5xl mx-auto space-y-8 animate-fade-in">
-                        <div class="neo-glass rounded-[2.5rem] p-8 border-t-magical-pink/50">
-                            <h2 class="text-3xl font-black mb-6 flex items-center gap-3"><i class="ph ph-timer text-magical-pink"></i> SESSIONS AUTOMATIQUES</h2>
-                            <div class="flex flex-wrap gap-4">
-                                <button onclick="startEventTimer('3H')" class="btn-liquid px-6 py-3 rounded-xl font-black uppercase text-sm">3 HEURES</button>
-                                <button onclick="startEventTimer('1H')" class="btn-liquid px-6 py-3 rounded-xl font-black uppercase text-sm">1 HEURE</button>
-                                <button onclick="startEventTimer('30M')" class="btn-liquid px-6 py-3 rounded-xl font-black uppercase text-sm">30 MIN</button>
-                                <button onclick="stopEventTimer()" class="bg-white/10 px-6 py-3 rounded-xl font-black uppercase text-sm border border-white/20">STOP</button>
+                    html += `<div id="admin-dashboard" class="pt-28 px-4 pb-20 max-w-5xl mx-auto space-y-10 animate-fade-in">
+                        <div class="neo-glass rounded-[3rem] p-10 border-t-magical-pink/50 shadow-2xl relative overflow-hidden">
+                            <h2 class="text-3xl font-black mb-8 flex items-center gap-4 tracking-tight"><i class="ph ph-timer text-magical-pink text-4xl"></i> SESSIONS AUTOMATIQUES</h2>
+                            <div class="flex flex-wrap gap-5">
+                                <button onclick="startEventTimer('3H')" class="btn-liquid px-8 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg">3 HEURES</button>
+                                <button onclick="startEventTimer('1H')" class="btn-liquid px-8 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg">1 HEURE</button>
+                                <button onclick="startEventTimer('30M')" class="btn-liquid px-8 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg">30 MIN</button>
+                                <button onclick="stopEventTimer()" class="bg-white/5 hover:bg-white/10 px-8 py-4 rounded-2xl font-black uppercase text-sm border border-white/20 tracking-widest transition-colors shadow-md">STOP / RESET</button>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="neo-glass rounded-[2.5rem] p-8"><h3 class="text-xl font-black mb-6">ÉCRAN GÉANT</h3>
-                                <div class="space-y-4">
-                                    <button onclick="forceEndAndShowMonitor()" class="w-full btn-liquid py-4 rounded-xl font-black uppercase">CLÔTURER & RÉSULTATS</button>
-                                    <button onclick="openExternalDisplay('qrcode')" class="w-full bg-white/5 border border-white/10 py-3 rounded-xl font-black uppercase text-xs">AFFICHER QR CODE SEUL</button>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div class="neo-glass rounded-[3rem] p-10 shadow-2xl border-white/5"><h3 class="text-2xl font-black mb-8 tracking-tight flex items-center gap-3"><i class="ph ph-projector-screen text-magical-cyan"></i> ÉCRAN GÉANT</h3>
+                                <div class="space-y-5">
+                                    <button onclick="forceEndAndShowMonitor()" class="w-full btn-liquid py-5 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl pulse-magical">CLÔTURER & RÉSULTATS</button>
+                                    <button onclick="openExternalDisplay('qrcode')" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-colors">AFFICHER QR CODE SEUL</button>
                                 </div>
                             </div>
-                            <div class="neo-glass rounded-[2.5rem] p-8"><h3 class="text-xl font-black mb-6">CODES D'ACCÈS</h3>
-                                <div class="space-y-4">
-                                    <div class="flex gap-2"><input id="newGuestCode" type="text" value="${state.guestCode}" class="flex-1 bg-black/60 border border-white/10 rounded-xl px-4 text-center font-black uppercase text-lg"><button onclick="updateGuestCode()" class="bg-white/10 px-4 rounded-xl border border-white/20"><i class="ph ph-check"></i></button></div>
-                                    <div class="flex gap-2"><input id="newAdminCode" type="text" value="${state.adminCode}" class="flex-1 bg-black/60 border border-white/10 rounded-xl px-4 text-center font-black uppercase text-lg"><button onclick="updateAdminCode()" class="bg-white/10 px-4 rounded-xl border border-white/20"><i class="ph ph-check"></i></button></div>
+                            <div class="neo-glass rounded-[3rem] p-10 shadow-2xl border-white/5"><h3 class="text-2xl font-black mb-8 tracking-tight flex items-center gap-3"><i class="ph ph-lock-key text-white/40"></i> CODES D'ACCÈS</h3>
+                                <div class="space-y-6">
+                                    <div><p class="text-[10px] uppercase font-black tracking-widest mb-2 opacity-50 ml-1">Code Invités</p>
+                                    <div class="flex gap-3"><input id="newGuestCode" type="text" value="${state.guestCode}" class="flex-1 bg-black/60 border border-white/10 rounded-2xl px-5 py-3 text-center font-black uppercase text-xl tracking-[0.2em] shadow-inner focus:border-magical-cyan transition-colors outline-none"><button onclick="updateGuestCode()" class="bg-white/10 hover:bg-magical-cyan/40 px-5 rounded-2xl border border-white/10 transition-colors"><i class="ph-bold ph-check text-xl"></i></button></div></div>
+                                    <div><p class="text-[10px] uppercase font-black tracking-widest mb-2 opacity-50 ml-1">Code DJ Admin</p>
+                                    <div class="flex gap-3"><input id="newAdminCode" type="text" value="${state.adminCode}" class="flex-1 bg-black/60 border border-white/10 rounded-2xl px-5 py-3 text-center font-black uppercase text-xl tracking-[0.2em] shadow-inner focus:border-magical-purple transition-colors outline-none"><button onclick="updateAdminCode()" class="bg-white/10 hover:bg-magical-purple/40 px-5 rounded-2xl border border-white/10 transition-colors"><i class="ph-bold ph-check text-xl"></i></button></div></div>
                                 </div>
                             </div>
                         </div>
-                        <div class="neo-glass rounded-[2.5rem] p-8 text-center">
-                            <h2 class="text-sm text-white/50 font-black uppercase mb-2">VOTES EN DIRECT</h2>
-                            <div class="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink">${state.songs.reduce((a,s)=>a+s.votes, 0)}</div>
-                            <div class="flex justify-center gap-4 mt-8">
-                                <button onclick="allowReVote()" class="text-magical-cyan font-black uppercase text-xs border border-magical-cyan/30 px-6 py-3 rounded-xl hover:bg-magical-cyan/10">Nouveau Tour</button>
-                                <button onclick="resetVotes()" class="text-red-400 font-black uppercase text-xs border border-red-400/30 px-6 py-3 rounded-xl hover:bg-red-400/10">Reset Soirée</button>
+                        <div class="neo-glass rounded-[3rem] p-10 text-center shadow-2xl border-white/5 relative overflow-hidden">
+                            <h2 class="text-sm text-white/40 font-black uppercase mb-4 tracking-[0.3em]">VOTES EN DIRECT</h2>
+                            <div class="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink drop-shadow-[0_0_20px_rgba(0,240,255,0.3)]">${state.songs.reduce((a,s)=>a+s.votes, 0)}</div>
+                            <div class="flex justify-center gap-6 mt-10">
+                                <button onclick="allowReVote()" class="text-magical-cyan font-black uppercase text-xs border border-magical-cyan/30 px-10 py-4 rounded-2xl hover:bg-magical-cyan/20 hover:border-magical-cyan transition-all tracking-[0.2em] shadow-lg">Nouveau Tour</button>
+                                <button onclick="resetVotes()" class="text-red-400 font-black uppercase text-xs border border-red-400/30 px-10 py-4 rounded-2xl hover:bg-red-400/20 hover:border-red-400 transition-all tracking-[0.2em] shadow-lg">Remise à zéro</button>
                             </div>
                         </div>
-                        <div class="space-y-3">
-                            ${ranked.filter(s=>s.votes>0).map((s,i)=>`<div class="neo-card rounded-2xl p-5 flex items-center justify-between">
-                                <div class="flex items-center gap-4"><span class="w-8 h-8 flex items-center justify-center bg-black/40 rounded-lg font-black ${i<3?'text-magical-gold':''}">${i+1}</span><div><p class="font-bold">${s.title}</p><p class="text-xs opacity-50">${s.artist}</p></div></div>
-                                <span class="text-2xl font-black text-magical-cyan">${s.votes}</span>
-                            </div>`).join('')}
+                        <div class="space-y-4 pt-4">
+                            <h3 class="text-xl font-bold uppercase tracking-widest mb-6 ml-4">Classement Temps Réel</h3>
+                            ${ranked.filter(s=>s.votes>0).map((s,i)=>`
+                                <div class="neo-card rounded-2xl p-6 flex items-center justify-between border-white/5 shadow-md">
+                                    <div class="flex items-center gap-6 min-w-0">
+                                        <span class="w-12 h-12 flex items-center justify-center bg-black/60 rounded-xl font-black text-xl border border-white/5 ${i<3?'text-magical-gold shadow-[0_0_15px_rgba(255,215,0,0.2)]':'text-white/20'}">${i+1}</span>
+                                        <div class="min-w-0"><p class="font-bold text-xl text-white leading-none truncate mb-1.5">${s.title}</p><p class="text-xs font-black opacity-40 uppercase tracking-[0.2em] truncate">${s.artist}</p></div>
+                                    </div>
+                                    <div class="bg-black/40 px-6 py-3 rounded-2xl border border-white/5 shadow-inner"><span class="text-3xl font-black text-magical-cyan text-glow-cyan leading-none">${s.votes}</span></div>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>`;
                 }
             }
 
-            // MODAL
+            // MODAL DESIGN
             let modalHtml = '';
             if (state.modal) {
-                modalHtml = `<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-                    <div class="neo-glass p-10 rounded-[2.5rem] w-full max-w-lg text-center border-t border-t-magical-pink/50">
-                        <h3 class="text-3xl font-black mb-6 text-glow-white">${state.modal.title}</h3>
-                        <p class="text-white/80 font-medium mb-8 text-lg">${state.modal.message}</p>
-                        <div class="flex gap-4 justify-center">
-                            ${state.modal.type==='confirm'?`<button onclick="closeModal()" class="flex-1 bg-white/10 py-4 rounded-2xl font-bold uppercase">Annuler</button><button onclick="confirmModal()" class="flex-1 btn-liquid py-4 rounded-2xl font-black uppercase">Confirmer</button>`:`<button onclick="closeModal()" class="w-2/3 btn-liquid py-4 rounded-2xl font-black uppercase">Compris</button>`}
+                modalHtml = `<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fade-in">
+                    <div class="neo-glass p-12 rounded-[3rem] w-full max-w-xl text-center border-t border-t-magical-pink/50 shadow-2xl">
+                        <h3 class="text-4xl font-black mb-8 text-glow-white tracking-tight">${state.modal.title}</h3>
+                        <p class="text-white/70 font-medium mb-10 text-xl leading-relaxed">${state.modal.message}</p>
+                        <div class="flex flex-col sm:flex-row gap-5 justify-center">
+                            ${state.modal.type==='confirm'?`
+                                <button onclick="closeModal()" class="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 py-5 rounded-2xl font-bold uppercase tracking-widest transition-colors">Annuler</button>
+                                <button onclick="confirmModal()" class="flex-1 btn-liquid py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg">Confirmer</button>
+                            ` : state.modal.type === 'goodbye' ? `
+                                <i class="ph-duotone ph-spinner-gap animate-spin text-6xl text-magical-cyan mx-auto"></i>
+                            ` : `
+                                <button onclick="closeModal()" class="w-full sm:w-2/3 mx-auto btn-liquid py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg">Compris</button>
+                            `}
                         </div>
                     </div>
                 </div>`;
@@ -883,7 +937,9 @@
 
         window.addEventListener('scroll', () => {
             const panel = document.getElementById('sticky-control-panel');
+            const nav = document.getElementById('main-nav');
             if (panel) window.scrollY > 20 ? panel.classList.add('glass-scrolled-panel') : panel.classList.remove('glass-scrolled-panel');
+            if (nav) window.scrollY > 20 ? nav.classList.add('glass-scrolled-nav') : nav.classList.remove('glass-scrolled-nav');
         }, { passive: true });
 
         render();
