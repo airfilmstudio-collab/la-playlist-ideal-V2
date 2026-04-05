@@ -151,6 +151,23 @@
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =========================================================================
+        // 🔄 AUTO-ACTUALISATION (ANTI-FANTÔMES) POUR SMARTPHONES
+        // =========================================================================
+        // Si le téléphone part dans la poche pendant plus de 2 minutes,
+        // on force un rafraîchissement au réveil pour garantir le direct Cloud !
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") {
+                localStorage.setItem('dj_sleep_time', Date.now().toString());
+            } else if (document.visibilityState === "visible") {
+                const sleepTime = localStorage.getItem('dj_sleep_time');
+                if (sleepTime && (Date.now() - parseInt(sleepTime)) > 2 * 60 * 1000) {
+                    window.location.reload(); // Rafraîchissement brutal et propre
+                }
+            }
+        });
+        // =========================================================================
+
+        // =========================================================================
         // 🔴🔴🔴 CONFIGURATION BASE DE DONNÉES CLOUD 🔴🔴🔴
         // =========================================================================
         const MY_FIREBASE_CONFIG = {
@@ -216,6 +233,8 @@
             phase1Duration: 2 * 60 * 60 * 1000, 
             phase2Duration: 1 * 60 * 60 * 1000,
             sessionId: 'init',
+            forceClosed: false,
+            isCloudSynced: false,
             modal: null
         };
 
@@ -320,8 +339,6 @@
                         }
                     } catch (error) {
                         console.error("Erreur d'authentification Firebase:", error);
-                        // On ne bloque pas l'écran de connexion pour l'instant.
-                        // L'erreur sera signalée si l'utilisateur tente de voter.
                     }
                 };
                 initAuth();
@@ -347,6 +364,8 @@
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
             
             unsubscribePublic = onSnapshot(publicRef, (docSnap) => {
+                state.isCloudSynced = true; // Verrou débloqué ! Le téléphone sait ce qu'il se passe sur le serveur.
+                
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     
@@ -356,6 +375,7 @@
                     state.eventStartTime = data.eventStartTime || null;
                     state.phase1Duration = data.phase1Duration || (2 * 60 * 60 * 1000);
                     state.phase2Duration = data.phase2Duration || (1 * 60 * 60 * 1000);
+                    state.forceClosed = data.forceClosed || false;
 
                     const cloudVotes = data.songVotes || {};
                     state.songs.forEach(song => {
@@ -373,6 +393,7 @@
                         eventStartTime: null,
                         phase1Duration: 2 * 60 * 60 * 1000,
                         phase2Duration: 1 * 60 * 60 * 1000,
+                        forceClosed: false,
                         songVotes: {}
                     }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
                 }
@@ -403,6 +424,18 @@
                 state.totalUserVotes = 0;
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
+                localStorage.removeItem('dj_songs'); // 🔥 DÉTRUIT L'ANCIEN CLASSEMENT FANTÔME !
+                
+                // Nettoyage intelligent de l'URL
+                try {
+                    if (window.history && window.history.replaceState) {
+                        const currentUrl = new URL(window.location.href);
+                        if (currentUrl.searchParams.has('s')) {
+                            currentUrl.searchParams.delete('s');
+                            window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search);
+                        }
+                    }
+                } catch(e) {}
             } else {
                 // Sinon on recharge les votes normaux
                 const savedUserVotes = localStorage.getItem('dj_userVotes');
@@ -484,6 +517,9 @@
                 const savedP2 = localStorage.getItem('dj_phase2');
                 if (savedP2) state.phase2Duration = parseInt(savedP2, 10);
                 
+                const savedForceClosed = localStorage.getItem('dj_forceClosed');
+                if (savedForceClosed) state.forceClosed = (savedForceClosed === 'true');
+                
                 // Détection de l'écran externe (HDMI/TV) pour contourner la page d'accueil
                 const publicView = urlParams.get('public');
                 if (publicView) {
@@ -506,11 +542,24 @@
                 localStorage.setItem('dj_eventStartTime', state.eventStartTime || 'null');
                 localStorage.setItem('dj_phase1', state.phase1Duration);
                 localStorage.setItem('dj_phase2', state.phase2Duration);
+                localStorage.setItem('dj_forceClosed', state.forceClosed);
                 localStorage.setItem('dj_sessionId', state.sessionId);
             } catch (error) { console.error("Erreur de sauvegarde", error); }
         }
 
         function checkPhase() {
+            if (state.forceClosed) {
+                if (state.currentPhase !== 3) { 
+                    state.currentPhase = 3;
+                    if (state.view === 'qrcode') state.view = 'monitor';
+                    if (state.view === 'user') window.scrollTo({ top: 0, behavior: 'smooth' });
+                    render(); 
+                }
+                document.querySelectorAll('.global-timer-display').forEach(el => { if (el.textContent !== '00:00:00') el.textContent = '00:00:00'; });
+                document.querySelectorAll('.dynamic-timer-display').forEach(el => { if (el.textContent !== '00:00:00') el.textContent = '00:00:00'; });
+                return;
+            }
+
             if (!state.eventStartTime) {
                 if (state.currentPhase !== 0) { state.currentPhase = 0; render(); }
                 return;
@@ -571,6 +620,9 @@
 
         window.checkGuestLogin = function(event) {
             event.preventDefault();
+            // Sécurité absolue : on bloque la soumission tant que l'état Cloud n'est pas vérifié.
+            if (isCloudActive && !state.isCloudSynced) return; 
+
             const passEl = document.getElementById('guestPass');
             if (!passEl) return;
             
@@ -611,6 +663,8 @@
 
         window.checkAdminLogin = function(event) {
             event.preventDefault();
+            if (isCloudActive && !state.isCloudSynced) return; 
+
             const passEl = document.getElementById('adminPass');
             if (!passEl) return;
             const input = passEl.value.toUpperCase().trim();
@@ -665,6 +719,7 @@
                 state.phase1Duration = p1Min * 60 * 1000;
                 state.phase2Duration = p2Min * 60 * 1000;
                 state.eventStartTime = Date.now(); 
+                state.forceClosed = false;
                 saveServerData(); 
                 
                 if (isCloudActive && db && userId) {
@@ -672,7 +727,8 @@
                     setDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
-                        eventStartTime: state.eventStartTime
+                        eventStartTime: state.eventStartTime,
+                        forceClosed: false
                     }, { merge: true }).catch(e=>console.error(e));
                 }
                 state.view = 'monitor'; 
@@ -685,11 +741,12 @@
             window.showModal('confirm', "Arrêter le minuteur", "⚠️ Voulez-vous vraiment arrêter le minuteur et stopper l'affichage public ?", () => {
                 state.eventStartTime = null; 
                 state.currentPhase = 0; 
+                state.forceClosed = false;
                 saveServerData();
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { eventStartTime: null }, { merge: true }).catch(e=>console.error(e));
+                    setDoc(publicRef, { eventStartTime: null, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
                 }
                 render();
             });
@@ -697,13 +754,15 @@
 
         window.forceEndAndShowMonitor = function() {
             window.showModal('confirm', "Clôturer et Résultats", "⚠️ Voulez-vous clôturer définitivement les votes, afficher le classement final sur l'écran géant, et générer le fichier M3U ?", () => {
-                state.eventStartTime = Date.now() - (state.phase1Duration + state.phase2Duration + 5000);
+                state.forceClosed = true;
+                state.eventStartTime = null;
                 saveServerData(); 
 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
-                        eventStartTime: state.eventStartTime
+                        forceClosed: true,
+                        eventStartTime: null
                     }, { merge: true }).catch(e=>console.error(e));
                 }
                 
@@ -719,12 +778,13 @@
         window.allowReVote = function() {
             window.showModal('confirm', "Nouveau Tour de Votes", "Cela va générer un nouveau QR Code. En le scannant, les invités recevront 30 nouveaux crédits !<br><br><strong class='text-magical-cyan'>Les scores actuels des chansons seront CONSERVÉS.</strong>", () => { 
                 state.sessionId = Date.now().toString(); 
+                state.forceClosed = false;
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
                 if (isCloudActive && db && userId) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { sessionId: state.sessionId }, { merge: true }).catch(e=>console.error(e));
+                    setDoc(publicRef, { sessionId: state.sessionId, forceClosed: false }, { merge: true }).catch(e=>console.error(e));
                 }
                 window.showModal('alert', 'Succès', '✅ C\'est prêt ! Affichez le QR Code sur l\'écran géant, les invités n\'ont plus qu\'à le scanner pour revoter.');
             });
@@ -734,6 +794,7 @@
             window.showModal('confirm', "Remise à zéro totale", "⚠️ Attention, cela va effacer absolument tous les votes, arrêter le minuteur et réinitialiser les crédits de tout le monde. Confirmer ?", () => { 
                 state.eventStartTime = null;
                 state.currentPhase = 0;
+                state.forceClosed = false;
                 state.songs = JSON.parse(JSON.stringify(initialSongs)); 
                 state.selectedTheme = 'Tous';
                 state.searchQuery = '';
@@ -742,6 +803,7 @@
                 
                 localStorage.removeItem('dj_songs');
                 localStorage.removeItem('dj_eventStartTime');
+                localStorage.removeItem('dj_forceClosed');
                 
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
@@ -753,6 +815,7 @@
                         guestCode: state.guestCode,
                         adminCode: state.adminCode,
                         eventStartTime: null,
+                        forceClosed: false,
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
                         songVotes: {}
@@ -807,7 +870,18 @@
         }
 
         window.vote = async function(id) {
-            if (state.currentPhase === 3) { window.showModal('alert', 'Votes clôturés', 'Les votes sont terminés pour cette session ! Regardez l\'écran géant.'); return; }
+            // VERROU ABSOLU NUMÉRO 1 : Est-ce que le DJ a officiellement lancé les votes ?
+            if (state.currentPhase === 0) { 
+                window.showModal('alert', 'Patience...', 'Le DJ n\'a pas encore officiellement ouvert les votes pour cette session.'); 
+                return; 
+            }
+
+            // VERROU ABSOLU NUMÉRO 2 : Est-ce que le DJ a clôturé les votes ?
+            if (state.forceClosed || state.currentPhase === 3) { 
+                window.showModal('alert', 'Votes clôturés', 'Les votes sont définitivement terminés pour cette session ! Regardez l\'écran géant.'); 
+                return; 
+            }
+
             if (state.totalUserVotes >= MAX_TOTAL_VOTES) return;
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
@@ -1049,6 +1123,9 @@
             else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
                 
+                // Pour la sécurité anti-triche : on attend que la synchronisation Cloud soit faire
+                const isReadyToLogin = !isCloudActive || state.isCloudSynced;
+                
                 // Pré-remplir le code invité si on arrive depuis le QR Code
                 const urlParams = new URLSearchParams(window.location.search);
                 const codeFromUrl = urlParams.get('code');
@@ -1073,8 +1150,9 @@
                                         class="w-full bg-black/60 border border-white/20 rounded-2xl py-4 px-6 text-center text-2xl text-white uppercase tracking-[0.3em] focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all placeholder:text-white/30 font-black shadow-inner">
                                 </div>
                                 ${state.loginError ? `<p class="text-magical-pink font-bold animate-fade-in drop-shadow-md">${state.loginError}</p>` : ''}
-                                <button type="submit" class="w-full btn-liquid font-black py-4 px-6 rounded-2xl text-lg tracking-widest uppercase">
-                                    ${isAdmin ? 'Accéder au Dashboard' : 'Rejoindre la soirée !'}
+                                
+                                <button type="submit" ${!isReadyToLogin ? 'disabled' : ''} class="w-full btn-liquid font-black py-4 px-6 rounded-2xl text-lg tracking-widest uppercase flex items-center justify-center gap-2 ${!isReadyToLogin ? 'opacity-70 cursor-wait' : ''}">
+                                    ${!isReadyToLogin ? '<i class="ph-bold ph-spinner animate-spin text-2xl"></i> Synchronisation...' : (isAdmin ? 'Accéder au Dashboard' : 'Rejoindre la soirée !')}
                                 </button>
                             </form>
                             <div class="mt-10 pt-8 border-t border-white/10">
@@ -1130,7 +1208,7 @@
                                         <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
                                         <span class="text-[10px] sm:text-sm font-black tabular-nums tracking-widest text-magical-cyan global-timer-display text-glow-cyan">--:--:--</span>
                                     </div>
-                                ` : state.currentPhase === 3 ? `
+                                ` : state.currentPhase === 3 || state.forceClosed ? `
                                     <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-pink/40 shadow-inner">
                                         <i class="ph-fill ph-check-circle text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
                                         <span class="text-[10px] sm:text-sm font-black tracking-widest text-magical-pink text-glow-pink uppercase">Clôturé</span>
@@ -1157,15 +1235,18 @@
 
                     const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
                     const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
-                    const isClosed = state.currentPhase === 3;
+                    const isClosed = state.currentPhase === 3 || state.forceClosed;
 
                     if (isClosed) {
                         const top40Songs = [...state.songs].filter(s => (s.votes || 0) > 0).sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 40);
                         
                         mainContent = `
                             <div id="user-view-container" class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
-                                <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical">
-                                    <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white">Le Classement Final</h2>
+                                <div class="btn-liquid rounded-3xl p-6 mb-8 text-center pulse-magical relative">
+                                    <button onclick="window.location.reload()" class="absolute top-4 right-4 md:top-6 md:right-6 text-white/50 hover:text-white p-2 transition-all hover:rotate-180" title="Actualiser en cas de bug réseau">
+                                        <i class="ph-bold ph-arrows-clockwise text-2xl md:text-3xl drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]"></i>
+                                    </button>
+                                    <h2 class="text-white font-black text-2xl md:text-3xl uppercase tracking-widest text-glow-white pr-8 pl-8">Le Classement Final</h2>
                                     <p class="text-white/90 text-base md:text-lg mt-2 font-medium">Voici la playlist idéale de la soirée !</p>
                                 </div>
                                 
