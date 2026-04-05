@@ -147,7 +147,7 @@
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
         // =========================================================================
-        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES
+        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES (Protection Chrome/Safari)
         // =========================================================================
         try {
             const urlParamsInitial = new URLSearchParams(window.location.search);
@@ -345,6 +345,9 @@
                 
                 state.isCloudSynced = true; 
 
+                // Lancement immédiat de l'écoute publique pour s'assurer que les téléphones se mettent à jour
+                setupPublicListener();
+
                 const initAuth = async () => {
                     try {
                         if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -366,13 +369,9 @@
                     state.authStatus = 'ready'; 
                     if (user) {
                         userId = user.uid;
-                        // On lance les écouteurs UNIQUEMENT quand Firebase a donné le badge (UID)
-                        // Cela empêche l'erreur "Missing or insufficient permissions"
-                        setupPublicListener();
                         setupPrivateListener();
                     } else {
                         userId = null;
-                        if (unsubscribePublic) { unsubscribePublic(); unsubscribePublic = null; }
                         if (unsubscribePrivate) { unsubscribePrivate(); unsubscribePrivate = null; }
                     }
                 });
@@ -389,7 +388,6 @@
         }
 
         function setupPublicListener() {
-            if (!userId) return; // Ne pas exécuter si on n'a pas le badge
             if (unsubscribePublic) return; 
 
             const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
@@ -423,7 +421,7 @@
                         phase2Duration: 1 * 60 * 60 * 1000,
                         forceClosed: false,
                         songVotes: {}
-                    }, { merge: true }).catch(e=>console.warn("SetDoc error (création init):", e));
+                    }, { merge: true }).catch(e => console.warn("SetDoc error:", e));
                 }
 
                 // Force le flash visuel sur l'écran Admin lors d'une mise à jour Cloud
@@ -438,6 +436,14 @@
                 render(); 
             }, (error) => {
                 console.warn("Écoute du Cloud refusée ou interrompue :", error.message);
+                // 🚨 ALERTE POUR LE DJ SI LE MODE TEST EST EXPIRÉ
+                if ((error.code === 'permission-denied' || error.message.includes('Missing or insufficient permissions'))) {
+                    state.authStatus = 'failed';
+                    cloudErrorMsg = 'Règles Firebase expirées';
+                    if (state.view === 'admin') {
+                        window.showModal('alert', '🚨 DANGER : Firebase Bloqué (Expiration)', 'Vos règles de sécurité Google Firestore ont expiré (limite des 30 jours du mode Test). Les téléphones ne peuvent plus voter.<br><br><b>POUR RÉPARER DÉFINITIVEMENT :</b><br>1. Allez sur votre console Firebase > Firestore Database > Onglet <b>Règles (Rules)</b>.<br>2. Effacez le texte et collez ceci :<br><br><code class="text-xs text-left bg-black/50 p-2 block mt-2 text-magical-cyan">rules_version = "2";<br>service cloud.firestore {<br>  match /databases/{database}/documents {<br>    match /{document=**} {<br>      allow read, write: if true;<br>    }<br>  }<br>}</code><br><br>3. Cliquez sur le bouton bleu <b>Publier</b>.');
+                    }
+                }
             });
         }
 
@@ -709,7 +715,7 @@
                 state.guestCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -723,7 +729,7 @@
                 state.adminCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { adminCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -745,7 +751,7 @@
                 state.forceClosed = false;
                 saveServerData(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
@@ -767,7 +773,7 @@
                 state.forceClosed = false;
                 saveServerData();
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { eventStartTime: null, forceClosed: false }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
@@ -781,7 +787,7 @@
                 state.eventStartTime = null;
                 saveServerData(); 
 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         forceClosed: true,
@@ -804,7 +810,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { sessionId: state.sessionId, forceClosed: false }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
@@ -830,7 +836,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db && userId) {
+                if (isCloudActive && db) {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         sessionId: state.sessionId, 
@@ -840,7 +846,7 @@
                         forceClosed: false,
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
-                        songVotes: {} // 🔥 CECI EFFACE LES VOTES DU CLOUD
+                        songVotes: {} 
                     }).catch(e => console.warn(e));
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
@@ -890,12 +896,6 @@
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
 
-            // Sécurité : On bloque le vote SEULEMENT si l'identité n'est pas encore établie.
-            if (isCloudActive && db && !userId) {
-                window.showModal('alert', 'Patientez...', 'Connexion au serveur sécurisé en cours. Réessayez dans une seconde.');
-                return;
-            }
-
             // 1. Mise à jour Locale IMMÉDIATE (Fluidité totale)
             state.userVotes[id] = votesForSong + 1; 
             state.totalUserVotes += 1;
@@ -906,15 +906,16 @@
             render();
 
             // 2. Envoi sur le Cloud
-            if (isCloudActive && db && userId) {
-                const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
-                setDoc(privateRef, {
-                    sessionId: state.sessionId,
-                    votes: state.userVotes,
-                    total: state.totalUserVotes
-                }).catch(e=>console.warn("Vote privé ignoré"));
+            if (isCloudActive && db) {
+                if (userId) {
+                    const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
+                    setDoc(privateRef, {
+                        sessionId: state.sessionId,
+                        votes: state.userVotes,
+                        total: state.totalUserVotes
+                    }).catch(e=>console.warn("Vote privé ignoré"));
+                }
 
-                // 🔥 ON ENVOIE TOUJOURS LE VOTE AU COMPTEUR PUBLIC GÉNÉRAL
                 const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                 setDoc(publicRef, {
                     songVotes: {
@@ -938,7 +939,7 @@
             const root = document.getElementById('root');
             if (!root) return;
             
-            const isExternalDisplay = new URLSearchParams(window.location.search).get('public') !== null;
+            const isExternalDisplay = newSearchParams(window.location.search).get('public') !== null;
             const votesLeft = Math.max(0, MAX_TOTAL_VOTES - state.totalUserVotes);
             
             let htmlToRender = '';
@@ -1040,31 +1041,13 @@
                                 <div class="flex items-center gap-6">
                                     <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                     <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
-                                        ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
+                                        LE CLASSEMENT FINAL
                                     </h1>
                                 </div>
                                 <div class="flex items-center gap-6">
-                                    ${state.currentPhase === 2 ? `
-                                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
-                                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
-                                            <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
-                                        </div>
-                                    ` : state.currentPhase === 3 ? `
-                                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
-                                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
-                                        </div>
-                                    ` : ''}
-                                    ${state.currentPhase === 2 ? `
-                                    <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
-                                        <div class="bg-white p-2 rounded-2xl">
-                                            <img src="${getQRCodeUrl()}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
-                                        </div>
-                                        <div class="flex flex-col justify-center">
-                                            <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
-                                            <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
-                                        </div>
+                                    <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                        <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
                                     </div>
-                                    ` : ''}
                                 </div>
                             </div>
                             <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
@@ -1185,13 +1168,6 @@
                                         <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
                                         <span class="text-[10px] sm:text-sm font-black text-white whitespace-nowrap">${votesLeft} / ${MAX_TOTAL_VOTES}</span>
                                     </div>
-                                    ` : ''}
-
-                                    ${state.authStatus === 'failed' ? `
-                                        <button onclick="window.showModal('alert', '🚨 Connexion bloquée par Firebase', 'Google Firebase refuse la connexion de ce téléphone.<br><br><b>Code erreur :</b> <i>${cloudErrorMsg || 'Non autorisé'}</i><br><br><b>Solution pour le DJ :</b> Allez sur votre console Firebase > Authentication > Paramètres > Domaines autorisés, et ajoutez-y <b>airfilmstudio-collab.github.io</b>')" class="ml-1 sm:ml-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50 shadow-inner animate-pulse cursor-pointer">
-                                            <i class="ph-bold ph-warning text-red-500 text-[10px] sm:text-base"></i>
-                                            <span class="text-[10px] sm:text-xs font-bold text-red-500 hidden sm:inline">Erreur Firebase</span>
-                                        </button>
                                     ` : ''}
                                 </div>
                             </div>
@@ -1379,8 +1355,8 @@
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                                 <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
                                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
-                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-orange-500 shadow-[0_0_8px_#F97316] animate-pulse'}"></div>
-                                    <span class="text-xs font-bold ${isCloudActive ? 'text-magical-cyan' : 'text-orange-500'} uppercase tracking-widest">${isCloudActive ? 'Cloud Actif' : 'Mode Local'}</span>
+                                    <div class="w-2.5 h-2.5 rounded-full ${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_#EF4444] animate-pulse'}"></div>
+                                    <span class="text-xs font-bold ${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'text-magical-cyan' : 'text-red-500'} uppercase tracking-widest">${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'Cloud Actif' : 'Vérifiez Firebase'}</span>
                                 </div>
                             </div>
 
