@@ -1017,8 +1017,8 @@
                                 Flashez pour <span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-magical-gold to-magical-pink drop-shadow-md">voter !</span>
                             </h2>
                             
-                            <div class="neo-glass p-3 md:p-5 lg:p-6 rounded-[2rem] lg:rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] border-2 border-white/20 flex items-center justify-center shrink min-h-0">
-                                <div class="bg-white p-2 md:p-3 lg:p-4 rounded-xl lg:rounded-2xl h-full aspect-square flex items-center justify-center">
+                            <div class="neo-glass p-3 md:p-5 lg:p-6 rounded-[2rem] lg:rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] border-2 border-white/20 flex flex-col items-center justify-center shrink min-h-0">
+                                <div class="bg-white p-2 md:p-3 lg:p-4 rounded-xl lg:rounded-2xl mb-4 h-full aspect-square flex items-center justify-center">
                                     <img src="${getQRCodeUrl()}" alt="QR Code" class="w-full h-full max-h-[45vh] max-w-[45vh] lg:max-h-[50vh] lg:max-w-[50vh] object-contain rounded-lg">
                                 </div>
                                 <div class="text-center shrink-0 mt-2">
@@ -1083,31 +1083,13 @@
                                 <div class="flex items-center gap-6">
                                     <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                     <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
-                                        ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
+                                        LE CLASSEMENT FINAL
                                     </h1>
                                 </div>
                                 <div class="flex items-center gap-6">
-                                    ${state.currentPhase === 2 ? `
-                                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
-                                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
-                                            <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
-                                        </div>
-                                    ` : state.currentPhase === 3 ? `
-                                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
-                                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
-                                        </div>
-                                    ` : ''}
-                                    ${state.currentPhase === 2 ? `
-                                    <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
-                                        <div class="bg-white p-2 rounded-2xl">
-                                            <img src="${getQRCodeUrl()}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
-                                        </div>
-                                        <div class="flex flex-col justify-center">
-                                            <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
-                                            <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
-                                        </div>
+                                    <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                        <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
                                     </div>
-                                    ` : ''}
                                 </div>
                             </div>
                             <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
@@ -1152,6 +1134,9 @@
             // 3. VUES DE CONNEXION
             else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
+                
+                // Pour la sécurité anti-triche : on attend que la synchronisation Cloud soit faire
+                const isReadyToLogin = !isCloudActive || state.isCloudSynced;
                 
                 // Pré-remplir le code invité si on arrive depuis le QR Code
                 const urlParams = new URLSearchParams(window.location.search);
@@ -1326,6 +1311,14 @@
                                                     <span class="text-xs sm:text-sm font-black ${votesLeft === 0 ? 'text-magical-pink text-glow-pink' : 'text-white'}">${votesLeft} <span class="hidden sm:inline">Crédits</span><span class="sm:hidden">/ ${MAX_TOTAL_VOTES}</span></span>
                                                 </div>
                                             </div>
+                                            
+                                            ${isTimerActive ? `
+                                            <div class="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-magical-pink/10 border border-magical-pink/40 shadow-[0_0_10px_rgba(255,0,122,0.2)]">
+                                                <span class="hidden sm:inline text-xs font-bold text-magical-pink uppercase tracking-widest">Fin des votes :</span>
+                                                <i class="ph-fill ph-timer text-magical-pink animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
+                                                <span class="text-xs sm:text-sm font-black tabular-nums tracking-widest text-magical-pink global-timer-display text-glow-pink">--:--:--</span>
+                                            </div>
+                                            ` : ''}
                                         </div>
 
                                         <div class="relative w-36 sm:w-64 focus-within:w-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] group">
