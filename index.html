@@ -146,29 +146,6 @@
 
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
-        // =========================================================================
-        // 🚨 ANTI-CACHE ABSOLU POUR LES NOUVEAUX QR CODES (Protection Chrome)
-        // =========================================================================
-        try {
-            const urlParamsInitial = new URLSearchParams(window.location.search);
-            const newSessionId = urlParamsInitial.get('s');
-            if (newSessionId) {
-                const currentSession = localStorage.getItem('dj_client_session');
-                if (currentSession && currentSession !== newSessionId) {
-                    console.log("Nouvelle session détectée via QR Code. Nettoyage absolu en cours...");
-                    localStorage.removeItem('dj_songs');
-                    localStorage.removeItem('dj_userVotes');
-                    localStorage.removeItem('dj_eventStartTime');
-                    localStorage.removeItem('dj_forceClosed');
-                    localStorage.removeItem('dj_phase1');
-                    localStorage.removeItem('dj_phase2');
-                    localStorage.setItem('dj_client_session', newSessionId);
-                    localStorage.setItem('dj_sessionId', newSessionId);
-                }
-            }
-        } catch(e) { console.error("Erreur Anti-Cache:", e); }
-        // =========================================================================
-
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -349,10 +326,10 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 isCloudActive = true;
-                state.isCloudSynced = true; 
 
-                // 1. DÉMARRER L'ÉCOUTE PUBLIQUE IMMÉDIATEMENT (Garantit que le DJ reçoit toujours les votes)
-                setupListeners();
+                // On n'attend plus Firebase pour débloquer l'interface visuellement !
+                // L'utilisateur peut entrer tout de suite.
+                state.isCloudSynced = true; 
 
                 const initAuth = async () => {
                     try {
@@ -370,7 +347,10 @@
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        // 2. Démarrer l'écoute privée une fois connecté
+                        
+                        // ON NE BRANCHE L'ÉCOUTE QU'UNE FOIS LA SÉCURITÉ PASSÉE
+                        setupListeners();
+
                         if (unsubscribePrivate) unsubscribePrivate();
                         const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
                         unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
@@ -385,6 +365,7 @@
                         }, (error) => console.error("Erreur lecture locale :", error));
                     } else {
                         userId = null;
+                        if (unsubscribePublic) unsubscribePublic();
                         if (unsubscribePrivate) unsubscribePrivate();
                     }
                 });
@@ -489,7 +470,7 @@
                 
                 if (urlSession) {
                     state.sessionId = urlSession;
-                    localStorage.setItem('dj_sessionId', urlSession);
+                    // On ne sauvegarde pas tout de suite, on laisse verifySession s'en charger !
                 } else {
                     const savedSession = localStorage.getItem('dj_sessionId');
                     if (savedSession) state.sessionId = savedSession;
@@ -1069,13 +1050,31 @@
                                 <div class="flex items-center gap-6">
                                     <img src="${LOGO_URL}" alt="Universal DJ" onclick="goTo('admin')" class="h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
                                     <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
-                                        LE CLASSEMENT FINAL
+                                        ${state.currentPhase === 3 ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
                                     </h1>
                                 </div>
                                 <div class="flex items-center gap-6">
-                                    <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
-                                        <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
+                                    ${state.currentPhase === 2 ? `
+                                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
+                                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes : </span>
+                                            <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
+                                        </div>
+                                    ` : state.currentPhase === 3 ? `
+                                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
+                                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
+                                        </div>
+                                    ` : ''}
+                                    ${state.currentPhase === 2 ? `
+                                    <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
+                                        <div class="bg-white p-2 rounded-2xl">
+                                            <img src="${getQRCodeUrl()}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain">
+                                        </div>
+                                        <div class="flex flex-col justify-center">
+                                            <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
+                                            <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${state.guestCode}</strong></span>
+                                        </div>
                                     </div>
+                                    ` : ''}
                                 </div>
                             </div>
                             <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
@@ -1120,6 +1119,9 @@
             // 3. VUES DE CONNEXION
             else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
+                
+                // Pour la sécurité anti-triche : on attend que la synchronisation Cloud soit faire
+                const isReadyToLogin = !isCloudActive || state.isCloudSynced;
                 
                 // Pré-remplir le code invité si on arrive depuis le QR Code
                 const urlParams = new URLSearchParams(window.location.search);
