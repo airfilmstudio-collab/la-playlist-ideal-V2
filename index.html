@@ -147,12 +147,12 @@
     <!-- Script de logique et d'intégration Cloud Firestore -->
     <script type="module">
         // =========================================================================
-        // 🚨 NOUVELLE VERSION 4.0 : NETTOYAGE ABSOLU & SYNCHRONISATION DIRECTE
+        // 🚨 NOUVELLE VERSION 5.0 : LA BOMBE NUCLÉAIRE ANTI-FANTÔME
         // =========================================================================
-        const APP_VERSION = "4.0";
+        const APP_VERSION = "5.0";
         try {
             if (localStorage.getItem('dj_app_version') !== APP_VERSION) {
-                console.log("Mise à jour v4.0 détectée : Nettoyage intégral du cache !");
+                console.log("Mise à jour v5.0 détectée : Destruction intégrale du cache !");
                 localStorage.clear();
                 localStorage.setItem('dj_app_version', APP_VERSION);
             }
@@ -173,7 +173,7 @@
                     localStorage.setItem('dj_sessionId', newSessionId);
                 }
             }
-        } catch(e) { console.error("Erreur Anti-Cache:", e); }
+        } catch(e) { console.warn("Erreur Anti-Cache:", e); }
         // =========================================================================
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -195,14 +195,17 @@
         });
         // =========================================================================
 
+        // =========================================================================
+        // 🔴🔴🔴 ÉTAPE CRUCIALE : VOS CLÉS FIREBASE 🔴🔴🔴
+        // Remplacez obligatoirement les valeurs ci-dessous par celles de VOTRE projet Firebase
+        // =========================================================================
         const MY_FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCCrcyE5HbYE-fjiVwqnzmVmhg_zCvXb5k",
+            apiKey: "COLLEZ_VOTRE_CLE_API_ICI",
             authDomain: "laplaylistideale.firebaseapp.com",
             projectId: "laplaylistideale",
             storageBucket: "laplaylistideale.firebasestorage.app",
-            messagingSenderId: "288987066836",
-            appId: "1:288987066836:web:12b48f1ae0adbfef8f6641",
-            measurementId: "G-S96KYBT8CN"
+            messagingSenderId: "COLLEZ_VOTRE_SENDER_ID_ICI",
+            appId: "COLLEZ_VOTRE_APP_ID_ICI"
         };
 
         const LOGO_URL = "lOGO-style-App-UniversalDj-512p.png";
@@ -260,7 +263,6 @@
             modal: null
         };
 
-        // Supprime tous les vieux compteurs / erreurs
         let cloudErrorMsg = null;
 
         // --- EXPOSITION DES FONCTIONS GLOBALES ---
@@ -332,48 +334,68 @@
         let unsubscribePrivate = null;
 
         try {
-            // 🔥 NOUVEAUTÉ : On force l'utilisation de TES clés, que ce soit sur Github ou dans l'éditeur.
-            // Cela répare le bug des "deux tiroirs" !
-            let firebaseConfig = MY_FIREBASE_CONFIG;
-            appId = MY_FIREBASE_CONFIG.appId;
-            let useCanvasAuth = false; // On n'utilise plus les variables locales de l'éditeur
+            let firebaseConfig = null;
+            let useCanvasAuth = false;
+            let isRunningInCanvas = typeof __firebase_config !== 'undefined' && __firebase_config && __firebase_config !== '{}';
 
-            // Initialisation universelle
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            isCloudActive = true;
-            
-            // La porte est grande ouverte pour les invités
-            state.isCloudSynced = true; 
+            // 1. SI ON EST DANS L'ÉDITEUR GOOGLE (CANVAS)
+            if (isRunningInCanvas) {
+                firebaseConfig = JSON.parse(__firebase_config);
+                appId = typeof __app_id !== 'undefined' ? __app_id : appId;
+                useCanvasAuth = true;
+            } 
+            // 2. SI ON EST SUR LE SITE EN LIGNE (GITHUB) : ON UTILISE VOS CLÉS
+            else if (!MY_FIREBASE_CONFIG.apiKey.includes("COLLEZ_VOTRE")) {
+                firebaseConfig = MY_FIREBASE_CONFIG;
+                appId = MY_FIREBASE_CONFIG.appId;
+            } 
+            // 3. SI VOUS AVEZ OUBLIÉ DE METTRE VOS CLÉS SUR GITHUB
+            else {
+                console.warn("Clés Firebase manquantes ! L'application tourne en mode hors-ligne.");
+                state.authStatus = 'missing_keys';
+            }
 
-            // Connexion directe aux votes (même sans être authentifié)
-            setupPublicListener();
+            if (firebaseConfig) {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isCloudActive = true;
+                
+                state.isCloudSynced = true; 
 
-            const initAuth = async () => {
-                try {
-                    await signInAnonymously(auth);
-                } catch (error) {
-                    console.warn("Auth Firebase bloquée (Mode dégradé).", error);
-                    cloudErrorMsg = error.code;
-                    state.authStatus = 'failed';
-                    render();
-                }
-            };
-            
-            initAuth();
+                // Lancement de l'écoute publique pour s'assurer que les téléphones se mettent à jour
+                setupPublicListener();
 
-            onAuthStateChanged(auth, (user) => {
-                state.authStatus = 'ready'; 
-                if (user) {
-                    userId = user.uid;
-                    setupPrivateListener();
-                } else {
-                    userId = null;
-                    if (unsubscribePrivate) { unsubscribePrivate(); unsubscribePrivate = null; }
-                }
-            });
-            
+                const initAuth = async () => {
+                    try {
+                        if (useCanvasAuth && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.warn("Auth Firebase bloquée.", error);
+                        cloudErrorMsg = error.code;
+                        state.authStatus = 'failed';
+                        render();
+                    }
+                };
+                
+                initAuth();
+
+                onAuthStateChanged(auth, (user) => {
+                    state.authStatus = 'ready'; 
+                    if (user) {
+                        userId = user.uid;
+                        setupPrivateListener();
+                    } else {
+                        userId = null;
+                        if (unsubscribePrivate) { unsubscribePrivate(); unsubscribePrivate = null; }
+                    }
+                });
+            } else {
+                state.isCloudSynced = true; 
+            }
         } catch(error) {
             console.error("Erreur d'initialisation Firebase:", error);
             state.isCloudSynced = true; 
@@ -419,7 +441,7 @@
                     }, { merge: true }).catch(e => console.warn("SetDoc error:", e));
                 }
 
-                // 🔥 Le Flash visuel sur l'écran DJ lors d'une mise à jour de vote
+                // Force le flash visuel sur l'écran Admin lors d'une mise à jour Cloud
                 if (state.view === 'admin') {
                     const adminEl = document.getElementById('admin-dashboard');
                     if (adminEl) {
@@ -452,13 +474,12 @@
         }
         // --- FIN INTEGRATION FIREBASE ---
 
-        // Fonction magique : Vérifie si c'est une nouvelle soirée/tour et vide les crédits si besoin
+        // Fonction magique : Vérifie si c'est une nouvelle soirée/tour et vide les crédits
         function verifySessionAndLoadVotes() {
             const localClientSession = localStorage.getItem('dj_client_session');
             
-            // Si la session globale a changé, on vide les poches du téléphone ET la RAM
             if (!localClientSession || localClientSession !== state.sessionId) {
-                // 🔥 NOUVEAU : Réinitialise AUSSI les chansons en mémoire vive !
+                // Réinitialise AUSSI les chansons en mémoire vive !
                 state.songs = JSON.parse(JSON.stringify(initialSongs));
                 state.userVotes = {};
                 state.totalUserVotes = 0;
@@ -466,16 +487,6 @@
                 localStorage.setItem('dj_client_session', state.sessionId);
                 localStorage.removeItem('dj_userVotes');
                 localStorage.removeItem('dj_songs'); // Détruit l'ancien classement local
-                
-                try {
-                    if (window.history && window.history.replaceState) {
-                        const currentUrl = new URL(window.location.href);
-                        if (currentUrl.searchParams.has('s')) {
-                            currentUrl.searchParams.delete('s');
-                            window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search);
-                        }
-                    }
-                } catch(e) {}
             } else {
                 const savedUserVotes = localStorage.getItem('dj_userVotes');
                 if (savedUserVotes) {
@@ -665,7 +676,7 @@
                         const currentUrl = new URL(window.location.href);
                         if (currentUrl.protocol !== 'blob:') {
                             currentUrl.searchParams.delete('code');
-                            currentUrl.searchParams.delete('s');
+                            // 🔥 On NE SUPPRIME PLUS le 's=' pour que le rafraîchissement fonctionne !
                             const newPath = currentUrl.pathname + currentUrl.search;
                             window.history.replaceState({}, document.title, newPath);
                         }
@@ -702,7 +713,7 @@
                 state.guestCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -716,7 +727,7 @@
                 state.adminCode = newCode;
                 saveServerData(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { adminCode: newCode }, { merge: true }).catch(e=>console.error(e));
                 }
@@ -738,7 +749,7 @@
                 state.forceClosed = false;
                 saveServerData(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         phase1Duration: state.phase1Duration,
@@ -760,7 +771,7 @@
                 state.forceClosed = false;
                 saveServerData();
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { eventStartTime: null, forceClosed: false }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
@@ -774,7 +785,7 @@
                 state.eventStartTime = null;
                 saveServerData(); 
 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         forceClosed: true,
@@ -797,7 +808,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, { sessionId: state.sessionId, forceClosed: false }, { merge: true }).catch(e=>console.warn("SetDoc error:", e));
                 }
@@ -823,7 +834,7 @@
                 saveServerData(); 
                 verifySessionAndLoadVotes(); 
                 
-                if (isCloudActive && db) {
+                if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                     const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
                     setDoc(publicRef, {
                         sessionId: state.sessionId, 
@@ -833,7 +844,7 @@
                         forceClosed: false,
                         phase1Duration: state.phase1Duration,
                         phase2Duration: state.phase2Duration,
-                        songVotes: {} // 🔥 CECI EFFACE LES VOTES DU CLOUD
+                        songVotes: {} 
                     }).catch(e => console.warn(e));
                 }
                 window.showModal('alert', 'Succès', '✅ L\'application a été entièrement remise à zéro pour une nouvelle soirée.');
@@ -893,7 +904,7 @@
             render();
 
             // 2. Envoi sur le Cloud
-            if (isCloudActive && db) {
+            if (isCloudActive && db && state.authStatus !== 'missing_keys') {
                 if (userId) {
                     const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
                     setDoc(privateRef, {
@@ -1053,8 +1064,8 @@
                                                         <div class="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">${song.title}</div>
                                                         <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${song.artist}</div>
                                                     </div>
-                                                    <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 border border-white/10 shadow-inner">
-                                                        <span class="text-lg sm:text-xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
+                                                    <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 border border-white/10 shadow-inner">
+                                                        <span class="text-lg sm:text-xl md:text-2xl font-black ${isTop3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
                                                     </div>
                                                 </div>
                                             `;
@@ -1151,6 +1162,13 @@
                                         <i class="ph-fill ph-ticket text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
                                         <span class="text-[10px] sm:text-sm font-black text-white whitespace-nowrap">${votesLeft} / ${MAX_TOTAL_VOTES}</span>
                                     </div>
+                                    ` : ''}
+
+                                    ${state.authStatus === 'failed' || state.authStatus === 'missing_keys' ? `
+                                        <button onclick="window.showModal('alert', '🚨 Connexion bloquée', 'Pour le DJ : Vos clés Firebase ne sont pas configurées ou sont bloquées par Google.<br><br><b>Code erreur :</b> <i>${cloudErrorMsg || 'Clés non trouvées'}</i><br><br><b>Solution :</b> Modifiez le fichier Github et insérez VOS clés Firebase vers la ligne 150.')" class="ml-1 sm:ml-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-red-500/20 border border-red-500/50 shadow-inner animate-pulse cursor-pointer">
+                                            <i class="ph-bold ph-warning text-red-500 text-[10px] sm:text-base"></i>
+                                            <span class="text-[10px] sm:text-xs font-bold text-red-500 hidden sm:inline">Erreur Réseau</span>
+                                        </button>
                                     ` : ''}
                                 </div>
                             </div>
@@ -1335,11 +1353,19 @@
                     mainContent = `
                         <!-- ANIMATE-FADE-IN EST ICI : Le flash aura lieu à chaque nouveau vote ! -->
                         <div id="admin-dashboard" class="max-w-5xl mx-auto pb-24 pt-28 px-4 w-full animate-fade-in">
+                            
+                            ${state.authStatus === 'missing_keys' ? `
+                            <div class="neo-glass border border-red-500/50 bg-red-500/10 rounded-2xl p-6 mb-8 text-center animate-pulse">
+                                <h3 class="text-red-400 font-black text-2xl mb-2 flex items-center justify-center gap-2"><i class="ph-bold ph-warning"></i> ACTION VITALE REQUISE</h3>
+                                <p class="text-white/90 font-medium text-lg">Pour que vos téléphones puissent se synchroniser, vous devez remplacer la mention <strong class="text-magical-cyan">"COLLEZ_VOTRE_CLE_API_ICI"</strong> par <b>VOS clés Firebase</b> dans le code Github (vers la ligne 150).</p>
+                            </div>
+                            ` : ''}
+
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                                 <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
                                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
                                     <div class="w-2.5 h-2.5 rounded-full ${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_#EF4444] animate-pulse'}"></div>
-                                    <span class="text-xs font-bold ${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'text-magical-cyan' : 'text-red-500'} uppercase tracking-widest">${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'Cloud Actif' : 'Mode Local'}</span>
+                                    <span class="text-xs font-bold ${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'text-magical-cyan' : 'text-red-500'} uppercase tracking-widest">${isCloudActive && state.authStatus === 'ready' && !cloudErrorMsg ? 'Cloud Actif' : 'Clés Manquantes'}</span>
                                 </div>
                             </div>
 
