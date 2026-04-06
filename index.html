@@ -1213,6 +1213,17 @@
                                                     <i class="ph-fill ph-ticket ${votesLeft === 0 ? 'text-magical-pink' : 'text-magical-cyan'} text-[10px] sm:text-base"></i>
                                                     <span class="text-xs sm:text-sm font-black ${votesLeft === 0 ? 'text-magical-pink text-glow-pink' : 'text-white'}">${votesLeft} <span class="hidden sm:inline">Crédits</span><span class="sm:hidden">/ ${MAX_TOTAL_VOTES}</span></span>
                                                 </div>
+                                                ${state.eventStartTime && state.currentPhase > 0 && state.currentPhase < 3 ? `
+                                                <div class="px-2 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-magical-pink/10 border border-magical-pink/30 flex items-center gap-1.5 sm:gap-2 shadow-inner animate-pulse">
+                                                    <i class="ph-fill ph-timer text-magical-pink text-[10px] sm:text-base"></i>
+                                                    <span class="text-xs sm:text-sm font-black text-magical-pink text-glow-pink global-timer-display tabular-nums">--:--:--</span>
+                                                </div>
+                                                ` : state.currentPhase === 3 ? `
+                                                <div class="px-2 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-magical-pink/10 border border-magical-pink/30 flex items-center gap-1.5 sm:gap-2 shadow-inner">
+                                                    <i class="ph-fill ph-check-circle text-magical-pink text-[10px] sm:text-base"></i>
+                                                    <span class="text-[10px] sm:text-xs font-black text-magical-pink uppercase tracking-widest">Terminé</span>
+                                                </div>
+                                                ` : ''}
                                             </div>
                                         </div>
 
