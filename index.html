@@ -331,7 +331,7 @@
                     } else {
                         userId = null;
                     }
-                    // TOUJOURS connecter aux données publiques, même sans auth
+                    // TOUJOURS connecter aux données publiques
                     setupListeners();
                 });
             } else {
@@ -342,11 +342,11 @@
         }
 
         function setupListeners() {
-            // Listener PUBLIC : toujours actif (ne pas recréer s'il existe déjà)
+            // Listener PUBLIC (toujours actif)
             if (!unsubscribePublic) {
-                const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                
-                unsubscribePublic = onSnapshot(publicRef, (docSnap) => {
+            const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+            
+            unsubscribePublic = onSnapshot(publicRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     
@@ -362,7 +362,6 @@
                         song.votes = cloudVotes[song.id] || 0;
                     });
                     const newTotal = state.songs.reduce((a,s) => a + (s.votes||0), 0);
-                    // ✨ Flash sur l'écran géant quand un nouveau vote arrive
                     if (newTotal > oldTotal && (state.view === 'qrcode' || state.view === 'monitor')) {
                         const fl = document.createElement('div');
                         fl.style.cssText = 'position:fixed;inset:0;z-index:200;pointer-events:none;background:radial-gradient(circle,rgba(0,240,255,.15),transparent 70%)';
@@ -384,11 +383,11 @@
                     }, { merge: true }).catch(e=>console.error("SetDoc error:", e));
                 }
             }, (error) => console.error("Erreur lecture Cloud :", error));
-            } // fin du guard public
+            }
 
-            // Listener PRIVÉ : seulement si l'utilisateur est authentifié
+            // Listener PRIVÉ (seulement si authentifié)
             if (userId && !unsubscribePrivate) {
-                const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
+            const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
             
             unsubscribePrivate = onSnapshot(privateRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -400,7 +399,7 @@
                 }
                 render();
             }, (error) => console.error("Erreur lecture locale :", error));
-            } // fin du guard privé
+            }
         }
         // --- FIN INTEGRATION FIREBASE ---
 
@@ -793,11 +792,7 @@
             const votesForSong = state.userVotes[id] || 0;
             if (votesForSong >= MAX_VOTES_PER_SONG) return;
 
-            // Tentative de reconnexion silencieuse (ne bloque JAMAIS le vote)
-            if (isCloudActive && db && !userId) {
-                try { const c = await signInAnonymously(auth); userId = c.user.uid; }
-                catch (e) { console.warn("Auth silencieuse échouée:", e.message); }
-            }
+            // Auth silencieuse (ne bloque jamais)
 
             // 1. Mise à jour Locale IMMÉDIATE
             state.userVotes[id] = votesForSong + 1; 
@@ -808,25 +803,40 @@
             saveServerData();
             render();
 
-            // 2. Envoi sur le Cloud (les votes PUBLICS passent même sans auth)
-            if (isCloudActive && db) {
-                const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+            // 2. Envoi DIRECT au Cloud via API REST (contourne le SDK Firebase)
+            if (isCloudActive) {
                 try {
-                    const writeOp = setDoc(publicRef, { songVotes: { [id]: increment(1) } }, { merge: true });
-                    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 5000));
-                    await Promise.race([writeOp, timeout]);
-                    // ✅ Flash cyan = vote reçu par Firebase !
-                    const fl = document.createElement('div');
-                    fl.style.cssText = 'position:fixed;inset:0;z-index:200;pointer-events:none;background:radial-gradient(circle,rgba(0,240,255,.2),transparent 70%)';
-                    document.body.appendChild(fl);
-                    setTimeout(() => fl.remove(), 500);
+                    const projectId = "laplaylistideale";
+                    const docPath = `artifacts/${appId}/public/data/playlist/main`;
+                    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:commit`;
+                    
+                    const resp = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            writes: [{
+                                transform: {
+                                    document: `projects/${projectId}/databases/(default)/documents/${docPath}`,
+                                    fieldTransforms: [{
+                                        fieldPath: `songVotes.\`${id}\``,
+                                        increment: { integerValue: "1" }
+                                    }]
+                                }
+                            }]
+                        })
+                    });
+
+                    if (resp.ok) {
+                        // ✅ Flash cyan = vote confirmé !
+                        const fl = document.createElement('div');
+                        fl.style.cssText = 'position:fixed;inset:0;z-index:200;pointer-events:none;background:radial-gradient(circle,rgba(0,240,255,.2),transparent 70%)';
+                        document.body.appendChild(fl);
+                        setTimeout(() => fl.remove(), 500);
+                    } else {
+                        console.warn("REST vote:", resp.status, await resp.text());
+                    }
                 } catch(e) {
-                    console.warn("Vote cloud:", e.message);
-                }
-                // Votes privés (seulement si authentifié)
-                if (userId) {
-                    const privateRef = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
-                    setDoc(privateRef, { sessionId: state.sessionId, votes: state.userVotes, total: state.totalUserVotes }).catch(e=>console.warn(e));
+                    console.warn("REST vote error:", e.message);
                 }
             }
 
