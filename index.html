@@ -258,15 +258,23 @@ function initFirebase() {
         auth = getAuth(app); db = getFirestore(app);
         appId = CONFIG.firebase.appId; cloud = true;
 
+        // Écouter les données publiques IMMÉDIATEMENT (pas besoin d'auth pour lire avec les règles ouvertes)
+        listenPublic();
+
+        // Tenter l'auth pour les données privées (votes personnels)
         signInAnonymously(auth).catch(e => console.warn("Auth:", e.message));
-        onAuthStateChanged(auth, u => { if (u) { userId = u.uid; listen(); } else { userId = null; } });
+        onAuthStateChanged(auth, u => {
+            if (u) { userId = u.uid; listenPrivate(); }
+            else { userId = null; }
+        });
         
-        // Filet de sécurité : débloquer après le timeout même si Firebase ne répond pas
+        // Filet de sécurité
         setTimeout(() => { if (!S.synced) { S.synced = true; render(); } }, CONFIG.syncTimeout);
     } catch(e) { console.error("Firebase init:", e); }
 }
 
-function listen() {
+function listenPublic() {
+    if (unsub1) return; // Déjà en écoute
     const pub = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
     unsub1 = onSnapshot(pub, snap => {
         S.synced = true;
@@ -283,7 +291,10 @@ function listen() {
             cloudSet(pub, { sessionId: Date.now().toString(), guestCode: S.guestCode, adminCode: S.adminCode, eventStartTime: null, phase1Duration: S.p1, phase2Duration: S.p2, forceClosed: false, songVotes: {} });
         }
     }, e => { console.error("Firestore:", e); S.synced = true; render(); });
+}
 
+function listenPrivate() {
+    if (!userId || unsub2) return;
     const priv = doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes');
     unsub2 = onSnapshot(priv, snap => {
         if (snap.exists()) { const d = snap.data(); if (d.sessionId === S.session) { S.userVotes = d.votes || {}; S.totalVotes = d.total || 0; } }
@@ -292,11 +303,11 @@ function listen() {
 }
 
 function cloudSet(ref, data, merge = true) {
-    if (!cloud || !db || !userId) return;
+    if (!cloud || !db) return;
     setDoc(ref, data, { merge }).catch(e => console.warn("Cloud write:", e));
 }
 
-function pubRef() { return doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main'); }
+function pubRef() { if (!db) return null; return doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main'); }
 function privRef() { return doc(db, 'artifacts', appId, 'users', userId, 'userData', 'votes'); }
 
 // ─── MINUTEUR ───────────────────────────────────────────────────
@@ -381,10 +392,12 @@ window.vote = async id => {
     if (idx !== -1) S.songs[idx].votes += 1;
     save(); render();
     
-    // Sync cloud (silencieux)
-    if (cloud && db && userId) {
-        cloudSet(privRef(), { sessionId: S.session, votes: S.userVotes, total: S.totalVotes });
+    // Sync cloud : les votes publics passent TOUJOURS, les votes privés seulement si authentifié
+    if (cloud && db) {
         cloudSet(pubRef(), { songVotes: { [id]: increment(1) } });
+        if (userId) {
+            cloudSet(privRef(), { sessionId: S.session, votes: S.userVotes, total: S.totalVotes });
+        }
     }
     
     if (S.totalVotes >= CONFIG.maxVotes) {
