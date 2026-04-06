@@ -285,7 +285,10 @@ function listenPublic() {
             S.p1 = d.phase1Duration || 7200000; S.p2 = d.phase2Duration || 3600000;
             S.closed = d.forceClosed || false;
             const cv = d.songVotes || {};
+            const oldTotal = S.songs.reduce((a,s) => a + s.votes, 0);
             S.songs.forEach(s => { s.votes = cv[s.id] || 0; });
+            const newTotal = S.songs.reduce((a,s) => a + s.votes, 0);
+            if (newTotal > oldTotal && (S.view === 'qrcode' || S.view === 'monitor')) flashScreen();
             tick(); syncSession();
         } else {
             cloudSet(pub, { sessionId: Date.now().toString(), guestCode: S.guestCode, adminCode: S.adminCode, eventStartTime: null, phase1Duration: S.p1, phase2Duration: S.p2, forceClosed: false, songVotes: {} });
@@ -347,6 +350,15 @@ function updateTimerDisplays(global, phase) {
     document.querySelectorAll('.ptimer').forEach(el => { if (el.textContent !== phase) el.textContent = phase; });
 }
 
+// ─── FEEDBACK VISUEL ─────────────────────────────────────────────
+function flashScreen() {
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;z-index:200;pointer-events:none;background:radial-gradient(circle,rgba(0,240,255,.15),transparent 70%);';
+    flash.className = 'fade-in';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 600);
+}
+
 // ─── ACTIONS ────────────────────────────────────────────────────
 window.modal = (type, title, msg, cb=null) => { S.modal = { type, title, msg, cb }; render(); };
 window.closeModal = () => { S.modal = null; render(); };
@@ -392,11 +404,26 @@ window.vote = async id => {
     if (idx !== -1) S.songs[idx].votes += 1;
     save(); render();
     
-    // Sync cloud : les votes publics passent TOUJOURS, les votes privés seulement si authentifié
+    // Sync cloud avec feedback visuel
     if (cloud && db) {
-        cloudSet(pubRef(), { songVotes: { [id]: increment(1) } });
-        if (userId) {
-            cloudSet(privRef(), { sessionId: S.session, votes: S.userVotes, total: S.totalVotes });
+        try {
+            const ref = pubRef();
+            if (ref) {
+                await setDoc(ref, { songVotes: { [id]: increment(1) } }, { merge: true });
+                flashScreen(); // Confirmation visuelle !
+            }
+            if (userId) {
+                const pRef = privRef();
+                if (pRef) await setDoc(pRef, { sessionId: S.session, votes: S.userVotes, total: S.totalVotes }, { merge: true });
+            }
+        } catch(e) {
+            console.error("Cloud vote error:", e);
+            // On affiche l'erreur pour le debug
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-20 left-4 right-4 z-[200] bg-red-500/90 text-white p-4 rounded-2xl text-center font-bold text-sm backdrop-blur-md';
+            toast.textContent = 'Cloud: ' + e.message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
         }
     }
     
@@ -610,6 +637,12 @@ function viewUser() {
     const done = S.phase === 3 || S.closed;
     const scrolled = scrollY > 20;
 
+    // Debug: petit indicateur cloud en bas
+    const cloudOk = cloud && S.synced;
+    const cloudBadge = cloudOk
+        ? '<div class="fixed bottom-2 right-2 z-50 bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-widest flex items-center gap-1"><div class="w-1.5 h-1.5 rounded-full bg-magical-cyan animate-pulse"></div>Cloud</div>'
+        : '<div class="fixed bottom-2 right-2 z-50 bg-orange-500/20 border border-orange-500/40 text-orange-400 text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-widest flex items-center gap-1"><div class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>Local</div>';
+
     if (done) {
         const top = [...S.songs].filter(s => s.votes > 0).sort((a,b) => b.votes - a.votes).slice(0,40);
         return `<div class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
@@ -619,7 +652,7 @@ function viewUser() {
                 <p class="text-white/90 mt-2">Voici la playlist idéale de la soirée !</p>
             </div>
             <div class="glass rounded-[2.5rem] p-4">${top.length ? `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">${top.map((s,i) => rankCard(s,i)).join('')}</div>` : emptyState(true)}</div>
-        </div>`;
+        </div>${cloudBadge}`;
     }
 
     return `<div class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
@@ -658,7 +691,7 @@ function viewUser() {
             }).join('')}
         </div>
         <div id="emptySearch" class="text-center py-20 sm:py-32 glass rounded-[2rem] mt-4" style="display:${filtered.some(s=>(s.title+' '+s.artist).toLowerCase().includes(sl))?'none':'block'}"><i class="ph-duotone ph-music-notes text-6xl sm:text-8xl text-magical-cyan/40 mb-4 sm:mb-6 inline-block"></i><h3 class="text-xl sm:text-3xl font-black text-white mb-2 glow">Aucun titre trouvé</h3></div>` : `<div class="text-center py-20 glass rounded-[2rem] mt-4"><i class="ph-duotone ph-music-notes text-6xl text-magical-cyan/40 mb-4 inline-block"></i><h3 class="text-xl font-black text-white glow">Aucun titre dans cette catégorie</h3></div>`}
-    </div>`;
+    </div>${cloudBadge}`;
 }
 
 function viewAdmin() {
