@@ -584,27 +584,30 @@
                 if (!doc.fields) return;
                 
                 const f = doc.fields;
+                let changed = false;
+                
+                // Lecture du minuteur
+                const newStartTime = (f.eventStartTime && f.eventStartTime.integerValue) ? parseInt(f.eventStartTime.integerValue) : null;
+                if (newStartTime !== state.eventStartTime) { state.eventStartTime = newStartTime; changed = true; }
+                
+                // Lecture des durées
+                if (f.phase1Duration && f.phase1Duration.integerValue) { const v = parseInt(f.phase1Duration.integerValue); if (v !== state.phase1Duration) { state.phase1Duration = v; changed = true; } }
+                if (f.phase2Duration && f.phase2Duration.integerValue) { const v = parseInt(f.phase2Duration.integerValue); if (v !== state.phase2Duration) { state.phase2Duration = v; changed = true; } }
+                
+                // Lecture du code et de la session
+                if (f.guestCode && f.guestCode.stringValue && f.guestCode.stringValue !== state.guestCode) { state.guestCode = f.guestCode.stringValue; changed = true; }
+                if (f.sessionId && f.sessionId.stringValue && f.sessionId.stringValue !== state.sessionId) { state.sessionId = f.sessionId.stringValue; changed = true; }
+                
+                // Lecture des votes
                 const oldTotal = state.songs.reduce((a,s) => a + (s.votes||0), 0);
-                
-                // Mise à jour de l'état depuis les données REST
-                if (f.eventStartTime && f.eventStartTime.integerValue) {
-                    state.eventStartTime = parseInt(f.eventStartTime.integerValue);
-                } else { state.eventStartTime = null; }
-                
-                if (f.guestCode && f.guestCode.stringValue) state.guestCode = f.guestCode.stringValue;
-                if (f.sessionId && f.sessionId.stringValue) state.sessionId = f.sessionId.stringValue;
-                if (f.phase1Duration && f.phase1Duration.integerValue) state.phase1Duration = parseInt(f.phase1Duration.integerValue);
-                if (f.phase2Duration && f.phase2Duration.integerValue) state.phase2Duration = parseInt(f.phase2Duration.integerValue);
-                
-                // Mise à jour des votes
                 if (f.songVotes && f.songVotes.mapValue && f.songVotes.mapValue.fields) {
                     const sv = f.songVotes.mapValue.fields;
                     state.songs.forEach(song => {
                         const key = String(song.id);
-                        song.votes = (sv[key] && sv[key].integerValue) ? parseInt(sv[key].integerValue) : 0;
+                        const newVal = (sv[key] && sv[key].integerValue) ? parseInt(sv[key].integerValue) : 0;
+                        if (newVal !== song.votes) { song.votes = newVal; changed = true; }
                     });
                 }
-                
                 const newTotal = state.songs.reduce((a,s) => a + (s.votes||0), 0);
                 
                 // Flash sur l'écran géant quand un vote arrive
@@ -615,10 +618,17 @@
                     setTimeout(() => fl.remove(), 600);
                 }
                 
+                // Calcul de la phase
+                const oldPhase = state.currentPhase;
                 checkPhase();
-                saveServerData();
-                render();
-            } catch(e) { /* Silencieux en cas d'erreur réseau */ }
+                if (state.currentPhase !== oldPhase) changed = true;
+                
+                // Re-afficher SEULEMENT si quelque chose a changé
+                if (changed) {
+                    saveServerData();
+                    render();
+                }
+            } catch(e) { /* Silencieux */ }
         }
         
         // Première lecture immédiate + polling toutes les 3 secondes
@@ -1178,12 +1188,7 @@
                                 ` : ''}
                             </div>
                             <div class="flex items-center gap-1.5 sm:gap-4 shrink-0">
-                                ${isTimerActive ? `
-                                    <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-cyan/40 shadow-inner">
-                                        <i class="ph-fill ph-timer text-magical-cyan animate-pulse text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
-                                        <span class="text-[10px] sm:text-sm font-black tabular-nums tracking-widest text-magical-cyan global-timer-display text-glow-cyan">--:--:--</span>
-                                    </div>
-                                ` : state.currentPhase === 3 ? `
+                                ${state.currentPhase === 3 ? `
                                     <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/40 border border-magical-pink/40 shadow-inner">
                                         <i class="ph-fill ph-check-circle text-magical-pink text-[10px] sm:text-base drop-shadow-[0_0_5px_rgba(255,0,122,0.8)]"></i>
                                         <span class="text-[10px] sm:text-sm font-black tracking-widest text-magical-pink text-glow-pink uppercase">Clôturé</span>
