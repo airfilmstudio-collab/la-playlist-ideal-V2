@@ -568,6 +568,63 @@
 
         loadServerData(); setInterval(checkPhase, 1000);
 
+        // ═══════════════════════════════════════════════════════════════
+        // LECTURE DIRECTE via API REST (contourne le SDK comme pour les votes)
+        // Lit les données publiques (minuteur, votes, session) toutes les 3 secondes
+        // ═══════════════════════════════════════════════════════════════
+        async function fetchPublicData() {
+            if (!isCloudActive) return;
+            try {
+                const projectId = "laplaylistideale";
+                const docPath = `artifacts/${appId}/public/data/playlist/main`;
+                const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${docPath}`;
+                const resp = await fetch(url);
+                if (!resp.ok) return;
+                const doc = await resp.json();
+                if (!doc.fields) return;
+                
+                const f = doc.fields;
+                const oldTotal = state.songs.reduce((a,s) => a + (s.votes||0), 0);
+                
+                // Mise à jour de l'état depuis les données REST
+                if (f.eventStartTime && f.eventStartTime.integerValue) {
+                    state.eventStartTime = parseInt(f.eventStartTime.integerValue);
+                } else { state.eventStartTime = null; }
+                
+                if (f.guestCode && f.guestCode.stringValue) state.guestCode = f.guestCode.stringValue;
+                if (f.sessionId && f.sessionId.stringValue) state.sessionId = f.sessionId.stringValue;
+                if (f.phase1Duration && f.phase1Duration.integerValue) state.phase1Duration = parseInt(f.phase1Duration.integerValue);
+                if (f.phase2Duration && f.phase2Duration.integerValue) state.phase2Duration = parseInt(f.phase2Duration.integerValue);
+                
+                // Mise à jour des votes
+                if (f.songVotes && f.songVotes.mapValue && f.songVotes.mapValue.fields) {
+                    const sv = f.songVotes.mapValue.fields;
+                    state.songs.forEach(song => {
+                        const key = String(song.id);
+                        song.votes = (sv[key] && sv[key].integerValue) ? parseInt(sv[key].integerValue) : 0;
+                    });
+                }
+                
+                const newTotal = state.songs.reduce((a,s) => a + (s.votes||0), 0);
+                
+                // Flash sur l'écran géant quand un vote arrive
+                if (newTotal > oldTotal && (state.view === 'qrcode' || state.view === 'monitor')) {
+                    const fl = document.createElement('div');
+                    fl.style.cssText = 'position:fixed;inset:0;z-index:200;pointer-events:none;background:radial-gradient(circle,rgba(0,240,255,.15),transparent 70%)';
+                    document.body.appendChild(fl);
+                    setTimeout(() => fl.remove(), 600);
+                }
+                
+                checkPhase();
+                saveServerData();
+                render();
+            } catch(e) { /* Silencieux en cas d'erreur réseau */ }
+        }
+        
+        // Première lecture immédiate + polling toutes les 3 secondes
+        fetchPublicData();
+        setInterval(fetchPublicData, 3000);
+
         // --- METHODES D'ACTIONS UTILISATEUR ---
 
         window.checkGuestLogin = function(event) {
