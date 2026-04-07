@@ -304,11 +304,13 @@
                     if (confirmReplace) {
                         window.showModal('confirm', 'Remplacer le thème ?', `Le thème "<strong>${themeName}</strong>" existe déjà (${state.songs.filter(s=>s.theme===themeName).length} titres).<br><br>Remplacer par les ${newSongs.length} nouveaux titres importés ?`, () => {
                             state.songs = state.songs.filter(s => s.theme !== themeName).concat(newSongs);
+                            saveServerData();
                             render();
                             window.showModal('alert', 'Import réussi !', `<strong>${newSongs.length}</strong> titres importés dans le thème "<strong>${themeName}</strong>".`);
                         });
                     } else {
                         state.songs = state.songs.concat(newSongs);
+                        saveServerData();
                         render();
                         window.showModal('alert', 'Import réussi !', `<strong>${newSongs.length}</strong> titres importés dans le nouveau thème "<strong>${themeName}</strong>".`);
                     }
@@ -316,6 +318,47 @@
                 reader.readAsText(file, 'utf-8');
             };
             input.click();
+        };
+
+        // Fonction pour exporter le code complet avec les playlists importées intégrées en dur
+        window.exportCode = async function() {
+            try {
+                window.showModal('alert', 'Génération en cours...', 'Récupération du code source et intégration des playlists...');
+                
+                // Récupérer le code source actuel de la page
+                const resp = await fetch(window.location.href.split('?')[0]);
+                let html = await resp.text();
+                
+                // Construire le nouveau tableau initialSongs à partir de state.songs
+                const songsJS = state.songs.map(s => {
+                    const esc = (str) => (str||'').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                    return `[${s.id},"${esc(s.title)}","${esc(s.artist)}","${esc(s.theme)}","${esc(s.filepath || '')}"]`;
+                }).join(',');
+                
+                // Remplacer la section initialSongs dans le HTML
+                const regex = /const initialSongs = \[[\s\S]*?\]\.map\(s => \(\{[\s\S]*?\}\)\);/;
+                const replacement = `const initialSongs = [\n            ${songsJS}\n        ].map(s => ({\n            id: s[0], \n            title: s[1], \n            artist: s[2], \n            theme: s[3], \n            filepath: s[4] || '',\n            votes: 0 \n        }));`;
+                
+                html = html.replace(regex, replacement);
+                
+                // Télécharger
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'index.html';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                
+                const importedCount = state.songs.length - initialSongs.length;
+                window.showModal('alert', 'Code exporté !', 
+                    '<strong>' + state.songs.length + '</strong> titres intégrés en dur dans le fichier.' +
+                    (importedCount > 0 ? '<br>dont <strong>' + importedCount + '</strong> titres importés via M3U8.' : '') +
+                    '<br><br>Remplace le <strong>index.html</strong> sur GitHub par ce fichier pour rendre les changements permanents.');
+            } catch(err) {
+                window.showModal('alert', 'Erreur', 'Impossible de générer le code : ' + err.message);
+            }
         };
 
         // Fonction pour réinitialiser la vue utilisateur et revenir en haut
@@ -507,15 +550,23 @@
                 const savedSongs = localStorage.getItem('dj_songs');
                 if (savedSongs) {
                     const parsedSongs = JSON.parse(savedSongs);
-                    if (Array.isArray(parsedSongs) && parsedSongs.length === initialSongs.length) {
+                    if (Array.isArray(parsedSongs) && parsedSongs.length >= initialSongs.length) {
+                        // Même taille ou plus (imports M3U8 ajoutés) → garder tel quel
                         state.songs = parsedSongs;
                     } else if (Array.isArray(parsedSongs)) {
+                        // Le code a été mis à jour avec plus de titres → fusionner les votes + garder les imports
                         const oldVotes = {};
-                        parsedSongs.forEach(s => { if (s && s.id) oldVotes[s.id] = s.votes || 0; });
+                        const importedSongs = [];
+                        const initialIds = new Set(initialSongs.map(s => s.id));
+                        parsedSongs.forEach(s => { 
+                            if (s && s.id) oldVotes[s.id] = s.votes || 0;
+                            // Conserver les titres importés par M3U8 (IDs absents de initialSongs)
+                            if (s && s.id && !initialIds.has(s.id)) importedSongs.push(s);
+                        });
                         state.songs = JSON.parse(JSON.stringify(initialSongs)).map(song => {
                             if (oldVotes[song.id]) song.votes = oldVotes[song.id];
                             return song;
-                        });
+                        }).concat(importedSongs);
                         saveServerData();
                     } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
                 } else { state.songs = JSON.parse(JSON.stringify(initialSongs)); }
@@ -1487,6 +1538,9 @@
                                             </button>
                                             <button onclick="importM3U8()" class="bg-white/10 hover:bg-magical-purple/20 border border-magical-purple/30 hover:border-magical-purple text-white font-bold px-4 py-5 rounded-2xl transition-colors flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(112,0,255,0.3)]" title="Importer une playlist M3U8">
                                                 <i class="ph-bold ph-upload-simple text-xl md:text-2xl"></i>
+                                            </button>
+                                            <button onclick="exportCode()" class="bg-white/10 hover:bg-magical-gold/20 border border-magical-gold/30 hover:border-magical-gold text-white font-bold px-4 py-5 rounded-2xl transition-colors flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(255,215,0,0.3)]" title="Exporter le code pour GitHub">
+                                                <i class="ph-bold ph-code text-xl md:text-2xl"></i>
                                             </button>
                                         </div>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
