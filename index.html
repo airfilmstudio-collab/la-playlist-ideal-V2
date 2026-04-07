@@ -960,19 +960,31 @@
             }
         }
 
+        let _renderTimer = null;
+        let _lastRenderedView = null;
         function render() {
+            if (_renderTimer) cancelAnimationFrame(_renderTimer);
+            _renderTimer = requestAnimationFrame(_doRender);
+        }
+        function _doRender() {
+            _renderTimer = null;
             const root = document.getElementById('root');
             if (!root) return;
             
             // Permet de savoir si on est sur la fenêtre détachée de la TV
             const isExternalDisplay = new URLSearchParams(window.location.search).get('public') !== null;
             
+            // N'appliquer l'animation que lors d'un changement de vue
+            const viewChanged = _lastRenderedView !== state.view;
+            _lastRenderedView = state.view;
+            const animClass = viewChanged ? 'animate-fade-in' : '';
+            
             let htmlToRender = '';
 
             // 1. VUE QR CODE GEANT
             if (state.view === 'qrcode' && state.currentPhase !== 1) {
                 htmlToRender = `
-                    <div class="h-screen w-screen flex flex-col items-center justify-center p-4 md:p-6 relative animate-fade-in overflow-hidden bg-[#050212]">
+                    <div class="h-screen w-screen flex flex-col items-center justify-center p-4 md:p-6 relative ${animClass} overflow-hidden bg-[#050212]">
                         <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-3 right-3 md:top-6 md:right-6 text-white/50 hover:text-white z-50 neo-glass p-2 rounded-full hover:bg-white/10 transition-all">
                             <i class="ph-bold ph-x text-2xl"></i>
                         </button>
@@ -1027,7 +1039,7 @@
             else if (state.view === 'monitor' || (state.view === 'qrcode' && state.currentPhase === 1)) {
                 if (state.currentPhase === 1) {
                     htmlToRender = `
-                        <div class="h-screen w-screen flex flex-col items-center justify-center p-4 md:p-6 relative animate-fade-in overflow-hidden bg-[#050212]">
+                        <div class="h-screen w-screen flex flex-col items-center justify-center p-4 md:p-6 relative ${animClass} overflow-hidden bg-[#050212]">
                             <button onclick="${isExternalDisplay ? 'window.close()' : "goTo('admin')"}" class="absolute top-3 right-3 md:top-6 md:right-6 text-white/50 hover:text-white z-50 neo-glass p-2 rounded-full hover:bg-white/10 transition-all">
                                 <i class="ph-bold ph-x text-2xl"></i>
                             </button>
@@ -1159,7 +1171,7 @@
                 }
 
                 htmlToRender = `
-                    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative animate-fade-in">
+                    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative ${animClass}">
                         <div class="neo-glass w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative z-10 text-center border-t-magical-pink/50">
                             <div class="mb-8 relative inline-block">
                                 <img src="${LOGO_URL}" alt="Universal DJ Logo" onclick="goTo('login')" class="h-20 md:h-28 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.5)] mx-auto cursor-pointer hover:scale-105 transition-transform" onerror="this.onerror=null; this.src='https://via.placeholder.com/400x150/FF007A/ffffff?text=Universal+DJ';">
