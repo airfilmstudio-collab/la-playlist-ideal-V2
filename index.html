@@ -649,18 +649,18 @@
                 if (savedP1) state.phase1Duration = parseInt(savedP1, 10);
                 const savedP2 = localStorage.getItem('dj_phase2');
                 if (savedP2) state.phase2Duration = parseInt(savedP2, 10);
-                
-                // Détection de l'écran externe (HDMI/TV) pour contourner la page d'accueil
-                const publicView = urlParams.get('public');
-                if (publicView) {
-                    state.view = publicView;
-                }
             } catch (error) {
                 console.error("Erreur de mémoire cache.", error);
                 state.songs = JSON.parse(JSON.stringify(initialSongs)); 
                 state.userVotes = {}; state.totalUserVotes = 0; state.eventStartTime = null;
             }
             if (!Array.isArray(state.songs)) state.songs = JSON.parse(JSON.stringify(initialSongs));
+            
+            // Détection de l'écran externe — TOUJOURS appliqué, même après une erreur
+            const publicView = new URLSearchParams(window.location.search).get('public');
+            if (publicView) {
+                state.view = publicView;
+            }
         }
 
         function saveServerData() {
@@ -927,6 +927,9 @@
                 
                 // Téléchargement automatique du Top 40 classé
                 window.downloadM3U();
+                
+                // Ouvrir/rafraîchir la fenêtre externe avec les résultats
+                window.openExternalDisplay('monitor');
                 
                 checkPhase(); 
                 render();
