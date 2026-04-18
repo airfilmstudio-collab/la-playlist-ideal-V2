@@ -191,6 +191,7 @@
 
         // --- ÉTAT GLOBAL DE L'APPLICATION ---
         let _localWriteLock = 0; // Verrou temporaire pour protéger les écritures admin
+        const _isExternalDisplay = new URLSearchParams(window.location.search).get('public') !== null;
         let state = {
             songs: JSON.parse(JSON.stringify(initialSongs)), 
             view: 'login', 
@@ -693,8 +694,8 @@
             if (state.currentPhase !== newPhase) { 
                 state.currentPhase = newPhase;
                 
-                // Redirection côté Écran Géant / Admin
-                if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode') {
+                // Redirection côté Écran Géant uniquement (pas le dashboard)
+                if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode' && _isExternalDisplay) {
                     state.view = 'monitor';
                 }
                 
@@ -889,7 +890,8 @@
                         eventStartTime: state.eventStartTime
                     }, { merge: true }).catch(e=>console.error(e));
                 }
-                state.view = 'monitor'; 
+                // Ouvrir automatiquement la fenêtre QR Code sur l'écran externe
+                window.openExternalDisplay('qrcode');
                 checkPhase();
                 render();
             });
@@ -926,7 +928,6 @@
                 // Téléchargement automatique du Top 40 classé
                 window.downloadM3U();
                 
-                state.view = 'monitor';
                 checkPhase(); 
                 render();
             });
