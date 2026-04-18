@@ -699,6 +699,11 @@
                     state.view = 'monitor';
                 }
                 
+                // Clôture automatique : télécharger le M3U8 côté admin quand le temps est écoulé
+                if (newPhase === 3 && !_isExternalDisplay) {
+                    window.downloadM3U();
+                }
+                
                 // Pour l'utilisateur : forcer un scroll en haut pour bien voir le classement final !
                 if (newPhase === 3 && state.view === 'user') {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
