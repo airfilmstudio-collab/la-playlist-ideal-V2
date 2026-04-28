@@ -270,97 +270,59 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.m3u8,.m3u';
-            input.multiple = true;
             input.onchange = (e) => {
-                const files = Array.from(e.target.files);
-                if (!files.length) return;
-                let allParsedSongs = [];
-                let filesRead = 0;
-                files.forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        const lines = ev.target.result.split(/\r?\n/);
-                        let extinf = null;
-                        for (const line of lines) {
-                            if (line.startsWith('#EXTINF:')) {
-                                const m = line.match(/#EXTINF:\d+,(.*)/);
-                                extinf = m ? m[1].trim() : null;
-                            } else if (extinf && !line.startsWith('#') && line.trim()) {
-                                let artist = 'Inconnu', title = extinf;
-                                const parts = extinf.split(' - ');
-                                if (parts.length >= 2) { artist = parts[0].trim(); title = parts.slice(1).join(' - ').trim(); }
-                                allParsedSongs.push({ title, artist, filepath: line.trim() });
-                                extinf = null;
+                const file = e.target.files[0];
+                if (!file) return;
+                const themeName = prompt("Nom du thème pour cette playlist :", file.name.replace(/\.(m3u8?|M3U8?)$/, ''));
+                if (!themeName) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const lines = ev.target.result.split(/\r?\n/);
+                    const newSongs = [];
+                    let extinf = null;
+                    let nextId = Math.max(...state.songs.map(s => s.id)) + 1;
+                    for (const line of lines) {
+                        if (line.startsWith('#EXTINF:')) {
+                            const m = line.match(/#EXTINF:\d+,(.*)/);
+                            extinf = m ? m[1].trim() : null;
+                        } else if (extinf && !line.startsWith('#') && line.trim()) {
+                            let artist = 'Inconnu', title = extinf;
+                            const parts = extinf.split(' - ');
+                            if (parts.length >= 2) { artist = parts[0].trim(); title = parts.slice(1).join(' - ').trim(); }
+                            // Dédoublonnage
+                            const exists = state.songs.some(s => s.title.toLowerCase() === title.toLowerCase() && s.artist.toLowerCase() === artist.toLowerCase());
+                            if (!exists) {
+                                newSongs.push({ id: nextId++, title, artist, theme: themeName, filepath: line.trim(), votes: 0 });
                             }
+                            extinf = null;
                         }
-                        filesRead++;
-                        if (filesRead === files.length) {
-                            showImportModal(allParsedSongs, files.map(f => f.name).join(', '));
-                        }
-                    };
-                    reader.readAsText(file, 'utf-8');
-                });
+                    }
+                    if (newSongs.length === 0) {
+                        window.showModal('alert', 'Import vide', 'Aucun nouveau titre trouvé dans ce fichier (doublons exclus).');
+                        return;
+                    }
+                    // Remove existing songs of this theme, then add new ones
+                    const confirmReplace = state.songs.some(s => s.theme === themeName);
+                    if (confirmReplace) {
+                        window.showModal('confirm', 'Remplacer le thème ?', `Le thème "<strong>${themeName}</strong>" existe déjà (${state.songs.filter(s=>s.theme===themeName).length} titres).<br><br>Remplacer par les ${newSongs.length} nouveaux titres importés ?`, () => {
+                            state.songs = state.songs.filter(s => s.theme !== themeName).concat(newSongs);
+                            saveServerData();
+                            render();
+                            window.showModal('alert', 'Import réussi !', `<strong>${newSongs.length}</strong> titres importés dans le thème "<strong>${themeName}</strong>".`);
+                        });
+                    } else {
+                        state.songs = state.songs.concat(newSongs);
+                        saveServerData();
+                        render();
+                        window.showModal('alert', 'Import réussi !', `<strong>${newSongs.length}</strong> titres importés dans le nouveau thème "<strong>${themeName}</strong>".`);
+                    }
+                };
+                reader.readAsText(file, 'utf-8');
             };
             input.click();
         };
 
-        function showImportModal(parsedSongs, fileNames) {
-            const newSongs = parsedSongs.filter(ps => {
-                return !state.songs.some(s => s.title.toLowerCase() === ps.title.toLowerCase() && s.artist.toLowerCase() === ps.artist.toLowerCase());
-            });
-            const themes = [...new Set(state.songs.map(s => s.theme))];
-            const themeOptions = themes.map(t => `<option value="${t}">${t}</option>`).join('');
-            
-            state.modal = {
-                type: 'custom',
-                title: '📂 Import M3U8',
-                message: `
-                    <div class="flex flex-col gap-4 text-left">
-                        <div class="bg-black/40 rounded-xl p-4 border border-white/10">
-                            <p class="text-white/60 text-sm mb-1">Fichier(s) : <strong class="text-white">${fileNames}</strong></p>
-                            <p class="text-white/60 text-sm">Titres trouvés : <strong class="text-magical-cyan text-lg">${parsedSongs.length}</strong></p>
-                            <p class="text-white/60 text-sm">Nouveaux (hors doublons) : <strong class="text-magical-pink text-lg">${newSongs.length}</strong></p>
-                        </div>
-                        ${newSongs.length === 0 ? '<p class="text-magical-pink font-bold text-center">Aucun nouveau titre à importer (tous déjà présents).</p>' : `
-                        <div>
-                            <label class="block text-sm text-white/60 mb-1 uppercase tracking-widest font-bold">Ajouter au thème :</label>
-                            <select id="import-theme-select" class="w-full bg-black/60 border border-white/20 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-magical-cyan transition-all">
-                                ${themeOptions}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm text-white/60 mb-1 uppercase tracking-widest font-bold">Ou créer un nouveau thème :</label>
-                            <input id="import-theme-new" type="text" placeholder="Laisser vide pour utiliser le thème ci-dessus..." class="w-full bg-black/60 border border-magical-cyan/30 rounded-xl py-3 px-4 text-magical-cyan focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all">
-                        </div>
-                        <details class="bg-black/30 rounded-xl border border-white/10">
-                            <summary class="p-3 cursor-pointer text-sm text-white/50 hover:text-white/80 transition-colors">Aperçu des titres (${newSongs.length})</summary>
-                            <div class="max-h-40 overflow-y-auto p-3 pt-0 text-xs text-white/60 space-y-1">
-                                ${newSongs.slice(0, 50).map(s => `<div>${s.artist} — ${s.title}</div>`).join('')}
-                                ${newSongs.length > 50 ? `<div class="text-magical-pink font-bold mt-2">... et ${newSongs.length - 50} autres</div>` : ''}
-                            </div>
-                        </details>
-                        `}
-                    </div>
-                `,
-                onConfirmCallback: () => {
-                    if (newSongs.length === 0) return;
-                    const themeNew = document.getElementById('import-theme-new')?.value?.trim();
-                    const themeSelect = document.getElementById('import-theme-select')?.value;
-                    const theme = themeNew || themeSelect;
-                    if (!theme) return;
-                    let nextId = Math.max(...state.songs.map(s => s.id)) + 1;
-                    const songsToAdd = newSongs.map(s => ({
-                        id: nextId++, title: s.title, artist: s.artist, theme: theme, filepath: s.filepath, votes: 0
-                    }));
-                    state.songs = state.songs.concat(songsToAdd);
-                    saveServerData();
-                    render();
-                    setTimeout(() => window.showModal('alert', 'Import réussi !', `<strong>${songsToAdd.length}</strong> titres ajoutés au thème "<strong>${theme}</strong>".<br><br>Total : <strong>${state.songs.filter(s => s.theme === theme).length}</strong> titres dans ce thème.`), 100);
-                }
-            };
-            render();
-        }
-
+        // Fonction pour ajouter un titre manuellement à un thème
         window.addSingleSong = function() {
             const themes = [...new Set(state.songs.map(s => s.theme))];
             const themeOptions = themes.map(t => `<option value="${t}">${t}</option>`).join('');
