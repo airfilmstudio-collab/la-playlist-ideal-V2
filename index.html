@@ -271,9 +271,11 @@
             input.type = 'file';
             input.accept = '.m3u8,.m3u';
             input.multiple = true;
+            document.body.appendChild(input);
+            input.style.display = 'none';
             input.onchange = (e) => {
                 const files = Array.from(e.target.files);
-                if (!files.length) return;
+                if (!files.length) { input.remove(); return; }
                 let allParsedSongs = [];
                 let filesRead = 0;
                 files.forEach(file => {
@@ -285,16 +287,44 @@
                             if (line.startsWith('#EXTINF:')) {
                                 const m = line.match(/#EXTINF:[^,]*,(.*)/);
                                 extinf = m ? m[1].trim() : null;
-                            } else if (extinf && !line.startsWith('#') && line.trim()) {
-                                let artist = 'Inconnu', title = extinf;
-                                const parts = extinf.split(' - ');
-                                if (parts.length >= 2) { artist = parts[0].trim(); title = parts.slice(1).join(' - ').trim(); }
-                                allParsedSongs.push({ title, artist, filepath: line.trim() });
+                            } else if (line.startsWith('#')) {
+                                // Ignorer les autres commentaires
+                                continue;
+                            } else if (line.trim()) {
+                                const filepath = line.trim();
+                                let artist = 'Inconnu', title = '';
+                                
+                                if (extinf) {
+                                    // Cas 1 : EXTINF disponible → parser "Artist - Title"
+                                    const parts = extinf.split(' - ');
+                                    if (parts.length >= 2) { artist = parts[0].trim(); title = parts.slice(1).join(' - ').trim(); }
+                                    else { title = extinf; }
+                                } else {
+                                    // Cas 2 : Pas d'EXTINF → extraire du nom de fichier
+                                    let fname = filepath.split(/[/\\]/).pop() || '';
+                                    fname = fname.replace(/\.[^.]+$/, ''); // Retirer extension
+                                    fname = fname.replace(/^\d+[\s._-]+/, ''); // Retirer numéro de piste
+                                    const parts = fname.split(' - ');
+                                    if (parts.length >= 2) { artist = parts[0].trim(); title = parts.slice(1).join(' - ').trim(); }
+                                    else { title = fname.trim(); }
+                                }
+                                
+                                if (title) {
+                                    allParsedSongs.push({ title, artist, filepath });
+                                }
                                 extinf = null;
                             }
                         }
                         filesRead++;
                         if (filesRead === files.length) {
+                            input.remove();
+                            showImportModal(allParsedSongs, files.map(f => f.name).join(', '));
+                        }
+                    };
+                    reader.onerror = () => {
+                        filesRead++;
+                        if (filesRead === files.length) {
+                            input.remove();
                             showImportModal(allParsedSongs, files.map(f => f.name).join(', '));
                         }
                     };
@@ -1745,7 +1775,7 @@
             if (state.modal) {
                 modalHTML = `
                     <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-                        <div class="neo-glass p-8 md:p-10 rounded-[2.5rem] w-full max-w-lg text-center border-t border-t-magical-pink/50 shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+                        <div class="neo-glass p-8 md:p-10 rounded-[2.5rem] w-full max-w-xl text-center border-t border-t-magical-pink/50 shadow-[0_20px_60px_rgba(0,0,0,0.8)] max-h-[90vh] overflow-y-auto">
                             <h3 class="text-3xl font-black text-white mb-6 text-glow-white">${state.modal.title}</h3>
                             <div class="text-white/80 font-medium mb-8 text-lg leading-relaxed">${state.modal.message}</div>
                             <div class="flex flex-col sm:flex-row gap-4 justify-center">
