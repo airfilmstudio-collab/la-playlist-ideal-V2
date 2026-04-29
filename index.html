@@ -780,17 +780,19 @@
             if (phaseChanged) { 
                 state.currentPhase = newPhase;
                 
-                // Redirection côté Écran Géant uniquement (pas le dashboard)
-                if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode' && _isExternalDisplay) {
-                    state.view = 'monitor';
-                }
-                
                 // Pour l'utilisateur : forcer un scroll en haut pour bien voir le classement final !
                 if (newPhase === 3 && state.view === 'user') {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
                 
                 render(); 
+            }
+            
+            // Bascule QR Code → Monitor sur l'écran externe (mode permanent, pas seulement à la transition)
+            // Ça résiste aux sauts de setInterval quand le navigateur ralentit l'arrière-plan
+            if ((newPhase === 2 || newPhase === 3) && state.view === 'qrcode' && _isExternalDisplay) {
+                state.view = 'monitor';
+                render();
             }
             
             // Actions de fin (résistantes aux sauts d'arrière-plan : on garde un flag persistant)
@@ -1225,17 +1227,48 @@
 
         window.updateGuestCode = function() {
             const newCode = document.getElementById('newGuestCode').value.toUpperCase().trim();
-            if (newCode) { 
-                state.guestCode = newCode;
-                saveServerData(); 
-                
-                if (isCloudActive && db && userId) {
-                    const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
-                    setDoc(publicRef, { guestCode: newCode }, { merge: true }).catch(e=>console.error(e));
-                }
-                window.showModal('alert', 'Mot de passe modifié', 'Le mot de passe de la soirée est désormais : <br><br><strong class="text-4xl text-magical-cyan tracking-widest">' + newCode + '</strong>'); 
-                render();
+            if (!newCode) return;
+            
+            // Mise à jour locale immédiate
+            state.guestCode = newCode;
+            saveServerData();
+            render();
+            
+            // Si pas de cloud, on s'arrête là (mode hors-ligne)
+            if (!isCloudActive) {
+                window.showModal('alert', 'Mot de passe modifié (Hors-ligne)',
+                    'Mode hors-ligne : le mot de passe est <strong class="text-magical-cyan">' + newCode + '</strong> uniquement sur ce navigateur.<br><br>⚠️ Les invités ne pourront pas se connecter sans Firebase actif.');
+                return;
             }
+            
+            // Tentative d'écriture Firestore avec retry si auth pas prête
+            const writeToFirestore = (attempt) => {
+                if (!db) {
+                    window.showModal('alert', '❌ Erreur',
+                        'Firebase n\'est pas connecté. Le mot de passe n\'a pas pu être enregistré côté serveur. Recharge la page et réessaie.');
+                    return;
+                }
+                
+                // Si l'auth n'est pas encore prête et qu'on n'a pas trop attendu, on attend
+                if (!userId && attempt < 10) {
+                    setTimeout(() => writeToFirestore(attempt + 1), 500);
+                    return;
+                }
+                
+                const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                setDoc(publicRef, { guestCode: newCode }, { merge: true })
+                    .then(() => {
+                        window.showModal('alert', '✅ Mot de passe modifié',
+                            'Le mot de passe de la soirée est désormais :<br><br><strong class="text-4xl text-magical-cyan tracking-widest">' + newCode + '</strong><br><br><span class="text-sm text-white/60">Synchronisé avec Firebase. Les invités peuvent maintenant se connecter avec ce code.</span>');
+                    })
+                    .catch((e) => {
+                        console.error('Erreur écriture mot de passe:', e);
+                        window.showModal('alert', '❌ Erreur de synchronisation',
+                            'Le mot de passe n\'a pas pu être enregistré sur Firebase :<br><br><span class="text-sm text-magical-pink">' + (e.message || 'Erreur inconnue') + '</span><br><br>Les invités ne pourront pas se connecter avec le nouveau code. Vérifie ta connexion internet et réessaie.');
+                    });
+            };
+            
+            writeToFirestore(0);
         }
 
         window.startEventTimer = function(mode) {
