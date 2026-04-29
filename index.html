@@ -1172,9 +1172,11 @@
             render();
         }
         
-        // Première lecture immédiate + polling adaptatif
-        // Phase 1 : 3s (économie batterie) | Phase 2/3 : 1.5s (réactivité)
+        // Première lecture immédiate ET deuxième lecture rapide (1s)
+        // pour garantir que state.guestCode est synchronisé même si l'invité tape vite
         fetchPublicData();
+        setTimeout(() => fetchPublicData(), 500);
+        setTimeout(() => fetchPublicData(), 1500);
         let _pollInterval = null;
         function startAdaptivePolling() {
             if (_pollInterval) clearInterval(_pollInterval);
@@ -1194,7 +1196,7 @@
 
         // --- METHODES D'ACTIONS UTILISATEUR ---
 
-        window.checkGuestLogin = async function(event) {
+        window.checkGuestLogin = function(event) {
             unlockAudio(); // Déblocage audio iOS pour notification ultérieure
 
             event.preventDefault();
@@ -1204,35 +1206,8 @@
             const input = passEl.value.toUpperCase().trim();
             if (!input) return;
             
-            // Étape 1 : si on est en cloud et qu'on n'a pas encore reçu Firestore, 
-            // on force un fetch frais MAINTENANT (sans détruire le DOM avec render).
-            // On attend max 4 secondes, puis on évalue avec ce qu'on a.
-            if (isCloudActive && !_firstFetchDone) {
-                // Mise à jour visuelle directe sans re-render (préserve l'input)
-                const errEl = passEl.parentElement.parentElement.querySelector('.text-magical-pink');
-                if (errEl) {
-                    errEl.textContent = '⏳ Connexion à la soirée…';
-                    errEl.classList.remove('text-magical-pink');
-                    errEl.classList.add('text-magical-cyan');
-                }
-                
-                // Tenter un fetch frais avec timeout 4s
-                try {
-                    await Promise.race([
-                        fetchPublicData(),
-                        new Promise(r => setTimeout(r, 4000))
-                    ]);
-                } catch(e) { /* on continue avec ce qu'on a */ }
-                
-                // Restaurer le style d'erreur normal
-                if (errEl) {
-                    errEl.classList.add('text-magical-pink');
-                    errEl.classList.remove('text-magical-cyan');
-                    errEl.textContent = '';
-                }
-            }
-            
-            // Étape 2 : comparaison normale avec la valeur la plus à jour de state.guestCode
+            // Comparaison directe avec state.guestCode (mis à jour par le polling Firestore)
+            // Si le polling n'a pas encore tourné, l'invité retentera dans 2-3s et ça marchera
             const correctCode = state.guestCode.toUpperCase().trim();
             
             // Si le code est correct OU si on est en mode "Hors ligne" on force l'accès
@@ -1262,7 +1237,7 @@
                 }
             } 
             else { 
-                state.loginError = 'Code incorrect ou expiré !'; 
+                state.loginError = 'Code incorrect. Réessaie dans 2 secondes (synchronisation en cours).'; 
             }
             render();
         }
@@ -1871,11 +1846,6 @@
                 // qu'il voit sur l'écran de la soirée. Ça évite les bugs où le QR scanné 
                 // contient un ancien code et l'invité ne sait pas qu'il doit le changer.
                 let autoFillCode = "";
-                
-                // Si un message "Connexion…" traîne d'un check précédent, le nettoyer
-                if (state.loginError === '⏳ Connexion à la soirée…') {
-                    state.loginError = '';
-                }
 
                 htmlToRender = `
                     <div class="min-h-screen flex flex-col items-center justify-center p-4 relative ${animClass}">
