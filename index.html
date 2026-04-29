@@ -217,6 +217,7 @@
         let _audioCtx = null;
         let _wakeLock = null;          // Wake Lock pour garder l'écran allumé
         let _audioKeepaliveInterval = null;  // Keepalive audio pour iOS
+        let _lastPollAt = 0;           // Timestamp du dernier polling réussi (détection saut iOS)
 
         // --- EXPOSITION DES FONCTIONS GLOBALES (Pour les onclick HTML) ---
         window.showModal = function(type, title, message, onConfirmCallback = null) {
@@ -843,11 +844,18 @@
         // ═══════════════════════════════════════════════════════════════
         async function fetchPublicData() {
             if (!isCloudActive) return;
+            
+            // Détection de saut iOS : si le dernier poll a plus de 10s, on a été suspendus
+            const now = Date.now();
+            const elapsedSinceLastPoll = _lastPollAt ? (now - _lastPollAt) : 0;
+            const wasSuspended = (elapsedSinceLastPoll > 10000);
+            _lastPollAt = now;
+            
             try {
                 const projectId = "laplaylistideale";
                 const docPath = `artifacts/${appId}/public/data/playlist/main`;
-                const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${docPath}`;
-                const resp = await fetch(url);
+                const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${docPath}?_t=${now}`;
+                const resp = await fetch(url, { cache: 'no-store' });
                 if (!resp.ok) return;
                 const doc = await resp.json();
                 if (!doc.fields) return;
@@ -866,11 +874,12 @@
                     
                     // Lecture du flag resultsPublished + déclenchement notif côté invité
                     const newPublished = (f.resultsPublished && f.resultsPublished.booleanValue === true);
+                    
+                    // Cas 1 : transition de false → true (cas normal, en temps réel)
                     if (newPublished !== state.resultsPublished) {
                         state.resultsPublished = newPublished;
                         changed = true;
                         
-                        // Si on est invité et que les résultats viennent d'être publiés → notifier
                         if (newPublished && state.view === 'user' && !_resultsNotifiedLocally) {
                             _resultsNotifiedLocally = true;
                             triggerResultsNotification();
@@ -878,6 +887,14 @@
                         if (!newPublished) {
                             _resultsNotifiedLocally = false;
                         }
+                    }
+                    // Cas 2 : iOS suspendu - publication ratée pendant l'absence
+                    // Si on a été suspendus ET que les résultats sont publiés ET qu'on n'a jamais notifié
+                    // → c'est qu'on a raté l'événement, on rejoue la notif maintenant
+                    else if (wasSuspended && newPublished && state.view === 'user' && !_resultsNotifiedLocally) {
+                        _resultsNotifiedLocally = true;
+                        changed = true;
+                        triggerResultsNotification();
                     }
                 }
                 
@@ -984,23 +1001,53 @@
             } catch(e) { /* pas supporté ou refusé, on s'en passe */ }
         }
         
-        // Re-demander le Wake Lock quand l'onglet redevient visible
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && _audioUnlocked) {
-                if (!_wakeLock) requestWakeLock();
-                // Reprendre l'AudioContext si suspendu
-                if (_audioCtx && _audioCtx.state === 'suspended') {
-                    _audioCtx.resume().catch(()=>{});
-                }
-                // Si les résultats ont été publiés pendant qu'on était parti
-                // ET qu'on n'a pas encore notifié localement → rejouer la notif
-                if (state.resultsPublished && state.view === 'user' && !_resultsNotifiedLocally) {
-                    _resultsNotifiedLocally = true;
-                    setTimeout(() => triggerResultsNotification(), 300);
-                }
-                // Forcer un fetch immédiat pour rattraper le retard du polling
-                if (typeof fetchPublicData === 'function') fetchPublicData();
+        // ═══════════════════════════════════════════════════════════════
+        // RETOUR DE VEILLE iOS : réveil multi-events pour fiabilité maximale
+        // visibilitychange seul n'est pas fiable sur Chrome iOS après veille profonde
+        // ═══════════════════════════════════════════════════════════════
+        function handleAppResume(reason) {
+            if (!_audioUnlocked) return; // Pas encore loggué
+            
+            // Re-demander le Wake Lock si perdu
+            if (!_wakeLock) requestWakeLock();
+            
+            // Reprendre l'AudioContext si suspendu
+            if (_audioCtx && _audioCtx.state === 'suspended') {
+                _audioCtx.resume().catch(()=>{});
             }
+            
+            // Forcer un fetch immédiat pour rattraper le retard du polling
+            // (le polling normal toutes les 3s peut être trop lent au retour de veille)
+            if (typeof fetchPublicData === 'function') {
+                fetchPublicData();
+                // Et un second fetch 1s plus tard au cas où le premier était trop tôt
+                setTimeout(() => fetchPublicData(), 1000);
+                // Et un troisième 3s plus tard pour absolument être sûr
+                setTimeout(() => fetchPublicData(), 3000);
+            }
+        }
+        
+        // Event 1 : visibilitychange (standard, marche sur la plupart des navigateurs)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                handleAppResume('visibilitychange');
+            }
+        });
+        
+        // Event 2 : pageshow (déclenché aussi quand iOS restaure depuis le bfcache)
+        // Critique pour Chrome iOS et Safari iOS après une veille profonde
+        window.addEventListener('pageshow', (e) => {
+            if (e.persisted) {
+                // Page restaurée depuis le bfcache iOS - état JS conservé mais polling figé
+                handleAppResume('pageshow-persisted');
+            } else {
+                handleAppResume('pageshow-fresh');
+            }
+        });
+        
+        // Event 3 : focus sur la fenêtre (filet de sécurité supplémentaire)
+        window.addEventListener('focus', () => {
+            handleAppResume('focus');
         });
         
         // Bip de notification (3 notes ascendantes "ding")
@@ -1047,8 +1094,16 @@
         }
         
         // Déclenchement complet : bip + vibration + bascule visuelle
+        // Le bip est tenté plusieurs fois pour battre les délais d'AudioContext.resume()
+        // sur iOS qui peut prendre 1-2s à se réveiller après une suspension
         async function triggerResultsNotification() {
-            await playNotificationBeep();
+            // Tentative 1 : immédiate
+            playNotificationBeep().catch(()=>{});
+            // Tentative 2 : 1s plus tard (au cas où le resume() prend du temps)
+            setTimeout(() => playNotificationBeep().catch(()=>{}), 1000);
+            // Tentative 3 : 3s plus tard (filet de sécurité ultime)
+            setTimeout(() => playNotificationBeep().catch(()=>{}), 3000);
+            // Vibration (instantané)
             vibrateNotification();
             
             // Animation flash plein écran cyan/magenta pour attirer l'attention
@@ -1094,9 +1149,25 @@
             render();
         }
         
-        // Première lecture immédiate + polling toutes les 3 secondes
+        // Première lecture immédiate + polling adaptatif
+        // Phase 1 : 3s (économie batterie) | Phase 2/3 : 1.5s (réactivité)
         fetchPublicData();
-        setInterval(fetchPublicData, 3000);
+        let _pollInterval = null;
+        function startAdaptivePolling() {
+            if (_pollInterval) clearInterval(_pollInterval);
+            const fast = (state.currentPhase === 2 || state.currentPhase === 3);
+            _pollInterval = setInterval(fetchPublicData, fast ? 1500 : 3000);
+        }
+        startAdaptivePolling();
+        // Réajuster la fréquence à chaque tick de checkPhase si la phase change
+        setInterval(() => {
+            const fast = (state.currentPhase === 2 || state.currentPhase === 3);
+            const currentRate = _pollInterval ? 1500 : 3000;
+            const desiredRate = fast ? 1500 : 3000;
+            if (currentRate !== desiredRate) {
+                startAdaptivePolling();
+            }
+        }, 5000);
 
         // --- METHODES D'ACTIONS UTILISATEUR ---
 
