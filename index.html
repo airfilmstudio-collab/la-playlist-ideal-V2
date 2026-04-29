@@ -581,10 +581,11 @@
                     const data = docSnap.data();
                     
                     state.sessionId = data.sessionId || 'init';
-                    state.guestCode = data.guestCode || 'FIESTA';
                     
-                    // Ne pas écraser le minuteur si un écrit admin est en cours
+                    // Ne pas écraser ces champs si un écrit admin est en cours
+                    // (sinon race condition : on écrase la valeur qu'on vient de poser localement)
                     if (Date.now() > _localWriteLock) {
+                        state.guestCode = data.guestCode || 'FIESTA';
                         state.eventStartTime = data.eventStartTime || null;
                         state.phase1Duration = data.phase1Duration || (2 * 60 * 60 * 1000);
                         state.phase2Duration = data.phase2Duration || (1 * 60 * 60 * 1000);
@@ -900,9 +901,12 @@
                     }
                 }
                 
-                // Lecture du code et de la session
-                if (f.guestCode && f.guestCode.stringValue && f.guestCode.stringValue !== state.guestCode) { state.guestCode = f.guestCode.stringValue; changed = true; }
-                if (f.sessionId && f.sessionId.stringValue && f.sessionId.stringValue !== state.sessionId) { state.sessionId = f.sessionId.stringValue; changed = true; }
+                // Lecture du code et de la session — protégée par _localWriteLock
+                // pour ne pas écraser une modification admin qui n'a pas encore été propagée
+                if (Date.now() > _localWriteLock) {
+                    if (f.guestCode && f.guestCode.stringValue && f.guestCode.stringValue !== state.guestCode) { state.guestCode = f.guestCode.stringValue; changed = true; }
+                    if (f.sessionId && f.sessionId.stringValue && f.sessionId.stringValue !== state.sessionId) { state.sessionId = f.sessionId.stringValue; changed = true; }
+                }
                 
                 // Lecture des votes
                 const oldTotal = state.songs.reduce((a,s) => a + (s.votes||0), 0);
@@ -1228,6 +1232,10 @@
         window.updateGuestCode = function() {
             const newCode = document.getElementById('newGuestCode').value.toUpperCase().trim();
             if (!newCode) return;
+            
+            // Verrou de 15s : bloque toutes les lectures (snapshot + REST) qui écraseraient state.guestCode
+            // Le temps que la propagation Firestore se fasse et que les nouvelles lectures renvoient le bon code
+            _localWriteLock = Date.now() + 15000;
             
             // Mise à jour locale immédiate
             state.guestCode = newCode;
