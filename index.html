@@ -215,6 +215,8 @@
         let _audioUnlocked = false;
         let _resultsNotifiedLocally = false;
         let _audioCtx = null;
+        let _wakeLock = null;          // Wake Lock pour garder l'écran allumé
+        let _audioKeepaliveInterval = null;  // Keepalive audio pour iOS
 
         // --- EXPOSITION DES FONCTIONS GLOBALES (Pour les onclick HTML) ---
         window.showModal = function(type, title, message, onConfirmCallback = null) {
@@ -936,28 +938,102 @@
                 osc.start();
                 osc.stop(_audioCtx.currentTime + 0.001);
                 _audioUnlocked = true;
+                
+                // Lancer le keepalive audio pour empêcher iOS de suspendre l'AudioContext
+                startAudioKeepalive();
+                
+                // Demander un Wake Lock pour garder l'écran allumé
+                requestWakeLock();
             } catch(e) { /* navigateur ancien, on s'en passe */ }
         }
         
-        // Bip de notification (3 notes ascendantes "ding")
-        function playNotificationBeep() {
-            if (!_audioCtx) return;
-            try {
-                const now = _audioCtx.currentTime;
-                const notes = [523.25, 659.25, 783.99]; // Do - Mi - Sol (cinquième octave)
-                notes.forEach((freq, i) => {
+        // Keepalive audio : son inaudible toutes les 25s pour empêcher iOS
+        // de mettre l'AudioContext en état "suspended"
+        function startAudioKeepalive() {
+            if (_audioKeepaliveInterval) return;
+            _audioKeepaliveInterval = setInterval(() => {
+                if (!_audioCtx) return;
+                try {
+                    // Reprise explicite si suspendu (iOS le fait silencieusement)
+                    if (_audioCtx.state === 'suspended') {
+                        _audioCtx.resume().catch(()=>{});
+                    }
+                    // Bip inaudible (gain quasi-zéro) pour maintenir le contexte actif
                     const osc = _audioCtx.createOscillator();
                     const gain = _audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.value = freq;
-                    gain.gain.setValueAtTime(0, now + i * 0.18);
-                    gain.gain.linearRampToValueAtTime(0.3, now + i * 0.18 + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.4);
+                    gain.gain.value = 0.00001;
+                    osc.frequency.value = 1;
                     osc.connect(gain);
                     gain.connect(_audioCtx.destination);
-                    osc.start(now + i * 0.18);
-                    osc.stop(now + i * 0.18 + 0.4);
-                });
+                    osc.start();
+                    osc.stop(_audioCtx.currentTime + 0.01);
+                } catch(e) { /* silencieux */ }
+            }, 25000); // toutes les 25s (iOS commence à suspendre après ~30s)
+        }
+        
+        // Wake Lock : garde l'écran allumé pendant toute la session
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    _wakeLock = await navigator.wakeLock.request('screen');
+                    // Re-demander le Wake Lock si l'utilisateur revient sur l'onglet
+                    _wakeLock.addEventListener('release', () => {
+                        _wakeLock = null;
+                    });
+                }
+            } catch(e) { /* pas supporté ou refusé, on s'en passe */ }
+        }
+        
+        // Re-demander le Wake Lock quand l'onglet redevient visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && _audioUnlocked) {
+                if (!_wakeLock) requestWakeLock();
+                // Reprendre l'AudioContext si suspendu
+                if (_audioCtx && _audioCtx.state === 'suspended') {
+                    _audioCtx.resume().catch(()=>{});
+                }
+                // Si les résultats ont été publiés pendant qu'on était parti
+                // ET qu'on n'a pas encore notifié localement → rejouer la notif
+                if (state.resultsPublished && state.view === 'user' && !_resultsNotifiedLocally) {
+                    _resultsNotifiedLocally = true;
+                    setTimeout(() => triggerResultsNotification(), 300);
+                }
+                // Forcer un fetch immédiat pour rattraper le retard du polling
+                if (typeof fetchPublicData === 'function') fetchPublicData();
+            }
+        });
+        
+        // Bip de notification (3 notes ascendantes "ding")
+        // Avec reprise explicite de l'AudioContext (essentiel pour iOS)
+        async function playNotificationBeep() {
+            if (!_audioCtx) return;
+            try {
+                // CRITIQUE pour iOS : reprendre l'AudioContext s'il est suspendu
+                if (_audioCtx.state === 'suspended') {
+                    await _audioCtx.resume();
+                }
+                
+                const now = _audioCtx.currentTime;
+                const notes = [523.25, 659.25, 783.99]; // Do - Mi - Sol (cinquième octave)
+                
+                // Jouer 2 fois la séquence pour maximiser les chances d'être entendu
+                for (let pass = 0; pass < 2; pass++) {
+                    const offset = pass * 0.9; // décaler le second tour de 0.9s
+                    notes.forEach((freq, i) => {
+                        const osc = _audioCtx.createOscillator();
+                        const gain = _audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = freq;
+                        const t0 = now + offset + i * 0.18;
+                        gain.gain.setValueAtTime(0, t0);
+                        gain.gain.linearRampToValueAtTime(0.4, t0 + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
+                        osc.connect(gain);
+                        gain.connect(_audioCtx.destination);
+                        osc.start(t0);
+                        osc.stop(t0 + 0.4);
+                    });
+                }
             } catch(e) { /* silencieux */ }
         }
         
@@ -971,8 +1047,8 @@
         }
         
         // Déclenchement complet : bip + vibration + bascule visuelle
-        function triggerResultsNotification() {
-            playNotificationBeep();
+        async function triggerResultsNotification() {
+            await playNotificationBeep();
             vibrateNotification();
             
             // Animation flash plein écran cyan/magenta pour attirer l'attention
@@ -1139,6 +1215,16 @@
             });
         }
 
+        // Rejouer la notif manuellement (bouton "Rejouer le bip" sur l'écran résultats)
+        window.replayNotification = async function() {
+            // Re-déverrouiller l'audio au cas où (c'est une action utilisateur, donc safe)
+            unlockAudio();
+            // Petit délai pour que l'AudioContext soit bien actif
+            await new Promise(r => setTimeout(r, 100));
+            await playNotificationBeep();
+            vibrateNotification();
+        };
+        
         // ═══════════════════════════════════════════════════════════════
         // PUBLICATION DES RÉSULTATS - Notification aux téléphones invités
         // ═══════════════════════════════════════════════════════════════
@@ -1707,6 +1793,11 @@
                                         <div class="inline-block mt-4 px-5 py-2 rounded-full bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold text-sm tracking-widest">
                                             🎯 ${myInTop} de tes votes dans le Top !
                                         </div>` : ''}
+                                        <div class="mt-4">
+                                            <button onclick="window.replayNotification()" class="text-xs uppercase tracking-widest text-white/40 hover:text-white/80 transition-colors px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/30">
+                                                🔔 Rejouer le bip
+                                            </button>
+                                        </div>
                                     </div>
                                     
                                     ${top40.length === 0 ? `
@@ -1752,6 +1843,8 @@
                     const filteredSongs = state.songs.filter(song => {
                         return state.selectedTheme === 'Tous' || song.theme === state.selectedTheme;
                     });
+                    // Bandeau d'info pendant la phase finale : rappel pour garder l'écran allumé
+                    const showKeepScreenOnHint = (state.currentPhase === 2);
                     const searchLower = (state.searchQuery || '').toLowerCase();
 
                     const themes = ['Tous', ...new Set(state.songs.map(s => s.theme))];
