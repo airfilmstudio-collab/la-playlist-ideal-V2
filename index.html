@@ -175,7 +175,7 @@
 
         const MAX_TOTAL_VOTES = 30;
         const MAX_VOTES_PER_SONG = 2;
-        const PASS_ADMIN = "DJ";
+        const PASS_ADMIN_DEFAULT = "DJ"; // Valeur par défaut si pas encore configurée
 
         // Compression du tableau pour éviter la coupure du fichier sans perdre aucune donnée
         const initialSongs = [
@@ -208,8 +208,13 @@
             sessionId: 'init',
             modal: null,
             resultsPublished: false,
-            resultsAcknowledged: false
+            resultsAcknowledged: false,
+            adminCode: 'DJ'
         };
+        
+        // Flag : passe à true dès qu'un premier fetch Firestore a réussi
+        // Permet de bloquer les login tant qu'on n'a pas la valeur à jour
+        let _firstFetchDone = false;
         
         // Flags pour la notification de fin (côté invité)
         let _audioUnlocked = false;
@@ -581,11 +586,13 @@
                     const data = docSnap.data();
                     
                     state.sessionId = data.sessionId || 'init';
+                    _firstFetchDone = true; // Marqueur premier fetch SDK
                     
                     // Ne pas écraser ces champs si un écrit admin est en cours
                     // (sinon race condition : on écrase la valeur qu'on vient de poser localement)
                     if (Date.now() > _localWriteLock) {
                         state.guestCode = data.guestCode || 'FIESTA';
+                        state.adminCode = data.adminCode || 'DJ';
                         state.eventStartTime = data.eventStartTime || null;
                         state.phase1Duration = data.phase1Duration || (2 * 60 * 60 * 1000);
                         state.phase2Duration = data.phase2Duration || (1 * 60 * 60 * 1000);
@@ -611,6 +618,7 @@
                     setDoc(publicRef, {
                         sessionId: Date.now().toString(),
                         guestCode: state.guestCode || 'FIESTA',
+                        adminCode: state.adminCode || 'DJ',
                         eventStartTime: null,
                         phase1Duration: 2 * 60 * 60 * 1000,
                         phase2Duration: 1 * 60 * 60 * 1000,
@@ -680,18 +688,22 @@
                 // Vérification de la session pour vider ou charger les votes
                 verifySessionAndLoadVotes();
 
-                // Gestion du Mot de passe
-                const urlCode = urlParams.get('code');
-                if (urlCode) {
-                    state.guestCode = urlCode.toUpperCase().trim();
-                    localStorage.setItem('dj_guestCode', state.guestCode);
+                // Gestion du Mot de passe : on lit le localStorage en valeur initiale,
+                // mais Firestore va l'écraser dès le premier fetch (source de vérité).
+                // L'URL est ignorée pour ne pas figer un ancien code.
+                const savedCode = localStorage.getItem('dj_guestCode');
+                if (savedCode && savedCode.trim() !== '') {
+                    state.guestCode = savedCode.trim();
                 } else {
-                    const savedCode = localStorage.getItem('dj_guestCode');
-                    if (savedCode && savedCode.trim() !== '') {
-                        state.guestCode = savedCode.trim();
-                    } else {
-                        state.guestCode = 'FIESTA';
-                    }
+                    state.guestCode = 'FIESTA';
+                }
+                
+                // adminCode initial depuis localStorage
+                const savedAdmin = localStorage.getItem('dj_adminCode');
+                if (savedAdmin && savedAdmin.trim() !== '') {
+                    state.adminCode = savedAdmin.trim();
+                } else {
+                    state.adminCode = 'DJ';
                 }
 
                 // Chargement des chansons
@@ -755,6 +767,7 @@
                 localStorage.setItem('dj_phase2', state.phase2Duration);
                 localStorage.setItem('dj_sessionId', state.sessionId);
                 localStorage.setItem('dj_resultsPublished', state.resultsPublished ? '1' : '0');
+                localStorage.setItem('dj_adminCode', state.adminCode || 'DJ');
             } catch (error) { console.error("Erreur de sauvegarde", error); }
         }
 
@@ -863,6 +876,9 @@
                 const doc = await resp.json();
                 if (!doc.fields) return;
                 
+                // Marquer le premier fetch réussi (utilisé pour bloquer login tant qu'on n'a pas la valeur)
+                _firstFetchDone = true;
+                
                 const f = doc.fields;
                 let changed = false;
                 
@@ -906,6 +922,7 @@
                 if (Date.now() > _localWriteLock) {
                     if (f.guestCode && f.guestCode.stringValue && f.guestCode.stringValue !== state.guestCode) { state.guestCode = f.guestCode.stringValue; changed = true; }
                     if (f.sessionId && f.sessionId.stringValue && f.sessionId.stringValue !== state.sessionId) { state.sessionId = f.sessionId.stringValue; changed = true; }
+                    if (f.adminCode && f.adminCode.stringValue && f.adminCode.stringValue !== state.adminCode) { state.adminCode = f.adminCode.stringValue; changed = true; }
                 }
                 
                 // Lecture des votes
@@ -1185,6 +1202,30 @@
             if (!passEl) return;
             
             const input = passEl.value.toUpperCase().trim();
+            
+            // Si le polling Firestore n'a pas encore tourné (premier login très rapide),
+            // on attend qu'il se fasse pour avoir le bon mot de passe avant de vérifier.
+            // Sinon l'invité clique avant que state.guestCode soit synchronisé et c'est refusé à tort.
+            if (isCloudActive && !_firstFetchDone) {
+                state.loginError = '⏳ Connexion à la soirée…';
+                render();
+                // Forcer un fetch immédiat
+                fetchPublicData().then(() => {
+                    state.loginError = '';
+                    // Ré-essayer après le fetch
+                    setTimeout(() => {
+                        if (passEl.value) {
+                            const fakeEvent = { preventDefault: () => {} };
+                            window.checkGuestLogin(fakeEvent);
+                        }
+                    }, 200);
+                }).catch(() => {
+                    state.loginError = 'Connexion impossible. Vérifie ta connexion internet.';
+                    render();
+                });
+                return;
+            }
+            
             const correctCode = state.guestCode.toUpperCase().trim();
             
             // Si le code est correct OU si on est en mode "Hors ligne" on force l'accès
@@ -1224,7 +1265,8 @@
             const passEl = document.getElementById('adminPass');
             if (!passEl) return;
             const input = passEl.value.toUpperCase().trim();
-            if (input === PASS_ADMIN) { state.view = 'admin'; state.loginError = ''; } 
+            const correctAdmin = (state.adminCode || PASS_ADMIN_DEFAULT).toUpperCase().trim();
+            if (input === correctAdmin) { state.view = 'admin'; state.loginError = ''; } 
             else { state.loginError = 'Code DJ incorrect !'; }
             render();
         }
@@ -1279,6 +1321,50 @@
             writeToFirestore(0);
         }
 
+        // Modification du code admin (DJ) - même mécanique que updateGuestCode
+        window.updateAdminCode = function() {
+            const newCode = document.getElementById('newAdminCode').value.toUpperCase().trim();
+            if (!newCode) return;
+            
+            // Verrou de 15s pour bloquer toutes les lectures qui écraseraient state.adminCode
+            _localWriteLock = Date.now() + 15000;
+            
+            state.adminCode = newCode;
+            saveServerData();
+            render();
+            
+            if (!isCloudActive) {
+                window.showModal('alert', 'Code admin modifié (Hors-ligne)',
+                    'Mode hors-ligne : le code DJ est <strong class="text-magical-purple">' + newCode + '</strong> uniquement sur ce navigateur.');
+                return;
+            }
+            
+            const writeAdminToFirestore = (attempt) => {
+                if (!db) {
+                    window.showModal('alert', '❌ Erreur',
+                        'Firebase n\'est pas connecté. Le code admin n\'a pas pu être enregistré côté serveur.');
+                    return;
+                }
+                if (!userId && attempt < 10) {
+                    setTimeout(() => writeAdminToFirestore(attempt + 1), 500);
+                    return;
+                }
+                const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'playlist', 'main');
+                setDoc(publicRef, { adminCode: newCode }, { merge: true })
+                    .then(() => {
+                        window.showModal('alert', '✅ Code DJ modifié',
+                            'Le code administrateur est désormais :<br><br><strong class="text-4xl text-magical-purple tracking-widest">' + newCode + '</strong><br><br><span class="text-sm text-white/60">Synchronisé avec Firebase. Garde-le en lieu sûr !</span>');
+                    })
+                    .catch((e) => {
+                        console.error('Erreur écriture code admin:', e);
+                        window.showModal('alert', '❌ Erreur de synchronisation',
+                            'Le code admin n\'a pas pu être enregistré sur Firebase :<br><br><span class="text-sm text-magical-pink">' + (e.message || 'Erreur inconnue') + '</span><br><br>Vérifie ta connexion internet et réessaie.');
+                    });
+            };
+            
+            writeAdminToFirestore(0);
+        }
+        
         window.startEventTimer = function(mode) {
             let p1Min, p2Min, msg;
             if (mode === '3H') { p1Min = 120; p2Min = 60; msg = "2 Heures : QR Code géant.<br>- 1 Heure : Top 40."; }
@@ -1774,13 +1860,10 @@
             else if (state.view === 'login' || state.view === 'adminLogin') {
                 const isAdmin = state.view === 'adminLogin';
                 
-                // Pré-remplir le code invité si on arrive depuis le QR Code
-                const urlParams = new URLSearchParams(window.location.search);
-                const codeFromUrl = urlParams.get('code');
+                // On ne pré-remplit PLUS le champ avec l'URL — l'invité tape le code
+                // qu'il voit sur l'écran de la soirée. Ça évite les bugs où le QR scanné 
+                // contient un ancien code et l'invité ne sait pas qu'il doit le changer.
                 let autoFillCode = "";
-                if (!isAdmin && codeFromUrl) {
-                    autoFillCode = codeFromUrl.toUpperCase();
-                }
 
                 htmlToRender = `
                     <div class="min-h-screen flex flex-col items-center justify-center p-4 relative ${animClass}">
@@ -2207,14 +2290,34 @@
 
                                 <div class="neo-glass rounded-[2.5rem] p-8 flex flex-col justify-center">
                                     <h3 class="text-2xl font-black text-white mb-6 flex items-center gap-3 text-glow-white">
-                                        <i class="ph-fill ph-lock-key text-white/50 text-3xl"></i> Mot de passe
+                                        <i class="ph-fill ph-lock-key text-white/50 text-3xl"></i> Mots de passe
                                     </h3>
-                                    <div class="flex flex-col sm:flex-row gap-4 items-center">
-                                        <input id="newGuestCode" type="text" value="${state.guestCode}" 
-                                            class="w-full bg-black/60 border border-white/20 rounded-2xl py-5 px-6 text-white uppercase tracking-[0.2em] font-black text-2xl focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all text-center sm:text-left shadow-inner">
-                                        <button onclick="updateGuestCode()" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-8 py-5 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-                                            Mettre à jour
-                                        </button>
+                                    
+                                    <!-- Code Invité (cyan) -->
+                                    <div class="mb-6">
+                                        <label class="block text-xs text-magical-cyan mb-2 uppercase tracking-widest font-bold">Code Invité (la soirée)</label>
+                                        <div class="flex flex-col sm:flex-row gap-3 items-stretch">
+                                            <input id="newGuestCode" type="text" value="${state.guestCode}" 
+                                                class="flex-1 bg-black/60 border border-magical-cyan/30 rounded-2xl py-4 px-5 text-white uppercase tracking-[0.2em] font-black text-xl focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all text-center shadow-inner">
+                                            <button onclick="updateGuestCode()" class="bg-magical-cyan/15 hover:bg-magical-cyan/25 border border-magical-cyan/40 hover:border-magical-cyan text-magical-cyan font-bold px-6 py-4 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+                                                Mettre à jour
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Code Admin (violet) -->
+                                    <div>
+                                        <label class="block text-xs text-magical-purple mb-2 uppercase tracking-widest font-bold flex items-center gap-2">
+                                            <i class="ph-fill ph-crown text-sm"></i> Code DJ (administrateur)
+                                        </label>
+                                        <div class="flex flex-col sm:flex-row gap-3 items-stretch">
+                                            <input id="newAdminCode" type="text" value="${state.adminCode || 'DJ'}" 
+                                                class="flex-1 bg-black/60 border border-magical-purple/30 rounded-2xl py-4 px-5 text-white uppercase tracking-[0.2em] font-black text-xl focus:outline-none focus:border-magical-purple focus:ring-2 focus:ring-magical-purple/40 transition-all text-center shadow-inner">
+                                            <button onclick="updateAdminCode()" class="bg-magical-purple/15 hover:bg-magical-purple/25 border border-magical-purple/40 hover:border-magical-purple text-magical-purple font-bold px-6 py-4 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest text-sm hover:shadow-[0_0_15px_rgba(112,0,255,0.3)]">
+                                                Mettre à jour
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-white/40 mt-2 italic">⚠️ Ce code permet d'accéder au panneau DJ. Garde-le secret.</p>
                                     </div>
                                 </div>
                             </div>
