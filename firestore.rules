@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Règles de sécurité Firestore — La Playlist Idéale
+// À coller dans : console.firebase.google.com > projet « laplaylistideale » > Firestore Database > Règles > Publier.
+//
+// Ce qu'elles apportent par rapport au « mode test » :
+//  - plus de date d'expiration (le mode test coupe tout l'accès au bout de 30 jours) ;
+//  - seul le document de la soirée est accessible, tout le reste de la base est fermé ;
+//  - impossible de supprimer le document ou d'y ajouter des champs inconnus ;
+//  - chaque champ doit avoir le bon type (un texte ne peut pas remplacer le minuteur, etc.).
+//
+// Limite : l'application n'a pas de compte utilisateur, donc les votes restent écrits
+// sans authentification. Une protection totale demanderait un petit serveur (Cloud Functions).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /artifacts/{appId}/public/data/playlist/main {
+      allow read: if true;
+      allow delete: if false;
+      allow create, update: if isValidPlaylist(request.resource.data);
+    }
+
+    // Tout le reste est fermé.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidPlaylist(d) {
+      return d.keys().hasOnly(['sessionId', 'guestCode', 'adminCode', 'eventStartTime',
+                               'phase1Duration', 'phase2Duration', 'resultsPublished',
+                               'resultsPublishedAt', 'songVotes'])
+        && (!('guestCode' in d) || (d.guestCode is string && d.guestCode.size() <= 40))
+        && (!('adminCode' in d) || (d.adminCode is string && d.adminCode.size() <= 40))
+        && (!('sessionId' in d) || d.sessionId is string)
+        && (!('eventStartTime' in d) || d.eventStartTime == null || d.eventStartTime is int)
+        && (!('phase1Duration' in d) || d.phase1Duration is int)
+        && (!('phase2Duration' in d) || d.phase2Duration is int)
+        && (!('resultsPublished' in d) || d.resultsPublished is bool)
+        && (!('resultsPublishedAt' in d) || d.resultsPublishedAt is int)
+        && (!('songVotes' in d) || d.songVotes is map);
+    }
+  }
+}

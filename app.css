@@ -1,0 +1,167 @@
+/* =========================================================================
+   La Playlist Idéale — styles spécifiques (le reste est en classes Tailwind)
+   ========================================================================= */
+
+html, body { background-color: #050212; color: #ffffff; }
+
+/* Scrollbar masquée (look application native) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Apparition douce, uniquement lors d'un changement d'écran */
+.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+@keyframes fadeIn {
+    from { opacity: 0; filter: blur(5px); }
+    to   { opacity: 1; filter: blur(0); }
+}
+
+/* ---- Fond holographique ---- */
+.orb {
+    position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.6;
+    animation: orbFloat 25s infinite cubic-bezier(0.4, 0, 0.2, 1) alternate;
+    z-index: 0; pointer-events: none; mix-blend-mode: screen;
+}
+.orb-pink   { background: #FF007A; width: 60vw; height: 60vw; top: -10%; left: -20%; }
+.orb-cyan   { background: #00F0FF; width: 50vw; height: 50vw; bottom: -20%; right: -10%; animation-delay: -7s; }
+.orb-purple { background: #7000FF; width: 70vw; height: 70vw; top: 30%; left: 30%; animation-delay: -14s; opacity: 0.4; }
+.orb-gold   { background: #FFD700; width: 40vw; height: 40vw; top: -20%; right: 10%; animation-delay: -2s; opacity: 0.2; }
+@keyframes orbFloat {
+    0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+    33%  { transform: translate(8vw, -8vh) scale(1.2) rotate(10deg); }
+    66%  { transform: translate(-5vw, 5vh) scale(0.9) rotate(-10deg); }
+    100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .orb { animation: none; }
+}
+
+/* ---- Verre holographique ---- */
+.neo-glass {
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.01) 100%);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-top: 1px solid rgba(255,255,255,0.3);
+    border-left: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 12px 40px 0 rgba(0,0,0,0.4), inset 0 0 20px rgba(255,255,255,0.05);
+}
+
+/* Opacification du menu et du panneau au défilement */
+.glass-scrolled-panel {
+    background: linear-gradient(135deg, rgba(5,2,18,0.95) 0%, rgba(0,0,0,0.98) 100%) !important;
+    border-top: 1px solid rgba(0,240,255,0.4) !important;
+    border-left: 1px solid rgba(0,240,255,0.2) !important;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.95), 0 0 20px rgba(0,240,255,0.15) !important;
+}
+.glass-scrolled-nav {
+    background: linear-gradient(135deg, rgba(5,2,18,0.95) 0%, rgba(0,0,0,0.98) 100%) !important;
+    border-top: 1px solid rgba(255,0,122,0.5) !important;
+    border-left: 1px solid rgba(255,0,122,0.3) !important;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.9) !important;
+}
+
+/* ---- Cartes chansons ---- */
+.neo-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-top: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.neo-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 100%);
+    border-color: rgba(255,255,255,0.3);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(0,240,255,0.15), 0 0 30px rgba(255,0,122,0.15);
+}
+
+/* ---- Tuiles de catégories (écran d'accueil invité) ---- */
+.category-tile {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
+    min-height: 7.5rem; padding: 1rem; border-radius: 1.5rem; text-align: left;
+    background: var(--tile-gradient);
+    border: 1px solid rgba(255,255,255,0.25);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.category-tile::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 85% 15%, rgba(255,255,255,0.35), transparent 55%);
+    pointer-events: none;
+}
+.category-tile:hover  { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.45), 0 0 25px var(--tile-glow); }
+.category-tile:active { transform: scale(0.96); }
+.category-tile .tile-emoji { font-size: 2.25rem; line-height: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)); }
+@media (min-width: 640px) {
+    .category-tile { min-height: 9rem; padding: 1.25rem; }
+    .category-tile .tile-emoji { font-size: 2.75rem; }
+}
+
+/* ---- Bouton "liquide" ---- */
+.btn-liquid {
+    background: linear-gradient(135deg, #FF007A 0%, #7000FF 100%); color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    box-shadow: 0 4px 15px rgba(255,0,122,0.4), inset 0 2px 4px rgba(255,255,255,0.4);
+    position: relative; z-index: 1; overflow: hidden; transition: all 0.3s ease;
+}
+.btn-liquid::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, #00F0FF 0%, #7000FF 100%);
+    opacity: 0; z-index: -1; transition: opacity 0.4s ease;
+}
+.btn-liquid:hover::before { opacity: 1; }
+.btn-liquid:hover {
+    box-shadow: 0 8px 25px rgba(0,240,255,0.6), inset 0 2px 4px rgba(255,255,255,0.6);
+    transform: translateY(-2px) scale(1.05); border-color: rgba(255,255,255,0.8);
+}
+.btn-liquid:active { transform: translateY(2px) scale(0.95); }
+
+/* ---- Textes lumineux ---- */
+.text-glow-white { text-shadow: 0 0 20px rgba(255,255,255,0.6); }
+.text-glow-pink  { text-shadow: 0 0 20px rgba(255,0,122,0.8); }
+.text-glow-cyan  { text-shadow: 0 0 20px rgba(0,240,255,0.8); }
+
+/* Respiration lumineuse (alertes, minuteurs) */
+.pulse-magical { animation: pulseMagical 3s ease-in-out infinite alternate; }
+@keyframes pulseMagical {
+    0%   { box-shadow: 0 0 20px rgba(255,0,122,0.2); border-color: rgba(255,0,122,0.3); }
+    100% { box-shadow: 0 0 40px rgba(0,240,255,0.4); border-color: rgba(0,240,255,0.6); }
+}
+
+/* ---- Effets temporaires (flash de vote, notification de résultats, toast) ---- */
+.fx-flash {
+    position: fixed; inset: 0; z-index: 200; pointer-events: none;
+    background: radial-gradient(circle, rgba(0,240,255,0.18), transparent 70%);
+    animation: fxFade 0.6s ease-out forwards;
+}
+@keyframes fxFade { from { opacity: 1; } to { opacity: 0; } }
+
+.fx-results-flash {
+    position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+    background: radial-gradient(circle, rgba(0,240,255,0.35), rgba(255,0,122,0.25), transparent 80%);
+    animation: resultsFlash 1.8s ease-out forwards;
+}
+@keyframes resultsFlash {
+    0%   { opacity: 0; transform: scale(0.95); }
+    20%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.05); }
+}
+
+.fx-toast {
+    position: fixed; top: 20px; left: 50%; z-index: 10000;
+    transform: translateX(-50%) translateY(-200%);
+    padding: 16px 28px; max-width: 90vw; text-align: center;
+    color: white; font-weight: 900; font-size: 16px; letter-spacing: 0.05em; border-radius: 18px;
+    background: linear-gradient(135deg, rgba(0,240,255,0.95), rgba(255,0,122,0.95));
+    box-shadow: 0 10px 40px rgba(0,240,255,0.5), 0 0 60px rgba(255,0,122,0.4);
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.fx-toast.is-visible { transform: translateX(-50%) translateY(0); }
+.fx-toast.is-error   { background: linear-gradient(135deg, rgba(239,68,68,0.95), rgba(112,0,255,0.95)); font-size: 14px; }
+
+/* Marge de sécurité bas d'écran (iPhone) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .pb-safe { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+}
