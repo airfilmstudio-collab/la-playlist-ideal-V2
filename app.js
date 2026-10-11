@@ -193,7 +193,7 @@ const firestore = (() => {
     return {
         /** Lit le document. Renvoie null s'il n'existe pas encore. */
         async read() {
-            const resp = await fetch(`${DOC_URL}?_t=${Date.now()}`, { cache: 'no-store' });
+            const resp = await fetch(DOC_URL, { cache: 'no-store' });
             if (resp.status === 404) return null;
             await ensureOk(resp);
             const doc = await resp.json();
