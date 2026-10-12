@@ -1103,6 +1103,11 @@ const actions = {
     castDisplay(type) {
         if (DISPLAY_VIEWS.includes(type)) startCast(type);
     },
+    fireTvHelp: showFireTvHelp,
+    enterFullscreen() {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+        keepDisplayAwake();
+    },
     stopCast,
 
     // ---- DJ : fichiers ----
@@ -1343,8 +1348,54 @@ function displayCloseButton(subtle = false) {
     const look = subtle
         ? 'text-white/0 hover:text-white/50 p-3 hover:bg-white/10'
         : 'text-white/50 hover:text-white neo-glass p-2 hover:bg-white/10';
-    return `<button data-action="closeDisplay" title="Fermer la fenêtre" class="absolute top-3 right-3 md:top-6 md:right-6 z-50 rounded-full transition-all ${look}">
+    const canFullscreen = document.fullscreenEnabled && !document.fullscreenElement;
+    return `${canFullscreen ? `<button data-action="enterFullscreen" title="Plein écran" class="absolute top-3 left-3 md:top-6 md:left-6 z-50 rounded-full neo-glass px-4 py-2 text-white/80 hover:text-white focus:ring-4 focus:ring-magical-cyan/60 outline-none text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                <i class="ph-bold ph-arrows-out text-xl"></i> Plein écran</button>` : ''}
+            <button data-action="closeDisplay" title="Fermer la fenêtre" class="absolute top-3 right-3 md:top-6 md:right-6 z-50 rounded-full transition-all ${look}">
                 <i class="ph-bold ph-x text-2xl"></i></button>`;
+}
+
+// ---- Écran géant autonome (Fire TV, Smart TV…) : plein écran et écran toujours allumé ----
+let displayWakeLock = null;
+
+async function keepDisplayAwake() {
+    if (!displayMode || displayWakeLock || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+    try {
+        displayWakeLock = await navigator.wakeLock.request('screen');
+        displayWakeLock.addEventListener('release', () => { displayWakeLock = null; });
+    } catch { /* refusé ou non supporté : penser à désactiver l'économiseur d'écran de la TV */ }
+}
+
+function tvAddress() {
+    return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}tv`;
+}
+
+function showFireTvHelp() {
+    const address = tvAddress().replace(/^https?:\/\//, '');
+    showModal('alert', '🔥 Fire TV Amazon', `
+        <div class="text-left text-base space-y-4">
+            <div class="rounded-2xl border border-magical-cyan/40 bg-magical-cyan/10 p-4">
+                <p class="font-black text-magical-cyan uppercase tracking-widest text-sm mb-2">Méthode 1 · Fire TV autonome (recommandée)</p>
+                <ol class="list-decimal pl-5 space-y-1 text-white/90">
+                    <li>Sur le Fire TV, ouvrez l'application <strong>Silk</strong> (navigateur Amazon, gratuit dans l'Appstore).</li>
+                    <li>Tapez cette adresse avec la télécommande :</li>
+                </ol>
+                <p class="my-3 text-center font-mono font-black text-white text-lg break-all bg-black/50 rounded-xl px-3 py-2">${esc(address)}</p>
+                <ol class="list-decimal pl-5 space-y-1 text-white/90" start="3">
+                    <li>Ajoutez-la aux <strong>favoris</strong> de Silk : les fois suivantes, un seul clic.</li>
+                    <li>Sélectionnez le bouton <strong>« Plein écran »</strong> en haut à gauche.</li>
+                </ol>
+                <p class="mt-3 text-sm text-white/60">L'écran géant fonctionne seul (QR code → Top 40 → classement final), même si le PC est éteint. Conseil : Paramètres Fire TV → Affichage et sons → <strong>Économiseur d'écran → Jamais</strong>.</p>
+            </div>
+            <div class="rounded-2xl border border-white/15 bg-white/5 p-4">
+                <p class="font-black text-white/80 uppercase tracking-widest text-sm mb-2">Méthode 2 · Depuis le PC Windows (miroir)</p>
+                <ol class="list-decimal pl-5 space-y-1 text-white/80">
+                    <li>Sur le Fire TV : maintenez le bouton <strong>Accueil</strong> de la télécommande → <strong>Mise en miroir</strong>.</li>
+                    <li>Sur le PC : touches <strong>Windows + K</strong> → choisissez le Fire TV.</li>
+                    <li>Puis <strong>Windows + P</strong> → <strong>Étendre</strong>, ouvrez « Fenêtre QR Code », glissez-la sur la TV et appuyez sur <strong>F11</strong>.</li>
+                </ol>
+            </div>
+        </div>`);
 }
 
 function displayTitle() {
@@ -1891,6 +1942,7 @@ function adminView() {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button data-action="castDisplay" data-arg="qrcode" class="w-full bg-magical-cyan/10 hover:bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-television-simple text-lg"></i> Chromecast QR Code</button>
                             <button data-action="castDisplay" data-arg="monitor" class="w-full bg-magical-cyan/10 hover:bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-television-simple text-lg"></i> Chromecast classement</button>
+                            <button data-action="fireTvHelp" class="sm:col-span-2 w-full bg-orange-500/10 hover:bg-orange-500/20 border border-orange-400/40 text-orange-300 font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-fire text-lg"></i> Fire TV Amazon</button>
                         </div>`}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button data-action="openDisplay" data-arg="monitor" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-screencast text-lg"></i> Fenêtre classement</button>
@@ -2090,6 +2142,11 @@ window.addEventListener('storage', event => {
 function start() {
     migrateLegacySongs();
     loadCustomSongs();
+    if (displayMode) {
+        keepDisplayAwake();
+        document.addEventListener('visibilitychange', keepDisplayAwake);
+        document.addEventListener('fullscreenchange', render); // masque/affiche le bouton « Plein écran »
+    }
     render();
     pollLoop();
     setInterval(tick, 1000);

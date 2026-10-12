@@ -99,3 +99,10 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
 - Fonctionne avec Google Chrome sur l'ordinateur du DJ, sur le même Wi-Fi que le Chromecast (API « Presentation » de Chrome, gratuite, sans inscription).
 - Pendant la diffusion, le lancement du minuteur et « Clôturer & Résultats » n'ouvrent plus de fenêtre : la TV passe seule du QR code au Top 40 puis au classement final.
 - Bouton « Arrêter » ; une coupure côté TV est détectée.
+
+## Version 3.8 (12 octobre 2026) — Fire TV Amazon
+
+- Tableau de bord DJ → « Écrans publics » → bouton « Fire TV Amazon » : mode d'emploi en 2 méthodes.
+  - Méthode 1 (autonome) : sur le Fire TV, navigateur Silk → adresse courte `…/la-playlist-ideal-V2/tv` (dossier `tv/`, redirige vers l'écran géant) → favori → « Plein écran ». L'écran géant fonctionne seul, même PC éteint.
+  - Méthode 2 (PC Windows) : mise en miroir du Fire TV + Windows + K, puis Windows + P → Étendre.
+- Écran géant : bouton « Plein écran » (utilisable à la télécommande), demande à l'appareil de garder l'écran allumé.
