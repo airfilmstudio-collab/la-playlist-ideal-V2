@@ -741,7 +741,8 @@ function openDisplayWindow(type) {
 }
 
 function qrCodeUrl() {
-    const target = `${PUBLIC_URL}?s=${encodeURIComponent(state.remote.sessionId || '')}`;
+    // Le code de la soirée est inclus : le téléphone l'affiche pré-rempli en arrivant.
+    const target = `${PUBLIC_URL}?code=${encodeURIComponent(state.remote.guestCode || '')}&s=${encodeURIComponent(state.remote.sessionId || '')}`;
     return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(target)}&color=050212&bgcolor=FFFFFF`;
 }
 
@@ -838,6 +839,7 @@ const actions = {
             return render();
         }
         if (input !== normalizeCode(state.remote.guestCode)) {
+            prefillCode = ''; // ancien QR code : on laisse l'invité taper le code affiché
             state.loginError = 'Code incorrect. Regarde le code affiché sur l\'écran de la soirée.';
             return render();
         }
@@ -1301,34 +1303,47 @@ function displayTitle() {
         </div>`;
 }
 
+/** Encadré « code de la soirée », très lisible de loin (au-dessus du QR code). */
+function bigCodeBadge(size = 'xl') {
+    const codeSize = size === 'xl' ? 'clamp(2.75rem, 7vw, 6.5rem)' : 'clamp(1.75rem, 3.2vw, 3.25rem)';
+    return `
+        <div class="flex flex-col items-center">
+            <p class="font-black uppercase tracking-[0.25em] text-magical-cyan text-glow-cyan" style="font-size:${size === 'xl' ? 'clamp(1rem,1.8vw,1.6rem)' : 'clamp(0.75rem,1.1vw,1.05rem)'}">Code à taper</p>
+            <div class="mt-2 px-6 md:px-10 py-1 md:py-2 rounded-3xl border-2 border-magical-pink bg-black/60 shadow-[0_0_40px_rgba(255,0,122,0.55)]">
+                <span class="font-black text-white tracking-[0.15em] text-glow-white leading-none" style="font-size:${codeSize}">${esc(state.remote.guestCode)}</span>
+            </div>
+        </div>`;
+}
+
 function qrScreen(animClass) {
+    const qrSize = 'min(46vh, 30vw, 420px)';
     return `
         <div class="h-screen w-screen flex flex-col items-center justify-center p-4 md:p-6 relative ${animClass} overflow-hidden bg-[#050212]">
             ${displayCloseButton()}
             ${displayTitle()}
-            <div class="flex items-center justify-center gap-6 lg:gap-10 flex-1 min-h-0 w-full max-w-6xl">
-                <div class="flex flex-col items-center justify-center gap-4 flex-1">
-                    <p class="text-xs md:text-sm text-magical-cyan/80 font-bold uppercase tracking-widest">Code de la soirée</p>
-                    <p class="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-widest text-glow-white">${esc(state.remote.guestCode)}</p>
+            <div class="flex items-center justify-center gap-6 lg:gap-12 flex-1 min-h-0 w-full max-w-7xl">
+                <div class="flex flex-col items-center justify-center gap-5 flex-1 text-center">
+                    <p class="font-black text-white leading-tight" style="font-size:clamp(1.5rem,3vw,3rem)">1. Flashez<br><span class="text-magical-pink text-glow-pink">le QR code</span></p>
+                    <p class="font-black text-white leading-tight" style="font-size:clamp(1.5rem,3vw,3rem)">2. Tapez<br><span class="text-magical-cyan text-glow-cyan">le code</span></p>
                     ${state.remote.eventStartTime ? `
                     <div class="flex items-center gap-2 neo-glass px-5 py-2 rounded-full border-magical-pink/40 mt-2">
-                        <i class="ph-fill ph-timer text-magical-pink animate-pulse text-lg"></i>
-                        <span class="text-lg md:text-2xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink">--:--:--</span>
+                        <i class="ph-fill ph-timer text-magical-pink animate-pulse text-xl"></i>
+                        <span class="text-xl md:text-3xl font-black tabular-nums tracking-widest text-magical-pink dynamic-timer-display text-glow-pink">--:--:--</span>
                     </div>` : ''}
-                    <p class="text-base md:text-xl text-white/70 font-light mt-2">Flashez pour <span class="font-bold text-magical-pink">voter !</span></p>
                 </div>
-                <div class="shrink-0">
+                <div class="shrink-0 flex flex-col items-center gap-4 min-h-0">
+                    ${bigCodeBadge('xl')}
                     <div class="neo-glass p-3 md:p-4 rounded-[1.5rem] border-2 border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
                         <div class="bg-white p-2 md:p-3 rounded-xl">
-                            <img src="${qrCodeUrl()}" alt="QR Code" style="width:min(45vh,400px);height:min(45vh,400px);" class="object-contain rounded-lg">
+                            <img src="${qrCodeUrl()}" alt="QR Code" style="width:${qrSize};height:${qrSize};" class="object-contain rounded-lg">
                         </div>
                     </div>
                 </div>
                 <div class="flex flex-col items-center justify-center gap-4 flex-1">
-                    <p class="text-xs md:text-sm text-white/50 font-bold uppercase tracking-widest">Votes en direct</p>
+                    <p class="text-sm md:text-lg text-white/60 font-bold uppercase tracking-widest">Votes en direct</p>
                     <div class="flex items-center gap-3">
-                        <i class="ph-fill ph-heart text-magical-pink text-3xl md:text-4xl animate-pulse"></i>
-                        <span class="text-5xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink tabular-nums">${totalVotes()}</span>
+                        <i class="ph-fill ph-heart text-magical-pink text-3xl md:text-5xl animate-pulse"></i>
+                        <span class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan to-magical-pink tabular-nums">${totalVotes()}</span>
                     </div>
                     <p class="text-base md:text-xl text-white/50 font-bold uppercase tracking-widest">votes</p>
                 </div>
@@ -1357,24 +1372,24 @@ function rankingScreen() {
     return `
         <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden">
             ${displayCloseButton(true)}
-            <div class="relative z-10 flex justify-between items-center mb-6 px-2">
-                <div class="flex items-center gap-6">
-                    ${logo('h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)]')}
-                    <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest text-glow-white">
+            <div class="relative z-10 flex justify-between items-center gap-4 mb-4 px-2">
+                <div class="flex items-center gap-4 min-w-0">
+                    ${logo('h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] shrink-0')}
+                    <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-wider text-glow-white leading-tight" style="font-size:clamp(1.5rem,3.2vw,3rem)">
                         ${closed ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
                     </h1>
                 </div>
-                <div class="flex items-center gap-6">
+                <div class="flex items-center gap-4 shrink-0">
                     ${state.phase === 2 ? `
-                        <div class="neo-glass border-magical-cyan/40 px-6 py-2.5 rounded-2xl flex items-center gap-4">
-                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes :</span>
+                        <div class="neo-glass border-magical-cyan/40 px-5 py-2.5 rounded-2xl flex flex-col items-center whitespace-nowrap">
+                            <span class="text-magical-cyan font-bold text-sm uppercase tracking-widest">Fin des votes</span>
                             <span class="text-white font-black text-3xl tabular-nums dynamic-timer-display text-glow-cyan">--:--:--</span>
                         </div>
-                        <div class="hidden md:flex items-center gap-4 neo-glass p-2 pr-8 rounded-3xl border border-white/20">
-                            <div class="bg-white p-2 rounded-2xl"><img src="${qrCodeUrl()}" alt="QR Code" class="w-16 h-16 rounded-xl object-contain"></div>
-                            <div class="flex flex-col justify-center">
-                                <span class="text-lg font-bold text-white tracking-wide leading-tight text-glow-white">Flashez pour voter !</span>
-                                <span class="text-sm font-medium text-magical-cyan mt-0.5">Code : <strong class="text-white font-bold tracking-widest text-glow-white">${esc(state.remote.guestCode)}</strong></span>
+                        <div class="hidden md:flex items-center gap-5 neo-glass p-3 pr-6 rounded-3xl border border-white/20 shrink-0">
+                            <div class="bg-white p-2 rounded-2xl shrink-0"><img src="${qrCodeUrl()}" alt="QR Code" class="block rounded-xl object-contain max-w-none" style="width:min(19vh,160px);height:min(19vh,160px)"></div>
+                            <div class="flex flex-col items-center justify-center gap-1">
+                                <span class="text-base lg:text-lg font-bold text-white tracking-wide leading-tight">Flashez pour voter !</span>
+                                ${bigCodeBadge('md')}
                             </div>
                         </div>` : ''}
                     ${closed ? `
@@ -1404,6 +1419,21 @@ function displayView(animClass) {
 
 // ---------- Connexion ----------
 
+/** Code de la soirée reçu via le QR code du grand écran (pré-rempli sur le téléphone). */
+let prefillCode = normalizeCode(urlParams.get('code'));
+
+function guestLoginHint() {
+    if (prefillCode) {
+        return `
+            <div class="mb-8 mt-2 rounded-2xl border border-magical-cyan/40 bg-magical-cyan/10 px-4 py-3">
+                <p class="text-white/80 text-sm font-bold uppercase tracking-widest">Code de la soirée</p>
+                <p class="text-magical-cyan text-3xl font-black tracking-[0.2em] text-glow-cyan mt-1">${esc(prefillCode)}</p>
+                <p class="text-white/70 text-sm mt-1">Déjà rempli : touchez simplement « Rejoindre » 👇</p>
+            </div>`;
+    }
+    return `<p class="text-white/70 mb-10 font-medium text-lg">Tapez le <strong class="text-magical-cyan">code de la soirée</strong>,<br>affiché en grand sur l'écran.</p>`;
+}
+
 function loginView(isAdmin, animClass) {
     return `
         <div class="min-h-screen flex flex-col items-center justify-center p-4 relative ${animClass}">
@@ -1413,14 +1443,14 @@ function loginView(isAdmin, animClass) {
                     ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-magical-purple rounded-full p-3 shadow-[0_0_20px_rgba(112,0,255,0.8)]"><i class="ph-fill ph-lock-key text-white text-lg"></i></div>' : ''}
                 </div>
                 <h1 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
-                <p class="text-white/70 mb-10 font-medium text-lg">${isAdmin ? 'Entrez le code administrateur.' : 'Entrez le mot de passe de la soirée.'}</p>
+                ${isAdmin ? '<p class="text-white/70 mb-10 font-medium text-lg">Entrez le code administrateur.</p>' : guestLoginHint()}
                 <form data-action="${isAdmin ? 'adminLogin' : 'guestLogin'}" class="space-y-6" autocomplete="off">
-                    <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="${isAdmin ? 'Code DJ secret' : 'Mot de passe'}"
+                    <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="${isAdmin ? 'Code DJ secret' : 'Code de la soirée'}" value="${isAdmin ? '' : esc(prefillCode)}"
                         autocapitalize="characters" autocorrect="off" spellcheck="false" aria-label="${isAdmin ? 'Code DJ' : 'Mot de passe de la soirée'}"
                         class="w-full bg-black/60 border border-white/20 rounded-2xl py-4 px-6 text-center text-2xl text-white uppercase tracking-[0.3em] focus:outline-none focus:border-magical-cyan focus:ring-2 focus:ring-magical-cyan/40 transition-all placeholder:text-white/30 font-black shadow-inner">
                     ${state.loginError ? `<p class="text-magical-pink font-bold animate-fade-in drop-shadow-md" role="alert">${esc(state.loginError)}</p>` : ''}
                     <button type="submit" class="w-full btn-liquid font-black py-4 px-6 rounded-2xl text-lg tracking-widest uppercase">
-                        ${isAdmin ? 'Accéder au Dashboard' : 'Rejoindre la soirée !'}
+                        ${isAdmin ? 'Accéder au Dashboard' : 'Rejoindre la soirée&nbsp;!'}
                     </button>
                 </form>
                 <div class="mt-10 pt-8 border-t border-white/10">

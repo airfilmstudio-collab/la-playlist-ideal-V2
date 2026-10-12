@@ -86,3 +86,9 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
 - Quand le compte à rebours atteint zéro, chaque téléphone invité bascule de lui-même sur le classement final, avec bip, vibration et bannière « Résultats finaux disponibles » (une seule fois), même si le tableau de bord DJ est fermé ou l'ordinateur en veille.
 - Un téléphone en veille à ce moment-là est prévenu dès qu'il est rallumé.
 - La publication sur le serveur est faite automatiquement par le tableau de bord DJ ou par la fenêtre écran géant ; l'export M3U8 automatique reste sur le tableau de bord DJ.
+
+## Version 3.6 (12 octobre 2026) — code de la soirée bien visible
+
+- Grand écran (QR code) : « CODE À TAPER » en très gros, encadré, juste au-dessus du QR code, avec les étapes « 1. Flashez le QR code / 2. Tapez le code ».
+- Grand écran (Top 40) : QR code agrandi (environ 2,5×) et code de la soirée en gros à côté.
+- Téléphone : le QR code contient le code de la soirée, qui arrive déjà rempli et affiché (« Code de la soirée : FIESTA — touchez simplement Rejoindre »). Si le QR scanné est ancien (code changé entre-temps), le champ se vide et l'invité tape le code affiché.
