@@ -20,6 +20,11 @@ html, body { background-color: #050212; color: #ffffff; }
     position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.6;
     animation: orbFloat 25s infinite cubic-bezier(0.4, 0, 0.2, 1) alternate;
     z-index: 0; pointer-events: none; mix-blend-mode: screen;
+    will-change: transform;
+}
+/* Téléphones : halos plus légers et immobiles (l'animation de grands flous consomme beaucoup). */
+@media (max-width: 768px), (hover: none) {
+    .orb { filter: blur(70px); animation: none; mix-blend-mode: normal; }
 }
 .orb-pink   { background: #FF007A; width: 60vw; height: 60vw; top: -10%; left: -20%; }
 .orb-cyan   { background: #00F0FF; width: 50vw; height: 50vw; bottom: -20%; right: -10%; animation-delay: -7s; }
@@ -60,20 +65,34 @@ html, body { background-color: #050212; color: #ffffff; }
 }
 
 /* ---- Cartes chansons ---- */
+/* Pas de flou d'arrière-plan sur les cartes : sur téléphone, des centaines de flous rendaient l'écran lent. */
 .neo-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%);
-    backdrop-filter: blur(16px);
+    background: linear-gradient(135deg, rgba(40,26,70,0.72) 0%, rgba(14,8,32,0.72) 100%);
     border: 1px solid rgba(255,255,255,0.08);
     border-top: 1px solid rgba(255,255,255,0.15);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
-.neo-card:hover {
-    transform: translateY(-6px) scale(1.02);
-    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 100%);
-    border-color: rgba(255,255,255,0.3);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(0,240,255,0.15), 0 0 30px rgba(255,0,122,0.15);
+@media (hover: hover) {
+    .neo-card { transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; }
+    .neo-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(255,255,255,0.3);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px rgba(0,240,255,0.15), 0 0 30px rgba(255,0,122,0.15);
+    }
 }
+
+/* Les cartes hors de l'écran ne sont pas dessinées tant qu'on n'y fait pas défiler. */
+.song-item-card { content-visibility: auto; contain-intrinsic-size: auto 84px; }
+
+/* ---- Bouton de vote : réaction instantanée au toucher ---- */
+.vote-btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none;
+    transition: transform 0.08s ease, filter 0.08s ease;
+}
+.vote-btn.is-pressed { transform: scale(0.9); filter: brightness(1.35); }
+button, a, [data-action] { touch-action: manipulation; }
 
 /* ---- Tuiles de catégories (écran d'accueil invité) ---- */
 .category-tile {
@@ -111,10 +130,12 @@ html, body { background-color: #050212; color: #ffffff; }
     background: linear-gradient(135deg, #00F0FF 0%, #7000FF 100%);
     opacity: 0; z-index: -1; transition: opacity 0.4s ease;
 }
-.btn-liquid:hover::before { opacity: 1; }
-.btn-liquid:hover {
-    box-shadow: 0 8px 25px rgba(0,240,255,0.6), inset 0 2px 4px rgba(255,255,255,0.6);
-    transform: translateY(-2px) scale(1.05); border-color: rgba(255,255,255,0.8);
+@media (hover: hover) {
+    .btn-liquid:hover::before { opacity: 1; }
+    .btn-liquid:hover {
+        box-shadow: 0 8px 25px rgba(0,240,255,0.6), inset 0 2px 4px rgba(255,255,255,0.6);
+        transform: translateY(-2px) scale(1.05); border-color: rgba(255,255,255,0.8);
+    }
 }
 .btn-liquid:active { transform: translateY(2px) scale(0.95); }
 

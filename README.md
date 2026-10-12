@@ -7,6 +7,8 @@ Application de vote musical en soirée : les invités scannent le QR code, chois
 | Fichier | Rôle |
 |---|---|
 | `index.html` | Page d'accueil (structure minimale) |
+| `tailwind.css` | Styles Tailwind précompilés (généré, ne pas modifier à la main) |
+| `tailwind.config.js` | Configuration pour régénérer `tailwind.css` |
 | `app.css` | Styles visuels (verre holographique, tuiles de catégories, animations) |
 | `app.js` | Toute la logique, organisée en 12 sections commentées |
 | `rekordbox.js` | Lecture du XML Rekordbox et choix de la version la plus jouée |
@@ -59,3 +61,22 @@ Application de vote musical en soirée : les invités scannent le QR code, chois
   - +343 grands classiques de soirée par catégorie (environ 1 000 vérifiés), présents sur les disques mais absents du catalogue.
 - Catalogue : 1 789 titres. Aucun doublon ajouté ; les doublons de même chanson ou les reprises ont été écartés.
 - À noter : le catalogue d'origine contient 60 doublons (plusieurs versions d'un même titre), laissés en l'état.
+
+## Version 3.4 (12 octobre 2026) — réactivité sur téléphone
+
+Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
+
+| | Avant | Après |
+|---|---|---|
+| Appui sur « Voter » → retour visuel (« Tous les titres ») | 1,6 à 2,2 s | 0,05 à 0,1 s |
+| Appui sur « Voter » → retour visuel (une catégorie) | ~0,5 s | ~0,02 s |
+| Ouverture d'une catégorie | 1,5 à 2,7 s | 0,8 à 1 s |
+
+- Un vote ne redessine plus tout l'écran : seuls le bouton touché et le compteur de crédits changent.
+- Réaction visuelle dès que le doigt touche le bouton ; « Voté (1/2) » s'affiche en rose plein.
+- Anti double-appui : un 2e vote sur le même titre moins de 0,7 s après le 1er est ignoré.
+- Tailwind précompilé (`tailwind.css`) au lieu du calcul des styles sur le téléphone.
+- Plus de flou d'arrière-plan sur les cartes, halos du fond immobiles sur téléphone, cartes hors écran non dessinées.
+- Les longues listes s'affichent par étapes (60 premiers titres tout de suite).
+- La lecture régulière du serveur ne redessine plus l'écran invité quand seuls les compteurs de votes changent.
+- Filet de sécurité : l'écran se dessine aussi dans une fenêtre en arrière-plan.

@@ -10,25 +10,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Tailwind (version figée pour éviter toute casse lors d'une mise à jour du CDN) -->
-    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
-                    colors: {
-                        magical: { pink: '#FF007A', cyan: '#00F0FF', purple: '#7000FF', gold: '#FFD700', bg: '#050212' }
-                    }
-                }
-            }
-        };
-    </script>
+    <!-- Styles Tailwind précompilés (tailwind.css) : plus de calcul des styles sur le téléphone.
+         À régénérer après ajout de nouvelles classes : npx tailwindcss@3.4.16 -c tailwind.config.js -o tailwind.css --minify -->
+    <link rel="stylesheet" href="tailwind.css?v=3.4.0">
 
     <!-- Icônes Phosphor (version figée) -->
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1" defer></script>
 
-    <link rel="stylesheet" href="app.css?v=3.1.0">
+    <link rel="stylesheet" href="app.css?v=3.4.0">
 </head>
 <body class="text-slate-100 font-sans selection:bg-magical-pink/50 min-h-screen relative overflow-x-hidden">
 
@@ -41,6 +30,6 @@
     <!-- L'application est entièrement rendue dans ce conteneur par app.js -->
     <div id="root" class="relative z-10 min-h-screen flex flex-col"></div>
 
-    <script type="module" src="app.js?v=3.3.0"></script>
+    <script type="module" src="app.js?v=3.4.0"></script>
 </body>
 </html>

@@ -63,6 +63,7 @@ const TIMER_PRESETS = {
     '2M':  { label: 'Test 2M', p1: 1,   p2: 1, isTest: true },
 };
 
+const DOUBLE_TAP_GUARD_MS = 700;      // délai minimal entre deux votes sur le même titre
 const POLL_INTERVAL_NORMAL = 3000;
 const POLL_INTERVAL_FAST = 1500;   // pendant le Top 40 et après la clôture
 const OFFLINE_AFTER_MS = 10000;    // au-delà, le DJ voit « Hors connexion »
@@ -314,6 +315,7 @@ function migrateLegacySongs() {
 }
 
 let customSongs = [];
+const lastVoteAt = new Map();
 let allSongs = BASE_SONGS;
 
 function loadCustomSongs() {
@@ -476,7 +478,11 @@ function applyRemote(data) {
         songVotes: data.songVotes || {},
     };
 
-    const changed = JSON.stringify(next) !== JSON.stringify(previous);
+    // Les compteurs de votes ne sont pas affichés chez l'invité pendant le vote : inutile de tout redessiner.
+    const withoutVotes = r => JSON.stringify({ ...r, songVotes: null });
+    const votesOnly = withoutVotes(next) === withoutVotes(previous);
+    const guestScreen = ['user', 'login', 'adminLogin'].includes(state.view) && !next.resultsPublished && state.phase !== 3;
+    const changed = JSON.stringify(next) !== JSON.stringify(previous) && !(votesOnly && guestScreen);
     const votesIncreased = sumValues(next.songVotes) > sumValues(previous.songVotes);
     state.remote = next;
 
@@ -877,11 +883,16 @@ const actions = {
         const already = state.userVotes[songId] || 0;
         if (userVoteTotal() >= MAX_TOTAL_VOTES || already >= MAX_VOTES_PER_SONG) return;
 
-        // 1. Mise à jour immédiate à l'écran.
+        // Anti double-appui : un 2e vote sur le même titre exige un vrai second geste.
+        const now = Date.now();
+        if (now - (lastVoteAt.get(songId) || 0) < DOUBLE_TAP_GUARD_MS) return;
+        lastVoteAt.set(songId, now);
+
+        // 1. Mise à jour immédiate à l'écran (uniquement le bouton touché et les crédits).
         state.userVotes[songId] = already + 1;
         state.remote.songVotes[songId] = (Number(state.remote.songVotes[songId]) || 0) + 1;
+        patchVoteUI(songId);
         saveUserVotes();
-        render();
 
         // 2. Envoi au serveur ; en cas d'échec, le crédit est rendu à l'invité.
         state.sync.pendingWrites++;
@@ -894,7 +905,7 @@ const actions = {
             if (!already) delete state.userVotes[songId];
             state.remote.songVotes[songId] = Math.max(0, (Number(state.remote.songVotes[songId]) || 1) - 1);
             saveUserVotes();
-            render();
+            patchVoteUI(songId);
             showToast('Vote non enregistré (connexion). Réessaie !', { isError: true });
             return;
         } finally {
@@ -1444,10 +1455,53 @@ function headerNav(isScrolled) {
 
 // ---------- Invité ----------
 
+// ---------- Bouton de vote (partagé entre le rendu complet et la mise à jour instantanée) ----------
+
+const VOTE_BTN_BASE = 'vote-btn shrink-0 ml-2 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 md:px-8 py-2 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest';
+
+function voteButtonState(mine, totalUsed) {
+    const maxed = mine >= MAX_VOTES_PER_SONG;
+    const disabled = maxed || totalUsed >= MAX_TOTAL_VOTES;
+    let look, text, iconClass = '';
+    if (maxed) {
+        look = 'bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 cursor-default shadow-[0_0_15px_rgba(0,240,255,0.3)]';
+        text = `Max (${MAX_VOTES_PER_SONG}/${MAX_VOTES_PER_SONG})`;
+        iconClass = 'text-magical-cyan';
+    } else if (mine === 1) {
+        look = disabled ? 'bg-black/60 text-white/30 border border-white/5 cursor-not-allowed' : 'bg-magical-pink text-white border border-magical-pink shadow-[0_0_20px_rgba(255,0,122,0.5)]';
+        text = `Voté (1/${MAX_VOTES_PER_SONG})`;
+        iconClass = 'text-white';
+    } else {
+        look = disabled ? 'bg-black/60 text-white/30 border border-white/5 cursor-not-allowed' : 'btn-liquid border-transparent';
+        text = 'Voter';
+    }
+    return {
+        disabled,
+        className: `${VOTE_BTN_BASE} ${look}`,
+        html: `<i class="ph-fill ph-heart ${iconClass} text-[10px] sm:text-xl"></i> ${text}`,
+    };
+}
+
+/**
+ * Met à jour instantanément le bouton voté et les crédits, sans redessiner tout l'écran
+ * (la liste peut contenir plus de 1 500 titres : la redessiner prenait plusieurs secondes sur téléphone).
+ */
+function patchVoteUI(songId) {
+    const totalUsed = userVoteTotal();
+    if (totalUsed >= MAX_TOTAL_VOTES) return render(); // tous les boutons se désactivent : rendu complet (une seule fois)
+    const btn = voteButtonState(state.userVotes[songId] || 0, totalUsed);
+    document.querySelectorAll(`button[data-action="vote"][data-arg="${songId}"]`).forEach(el => {
+        el.className = btn.className;
+        el.innerHTML = btn.html;
+        el.disabled = btn.disabled;
+    });
+    document.querySelectorAll('.credits-badge').forEach(el => { el.outerHTML = creditsBadge(); });
+}
+
 function creditsBadge() {
     const left = Math.max(0, MAX_TOTAL_VOTES - userVoteTotal());
     return `
-        <div class="px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-white/10 border border-white/20 flex items-center gap-1.5 sm:gap-2 shadow-inner">
+        <div class="credits-badge px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-white/10 border border-white/20 flex items-center gap-1.5 sm:gap-2 shadow-inner">
             <i class="ph-fill ph-ticket ${left === 0 ? 'text-magical-pink' : 'text-magical-cyan'} text-xs sm:text-base"></i>
             <span class="text-xs sm:text-sm font-black ${left === 0 ? 'text-magical-pink text-glow-pink' : 'text-white'}">${left} / ${MAX_TOTAL_VOTES} crédits</span>
         </div>`;
@@ -1503,6 +1557,30 @@ function guestCategoriesView() {
         </div>`;
 }
 
+/** Longues listes : les premiers titres s'affichent tout de suite, le reste est ajouté juste après. */
+const FIRST_BATCH = 60;
+const NEXT_BATCH = 200;
+let pendingCards = null;
+let appendToken = 0;
+
+function appendPendingCards() {
+    const job = pendingCards;
+    pendingCards = null;
+    if (!job || job.songs.length === 0) return;
+    const token = ++appendToken;
+    let index = 0;
+    const step = () => {
+        const grid = document.getElementById('songs-grid');
+        if (token !== appendToken || !grid) return; // l'écran a changé entre-temps
+        const batch = job.songs.slice(index, index + NEXT_BATCH);
+        index += batch.length;
+        grid.insertAdjacentHTML('beforeend', batch.map(job.make).join(''));
+        if (index < job.songs.length) setTimeout(step, 16);
+        else if (state.searchQuery) filterSongCards(); // recherche tapée pendant l'ajout
+    };
+    setTimeout(step, 30);
+}
+
 /** Liste des titres d'une catégorie, avec retour aux catégories bien visible. */
 function guestSongsView(isScrolled) {
     const theme = state.selectedTheme;
@@ -1513,31 +1591,14 @@ function guestSongsView(isScrolled) {
     const visual = theme === ALL_THEMES ? { emoji: '✨' } : themeVisual(theme, themesWithCounts().findIndex(t => t.name === theme));
 
     const songCard = song => {
-        const mine = state.userVotes[song.id] || 0;
-        const maxed = mine >= MAX_VOTES_PER_SONG;
-        const disabled = maxed || totalUsed >= MAX_TOTAL_VOTES;
-        let btnClass, btnText, iconClass = '';
-        if (maxed) {
-            btnClass = 'bg-magical-cyan/20 text-magical-cyan border border-magical-cyan/40 cursor-default shadow-[0_0_15px_rgba(0,240,255,0.3)]';
-            btnText = `Max (${MAX_VOTES_PER_SONG}/${MAX_VOTES_PER_SONG})`;
-            iconClass = 'text-magical-cyan';
-        } else if (mine === 1) {
-            btnClass = disabled ? 'bg-black/60 text-white/30 border border-white/5 cursor-not-allowed' : 'bg-magical-pink/20 text-white border border-magical-pink/50 hover:bg-magical-pink hover:shadow-[0_0_20px_rgba(255,0,122,0.5)]';
-            btnText = `Voté (1/${MAX_VOTES_PER_SONG})`;
-            iconClass = 'text-white';
-        } else {
-            btnClass = disabled ? 'bg-black/60 text-white/30 border border-white/5 cursor-not-allowed' : 'btn-liquid border-transparent';
-            btnText = 'Voter';
-        }
+        const btn = voteButtonState(state.userVotes[song.id] || 0, totalUsed);
         return `
             <div class="song-item-card neo-card rounded-[1.25rem] sm:rounded-[1.5rem] p-3 sm:p-5 items-center justify-between" style="display:${matches(song) ? 'flex' : 'none'}" data-search="${esc(`${song.title} ${song.artist}`.toLowerCase())}">
                 <div class="min-w-0 flex-1 pl-1 sm:pl-2 pr-1">
                     <h3 class="font-bold text-white text-sm sm:text-lg truncate mb-0.5 tracking-wide">${esc(song.title)}</h3>
                     <p class="text-[11px] sm:text-sm font-light text-white/60 truncate tracking-wider">${esc(song.artist)}</p>
                 </div>
-                <button data-action="vote" data-arg="${song.id}" ${disabled ? 'disabled' : ''} class="shrink-0 ml-2 sm:ml-4 flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 md:px-8 py-2 sm:py-3 md:py-3.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-sm md:text-base font-black uppercase tracking-wide sm:tracking-widest transition-all ${btnClass}">
-                    <i class="ph-fill ph-heart ${iconClass} text-[10px] sm:text-xl"></i> ${btnText}
-                </button>
+                <button data-action="vote" data-arg="${song.id}" ${btn.disabled ? 'disabled' : ''} class="${btn.className}">${btn.html}</button>
             </div>`;
     };
 
@@ -1547,6 +1608,8 @@ function guestSongsView(isScrolled) {
             <h3 class="text-xl sm:text-3xl font-black text-white mb-2 text-glow-white">Aucun titre trouvé</h3>
             <p class="text-sm sm:text-lg text-white/60 font-light">${hint}</p>
         </div>`;
+
+    pendingCards = { songs: songs.slice(FIRST_BATCH), make: songCard };
 
     return `
         <div class="pb-16 pt-24 sm:pt-28 max-w-7xl mx-auto px-4 w-full">
@@ -1566,7 +1629,7 @@ function guestSongsView(isScrolled) {
                 </div>
             </div>
             ${songs.length > 0 ? `
-                <div id="songs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6 lg:gap-8">${songs.map(songCard).join('')}</div>
+                <div id="songs-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6 lg:gap-8">${songs.slice(0, FIRST_BATCH).map(songCard).join('')}</div>
                 ${emptyBlock('empty-search-msg', 'Essayez une autre recherche.', !songs.some(matches))}
             ` : emptyBlock('', 'Essayez une autre catégorie.', true)}
         </div>`;
@@ -1807,9 +1870,13 @@ function render() {
     if (renderScheduled) return;
     renderScheduled = true;
     requestAnimationFrame(renderNow);
+    // Les navigateurs suspendent requestAnimationFrame dans les fenêtres en arrière-plan
+    // (fenêtre DJ derrière l'écran géant, onglet masqué) : filet de sécurité.
+    setTimeout(renderNow, 120);
 }
 
 function renderNow() {
+    if (!renderScheduled) return; // déjà dessiné par l'autre déclencheur
     renderScheduled = false;
     const root = document.getElementById('root');
     if (!root) return;
@@ -1835,7 +1902,10 @@ function renderNow() {
     const caret = focusId && typeof active.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd] : null;
     const typed = focusId && active.tagName === 'INPUT' ? active.value : null;
 
+    appendToken++; // annule un ajout progressif en cours
+    if (state.view !== 'user' || state.guestScreen !== 'songs') pendingCards = null;
     root.innerHTML = html + modalView();
+    appendPendingCards();
 
     if (focusId) {
         const el = document.getElementById(focusId);
@@ -1863,6 +1933,15 @@ document.addEventListener('click', event => {
     event.preventDefault();
     handler(el.dataset.arg, el, event);
 });
+
+// Retour visuel immédiat au toucher (avant même le traitement du vote).
+document.addEventListener('pointerdown', event => {
+    const btn = event.target.closest('.vote-btn');
+    if (btn && !btn.disabled) btn.classList.add('is-pressed');
+}, { passive: true });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(type => document.addEventListener(type, () => {
+    document.querySelectorAll('.vote-btn.is-pressed').forEach(el => el.classList.remove('is-pressed'));
+}, { passive: true }));
 
 document.addEventListener('submit', event => {
     const form = event.target.closest('form[data-action]');
