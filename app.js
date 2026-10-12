@@ -26,7 +26,7 @@
     12. Événements & démarrage
    ============================================================================= */
 
-import { SONGS } from './songs.js?v=3.1.0';
+import { SONGS } from './songs.js?v=3.2.0';
 import * as rekordbox from './rekordbox.js?v=3.1.0';
 
 // =============================================================================
@@ -351,10 +351,16 @@ function topSongs() {
     return rankedSongs(TOP_SIZE);
 }
 
+/** Catégories affichées en dernier sur l'écran d'accueil invité (dans cet ordre). */
+const THEMES_LAST = ['Urbain Français'];
+
 function themesWithCounts() {
     const counts = new Map();
     for (const song of allSongs) counts.set(song.theme, (counts.get(song.theme) || 0) + 1);
-    return [...counts.entries()].map(([name, count]) => ({ name, count }));
+    const rank = name => THEMES_LAST.indexOf(name); // -1 = ordre normal
+    return [...counts.entries()]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => (rank(a.name) >= 0) - (rank(b.name) >= 0) || rank(a.name) - rank(b.name));
 }
 
 function themeVisual(name, index = 0) {

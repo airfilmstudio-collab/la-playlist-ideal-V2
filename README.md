@@ -45,3 +45,9 @@ Application de vote musical en soirée : les invités scannent le QR code, chois
 - Nouveau bouton DJ « Top 40 avec mes versions les plus jouées » : on choisit l'export XML de Rekordbox (Fichier → Exporter la collection au format xml) ; pour chaque titre voté, l'application prend la version de l'interprète la plus jouée et télécharge le M3U8. Le XML est lu sur place (aucun envoi), même très gros (748 Mo lus en ~3 s). Code dans `rekordbox.js`.
 - Catalogue : +132 titres parmi les plus joués dans Rekordbox (20 lectures et plus) qui manquaient, soit 1 113 titres.
 - Nouvelle catégorie « 🎩 Danses de soirée » (Madison, valses, Les Sardines, La jument de Michao…).
+
+## Version 3.2 (12 octobre 2026)
+
+- Vérification de l'historique : aucun titre supprimé par la refonte (les 981 titres d'origine sont tous présents). 36 titres avaient disparu en mars-avril 2026, avant la refonte (catégorie « Hits du Moment » notamment).
+- Hits 90s : de 60 à 160 titres. Grands tubes des années 90 retrouvés dans la bibliothèque Rekordbox (version la plus jouée), +13 titres reclassés dans leur vraie époque. Catalogue : 1 226 titres.
+- Accueil invité : la catégorie « Urbain Français » est affichée en dernier (`THEMES_LAST` dans `app.js`).
