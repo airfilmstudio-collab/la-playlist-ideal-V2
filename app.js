@@ -26,7 +26,8 @@
     12. Événements & démarrage
    ============================================================================= */
 
-import { SONGS } from './songs.js?v=3.0.0';
+import { SONGS } from './songs.js?v=3.1.0';
+import * as rekordbox from './rekordbox.js?v=3.1.0';
 
 // =============================================================================
 // 1. CONFIGURATION
@@ -82,6 +83,7 @@ const THEME_VISUALS = {
     'Oriental':            { emoji: '🌙', from: '#C48A00', to: '#7A1FA2' },
     'Reggaeton & Latin':   { emoji: '💃', from: '#FF3B30', to: '#FFCC00' },
     'Électro / Club':      { emoji: '🎧', from: '#00F0FF', to: '#0047FF' },
+    'Danses de soirée':    { emoji: '🎩', from: '#B8860B', to: '#7000FF' },
 };
 const FALLBACK_VISUALS = [
     { emoji: '🎵', from: '#FF007A', to: '#00F0FF' },
@@ -1018,12 +1020,20 @@ const actions = {
         if (top.length === 0) {
             return showModal('alert', 'Aucun vote', 'Il n\'y a pas encore de votes pour générer la playlist.');
         }
-        const lines = ['#EXTM3U'];
-        for (const song of top) {
-            lines.push(`#EXTINF:-1,${song.artist} - ${song.title}`);
-            lines.push(song.filepath || `${song.artist} - ${song.title}.mp3`);
+        downloadM3UFile(`Universal_DJ_Top40_${todayStamp()}.m3u8`, top.map(song => ({ ...song, path: song.filepath })));
+    },
+    exportBestVersions() {
+        if (topSongs().length === 0) {
+            return showModal('alert', 'Aucun vote', 'Il n\'y a pas encore de votes pour générer la playlist.');
         }
-        downloadFile(`Universal_DJ_Top40_${todayStamp()}.m3u8`, lines.join('\n') + '\n', 'audio/x-mpegurl;charset=utf-8');
+        const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.xml', hidden: true });
+        document.body.appendChild(input);
+        input.addEventListener('change', () => {
+            const file = input.files[0];
+            input.remove();
+            if (file) exportBestVersionsFrom(file);
+        });
+        input.click();
     },
     importM3U() {
         const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.m3u8,.m3u', multiple: true, hidden: true });
@@ -1087,6 +1097,73 @@ const actions = {
             '<br><br>Remplace le fichier <strong>songs.js</strong> sur GitHub par celui-ci pour que les invités voient les nouveaux titres.');
     },
 };
+
+/** Écrit un fichier M3U8 (UTF-8) lisible par Rekordbox. */
+function downloadM3UFile(filename, entries) {
+    const lines = ['#EXTM3U'];
+    for (const entry of entries) {
+        lines.push(`#EXTINF:-1,${entry.artist} - ${entry.title}`);
+        lines.push(entry.path || `${entry.artist} - ${entry.title}.mp3`);
+    }
+    downloadFile(filename, lines.join('\n') + '\n', 'audio/x-mpegurl;charset=utf-8');
+}
+
+/**
+ * Top 40 avec, pour chaque titre voté, la version de l'interprète la plus jouée dans Rekordbox.
+ * Le XML est lu sur place par le navigateur : il n'est envoyé nulle part.
+ */
+async function exportBestVersionsFrom(file) {
+    showModal('progress', '🎧 Lecture de ta bibliothèque Rekordbox',
+        `<p>${esc(file.name)}</p><p class="mt-4 text-4xl font-black text-magical-cyan" id="rb-progress">0 %</p>
+         <p class="mt-2 text-sm text-white/50">Le fichier reste sur cet ordinateur.</p>`);
+    await wait(50);
+
+    let tracks;
+    try {
+        tracks = await rekordbox.parseCollectionFile(file, ratio => {
+            const el = document.getElementById('rb-progress');
+            if (el) el.textContent = `${Math.round(ratio * 100)} %`;
+        });
+    } catch (err) {
+        return showModal('alert', 'Lecture impossible', `Le fichier n'a pas pu être lu :<br><span class="text-sm text-magical-pink">${esc(err.message)}</span>`);
+    }
+    if (tracks.length === 0) {
+        return showModal('alert', 'Fichier non reconnu',
+            'Aucun morceau trouvé. Exporte la collection depuis Rekordbox : <strong>Fichier → Exporter la collection au format xml</strong>.');
+    }
+
+    const index = rekordbox.buildIndex(tracks);
+    const report = topSongs().map((song, i) => {
+        const { best, versions } = rekordbox.findBestVersion(song, index);
+        const chosen = best || { path: song.filepath, playCount: null };
+        return {
+            rank: i + 1, song, chosen, versions: versions.length,
+            changed: !!best && rekordbox.pathKey(best.path) !== rekordbox.pathKey(song.filepath),
+            found: !!best,
+        };
+    });
+
+    downloadM3UFile(`Universal_DJ_Top40_Versions_Preferees_${todayStamp()}.m3u8`,
+        report.map(r => ({ artist: r.song.artist, title: r.song.title, path: r.chosen.path })));
+
+    const changedCount = report.filter(r => r.changed).length;
+    const missing = report.filter(r => !r.found).length;
+    const rows = report.map(r => `
+        <tr class="border-t border-white/10 ${r.changed ? 'text-white' : 'text-white/60'}">
+            <td class="py-2 pr-2 font-black text-magical-cyan">${r.rank}</td>
+            <td class="py-2 pr-2"><div class="font-bold truncate max-w-[14rem]">${esc(r.song.title)}</div><div class="text-xs text-white/50 truncate max-w-[14rem]">${esc(r.song.artist)}</div></td>
+            <td class="py-2 pr-2 text-xs break-all">${r.found ? esc(rekordbox.fileName(r.chosen.path)) : '<span class="text-magical-pink">non trouvé (version du catalogue)</span>'}</td>
+            <td class="py-2 text-right font-black whitespace-nowrap">${r.chosen.playCount ?? '–'}${r.changed ? ' <span class="text-magical-gold">★</span>' : ''}</td>
+        </tr>`).join('');
+
+    showModal('alert', '✅ Top 40 « versions préférées » téléchargé',
+        `<p class="text-base"><strong>${tracks.length.toLocaleString('fr-FR')}</strong> morceaux lus dans Rekordbox.
+         <strong class="text-magical-gold">${changedCount}</strong> titres remplacés par ta version la plus jouée (★)${missing ? `, <strong class="text-magical-pink">${missing}</strong> non trouvés` : ''}.</p>
+         <div class="mt-4 max-h-[45vh] overflow-y-auto text-left text-sm">
+            <table class="w-full"><thead><tr class="text-xs uppercase tracking-widest text-white/40"><th class="text-left">#</th><th class="text-left">Titre</th><th class="text-left">Fichier choisi</th><th class="text-right">Lectures</th></tr></thead>
+            <tbody>${rows}</tbody></table>
+         </div>`);
+}
 
 function showImportModal(parsed, fileNames) {
     // Doublons exclus : déjà présents dans la playlist ou répétés dans le fichier importé.
@@ -1623,6 +1700,9 @@ function adminView() {
                         <button data-action="forceEnd" class="w-full btn-liquid font-black px-4 py-5 rounded-2xl flex items-center justify-center gap-3 text-sm md:text-lg uppercase tracking-widest">
                             <i class="ph-bold ph-monitor text-xl md:text-2xl"></i> Clôturer & Résultats
                         </button>
+                        <button data-action="exportBestVersions" class="w-full bg-magical-gold/10 hover:bg-magical-gold/20 border border-magical-gold/40 hover:border-magical-gold text-magical-gold font-black px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-3 text-xs md:text-sm uppercase tracking-widest">
+                            <i class="ph-bold ph-crown text-xl"></i> Top 40 avec mes versions les plus jouées
+                        </button>
                         <div class="grid grid-cols-5 gap-3">
                             ${state.remote.resultsPublished
                                 ? toolButton('unpublishResults', 'ph-bell-ringing', 'Retirer la publication des résultats', 'bg-magical-cyan/20 border-magical-cyan/60 hover:bg-magical-cyan/30 animate-pulse')
@@ -1693,7 +1773,7 @@ function modalView() {
     const secondary = 'flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm';
     const primary = 'flex-1 btn-liquid text-white font-black py-4 px-6 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg';
     let buttons;
-    if (modal.type === 'goodbye') {
+    if (modal.type === 'goodbye' || modal.type === 'progress') {
         buttons = '<i class="ph-duotone ph-spinner-gap animate-spin text-5xl text-magical-cyan mx-auto mt-2 block"></i>';
     } else if (modal.type === 'confirm' || modal.type === 'custom') {
         buttons = `<button data-action="closeModal" class="${secondary}">Annuler</button>
@@ -1791,7 +1871,7 @@ document.addEventListener('input', event => {
 });
 
 document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && state.modal && state.modal.type !== 'goodbye') closeModal();
+    if (event.key === 'Escape' && state.modal && !['goodbye', 'progress'].includes(state.modal.type)) closeModal();
 });
 
 // Opacifie la barre et le panneau quand on fait défiler la page.
