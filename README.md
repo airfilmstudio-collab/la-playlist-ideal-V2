@@ -92,3 +92,10 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
 - Grand écran (QR code) : « CODE À TAPER » en très gros, encadré, juste au-dessus du QR code, avec les étapes « 1. Flashez le QR code / 2. Tapez le code ».
 - Grand écran (Top 40) : QR code agrandi (environ 2,5×) et code de la soirée en gros à côté.
 - Téléphone : le QR code contient le code de la soirée, qui arrive déjà rempli et affiché (« Code de la soirée : FIESTA — touchez simplement Rejoindre »). Si le QR scanné est ancien (code changé entre-temps), le champ se vide et l'invité tape le code affiché.
+
+## Version 3.7 (12 octobre 2026) — Chromecast
+
+- Tableau de bord DJ → « Écrans publics » : boutons « Chromecast QR Code » et « Chromecast classement ». Chrome affiche la liste des Chromecast du Wi-Fi ; l'écran géant s'affiche sur la TV, sans fenêtre à déplacer ni F11.
+- Fonctionne avec Google Chrome sur l'ordinateur du DJ, sur le même Wi-Fi que le Chromecast (API « Presentation » de Chrome, gratuite, sans inscription).
+- Pendant la diffusion, le lancement du minuteur et « Clôturer & Résultats » n'ouvrent plus de fenêtre : la TV passe seule du QR code au Top 40 puis au classement final.
+- Bouton « Arrêter » ; une coupure côté TV est détectée.

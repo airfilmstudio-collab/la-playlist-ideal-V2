@@ -733,8 +733,58 @@ function cleanUrl() {
     } catch { /* environnement restreint */ }
 }
 
+function displayUrl(type) {
+    return `${window.location.href.split(/[?#]/)[0]}?public=${type}`;
+}
+
+// ---- Diffusion sur Chromecast (API « Presentation » de Google Chrome, gratuite) ----
+// Chrome ouvre la page écran géant dans un onglet invisible et l'envoie au Chromecast choisi.
+let castConnection = null;
+
+function castSupported() {
+    return typeof window.PresentationRequest === 'function';
+}
+
+function startCast(type) {
+    if (!castSupported()) {
+        return showModal('alert', '📺 Chromecast',
+            `Ce navigateur ne sait pas diffuser directement.<br><br>
+             Utilisez <strong>Google Chrome</strong> sur l'ordinateur (même Wi-Fi que le Chromecast),<br>
+             ou ouvrez la fenêtre écran géant puis menu <strong>⋮ → Caster…</strong>`);
+    }
+    let request;
+    try {
+        request = new PresentationRequest([displayUrl(type)]);
+    } catch (err) {
+        return showModal('alert', 'Diffusion impossible', esc(err.message));
+    }
+    // Doit être appelé directement dans le clic (exigence de Chrome).
+    request.start().then(connection => {
+        castConnection = connection;
+        const ended = () => { if (castConnection === connection) { castConnection = null; render(); } };
+        connection.addEventListener('terminate', ended);
+        connection.addEventListener('close', ended);
+        showToast('📺 Diffusion lancée sur le Chromecast');
+        render();
+    }).catch(err => {
+        if (err && err.name === 'NotAllowedError') return; // fenêtre de choix fermée par le DJ
+        const notFound = err && err.name === 'NotFoundError';
+        showModal('alert', notFound ? 'Aucun Chromecast trouvé' : 'Diffusion impossible',
+            notFound
+                ? `Vérifiez que :<br>• le Chromecast est allumé (TV sur la bonne entrée HDMI) ;<br>• l'ordinateur et le Chromecast sont sur le <strong>même Wi-Fi</strong> ;<br>• vous utilisez <strong>Google Chrome</strong>.`
+                : esc(err && err.message || 'Erreur inconnue'));
+    });
+}
+
+function stopCast() {
+    try { castConnection?.terminate(); } catch { /* déjà terminée */ }
+    castConnection = null;
+    render();
+}
+
 function openDisplayWindow(type) {
-    const url = `${window.location.href.split(/[?#]/)[0]}?public=${type}`;
+    if (castConnection) return; // l'écran géant est déjà diffusé sur le Chromecast (il change d'écran tout seul)
+    const url = displayUrl(type);
     window.open(url, 'UniversalDJ_Display', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
     showModal('alert', 'Fenêtre externe ouverte',
         'Une nouvelle fenêtre vient de s\'ouvrir.<br><br>Faites-la glisser sur votre 2ème écran (TV ou vidéoprojecteur) puis appuyez sur <strong>F11</strong> pour la mettre en plein écran.');
@@ -1050,6 +1100,10 @@ const actions = {
     openDisplay(type) {
         if (DISPLAY_VIEWS.includes(type)) openDisplayWindow(type);
     },
+    castDisplay(type) {
+        if (DISPLAY_VIEWS.includes(type)) startCast(type);
+    },
+    stopCast,
 
     // ---- DJ : fichiers ----
     downloadM3U() {
@@ -1829,6 +1883,15 @@ function adminView() {
                             ${toolButton('exportSongList', 'ph-code', 'Exporter la liste des titres (songs.js) pour GitHub', 'border-magical-gold/30 hover:bg-magical-gold/20')}
                             ${toolButton('addSong', 'ph-music-notes-plus', 'Ajouter un titre manuellement', 'border-magical-cyan/30 hover:bg-magical-cyan/20')}
                         </div>
+                        ${castConnection ? `
+                        <div class="flex items-center justify-between gap-3 rounded-2xl border border-magical-cyan/50 bg-magical-cyan/10 px-4 py-3">
+                            <span class="text-magical-cyan font-bold text-sm flex items-center gap-2"><i class="ph-fill ph-broadcast text-xl animate-pulse"></i> Diffusion en cours sur le Chromecast</span>
+                            <button data-action="stopCast" class="shrink-0 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-widest flex items-center gap-2"><i class="ph-bold ph-stop-circle text-lg"></i> Arrêter</button>
+                        </div>` : `
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button data-action="castDisplay" data-arg="qrcode" class="w-full bg-magical-cyan/10 hover:bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-television-simple text-lg"></i> Chromecast QR Code</button>
+                            <button data-action="castDisplay" data-arg="monitor" class="w-full bg-magical-cyan/10 hover:bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-television-simple text-lg"></i> Chromecast classement</button>
+                        </div>`}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button data-action="openDisplay" data-arg="monitor" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-screencast text-lg"></i> Fenêtre classement</button>
                             <button data-action="openDisplay" data-arg="qrcode" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-screencast text-lg"></i> Fenêtre QR Code</button>
