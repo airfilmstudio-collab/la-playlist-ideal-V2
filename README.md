@@ -80,3 +80,9 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
 - Les longues listes s'affichent par étapes (60 premiers titres tout de suite).
 - La lecture régulière du serveur ne redessine plus l'écran invité quand seuls les compteurs de votes changent.
 - Filet de sécurité : l'écran se dessine aussi dans une fenêtre en arrière-plan.
+
+## Version 3.5 (12 octobre 2026) — résultats automatiques en fin de compte à rebours
+
+- Quand le compte à rebours atteint zéro, chaque téléphone invité bascule de lui-même sur le classement final, avec bip, vibration et bannière « Résultats finaux disponibles » (une seule fois), même si le tableau de bord DJ est fermé ou l'ordinateur en veille.
+- Un téléphone en veille à ce moment-là est prévenu dès qu'il est rallumé.
+- La publication sur le serveur est faite automatiquement par le tableau de bord DJ ou par la fenêtre écran géant ; l'export M3U8 automatique reste sur le tableau de bord DJ.

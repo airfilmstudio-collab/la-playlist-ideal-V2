@@ -242,6 +242,7 @@ const storage = {
         userVotes: 'dj_userVotes',            // votes de ce téléphone
         customSongs: 'dj_customSongs',        // titres ajoutés par le DJ (import M3U8 / ajout manuel)
         endHandledFor: 'dj_endHandledFor',    // fin de soirée déjà traitée (export auto) pour ce minuteur
+        endPublishedFor: 'dj_endPublishedFor', // publication automatique déjà faite pour ce minuteur
         legacySongs: 'dj_songs',              // ancien format (v2), migré automatiquement
     },
     get(key, fallback = null) {
@@ -404,6 +405,9 @@ function tick() {
     if (timer.phase !== state.phase) {
         state.phase = timer.phase;
         if (timer.phase === 3 && state.view === 'user') window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Fin du compte à rebours : chaque téléphone affiche les résultats, bipe et vibre de lui-même,
+        // sans attendre le tableau de bord DJ.
+        checkResultsNotification();
         render();
     }
 
@@ -425,13 +429,21 @@ function updateTextAll(selector, text) {
  * Mémorisé par minuteur pour ne pas se répéter à chaque rechargement de la page.
  */
 function handleEndOfEvent(phase) {
-    if (phase !== 3 || state.view !== 'admin' || displayMode) return;
+    if (phase !== 3 || !state.remote.eventStartTime) return;
     const eventKey = String(state.remote.eventStartTime);
-    if (storage.get(storage.KEYS.endHandledFor) === eventKey) return;
-    storage.set(storage.KEYS.endHandledFor, eventKey);
 
-    setTimeout(() => actions.downloadM3U(), 500);
-    if (!state.remote.resultsPublished) setTimeout(() => publishResults({ auto: true }), 1000);
+    // Publication automatique : faite par le tableau de bord DJ OU par la fenêtre écran géant,
+    // pour ne pas dépendre d'un seul ordinateur. (Les téléphones bipent de toute façon d'eux-mêmes.)
+    if ((state.view === 'admin' || displayMode) && storage.get(storage.KEYS.endPublishedFor) !== eventKey) {
+        storage.set(storage.KEYS.endPublishedFor, eventKey);
+        if (!state.remote.resultsPublished) setTimeout(() => publishResults({ auto: true }), 1000);
+    }
+
+    // Export M3U8 automatique : uniquement sur le tableau de bord DJ.
+    if (state.view === 'admin' && !displayMode && storage.get(storage.KEYS.endHandledFor) !== eventKey) {
+        storage.set(storage.KEYS.endHandledFor, eventKey);
+        setTimeout(() => actions.downloadM3U(), 500);
+    }
 }
 
 // =============================================================================
@@ -493,9 +505,9 @@ function applyRemote(data) {
     }
     if (votesIncreased && (state.view === 'qrcode' || state.view === 'monitor')) flashScreen();
 
-    checkResultsNotification();
     if (changed) render();
     tick();
+    checkResultsNotification();
 }
 
 function sumValues(obj) {
@@ -664,8 +676,13 @@ const notifier = (() => {
 })();
 
 /** Prévient l'invité (une seule fois) quand le DJ publie les résultats. */
+/** Résultats visibles chez l'invité : publiés par le DJ, ou fin du compte à rebours atteinte. */
+function resultsAvailable() {
+    return state.remote.resultsPublished || (!!state.remote.eventStartTime && state.phase === 3);
+}
+
 function checkResultsNotification() {
-    if (!state.remote.resultsPublished) {
+    if (!resultsAvailable()) {
         state.resultsNotified = false;
         return;
     }
@@ -827,7 +844,7 @@ const actions = {
         state.view = 'user';
         state.guestScreen = 'categories';
         state.loginError = '';
-        state.resultsNotified = state.remote.resultsPublished; // pas de bip pour des résultats déjà publiés
+        state.resultsNotified = resultsAvailable(); // pas de bip pour des résultats déjà affichés avant la connexion
         loadUserVotesForSession();
         cleanUrl();
         render();
@@ -937,6 +954,7 @@ const actions = {
             {
                 onConfirm: () => {
                     storage.remove(storage.KEYS.endHandledFor);
+                    storage.remove(storage.KEYS.endPublishedFor);
                     updateShared({
                         phase1Duration: preset.p1 * 60000,
                         phase2Duration: preset.p2 * 60000,
