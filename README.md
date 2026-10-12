@@ -51,3 +51,11 @@ Application de vote musical en soirée : les invités scannent le QR code, chois
 - Vérification de l'historique : aucun titre supprimé par la refonte (les 981 titres d'origine sont tous présents). 36 titres avaient disparu en mars-avril 2026, avant la refonte (catégorie « Hits du Moment » notamment).
 - Hits 90s : de 60 à 160 titres. Grands tubes des années 90 retrouvés dans la bibliothèque Rekordbox (version la plus jouée), +13 titres reclassés dans leur vraie époque. Catalogue : 1 226 titres.
 - Accueil invité : la catégorie « Urbain Français » est affichée en dernier (`THEMES_LAST` dans `app.js`).
+
+## Version 3.3 (12 octobre 2026)
+
+- Toutes les catégories complétées depuis la bibliothèque Rekordbox, avec la version la plus jouée de chaque titre :
+  - +220 titres joués 10 à 19 fois qui manquaient (tri manuel : jingles, intros et morceaux d'ambiance exclus) ;
+  - +343 grands classiques de soirée par catégorie (environ 1 000 vérifiés), présents sur les disques mais absents du catalogue.
+- Catalogue : 1 789 titres. Aucun doublon ajouté ; les doublons de même chanson ou les reprises ont été écartés.
+- À noter : le catalogue d'origine contient 60 doublons (plusieurs versions d'un même titre), laissés en l'état.
