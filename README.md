@@ -125,3 +125,9 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
 ## Version 3.9.1 (13 octobre 2026)
 
 - Écran géant, classement final : même en-tête que sur les téléphones (trophée, « CLASSEMENT FINAL » en dégradé or → rose → cyan, « TOP N DE LA SOIRÉE »), avec « Les votes sont clôturés » et le total « 🎯 N votes · N titres dans le Top ».
+
+## Version 3.10 (13 octobre 2026) — thème de la soirée
+
+- Tableau de bord DJ : champ « Thème de la soirée » (ex. « Anniversaire de Jacques & Sandrine », « Mariage de… », « Soirée d'entreprise… »), bouton « Afficher » ou touche Entrée ; laisser vide pour ne rien afficher. 80 caractères maximum.
+- Affiché en lettres dorées ✨ sur : l'accueil du QR code (téléphone), l'écran des catégories, le classement final sur téléphone, le grand écran (QR code, Top 40 en cours, classement final), la TV en attente et le tableau de bord. Mise à jour en direct partout.
+- Firestore : champ `eventTitle` (texte ≤ 80) ajouté aux règles.

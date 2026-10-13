@@ -273,8 +273,9 @@ const DISPLAY_VIEWS = ['qrcode', 'monitor'];
 const publicParam = urlParams.get('public');
 const displayMode = DISPLAY_VIEWS.includes(publicParam) || publicParam === 'tv' ? publicParam : null;
 const TV_HEARTBEAT_MS = 30000;   // la TV signale sa présence toutes les 30 s
-const TV_ONLINE_MS = 75000;
-const DISPLAY_CHROME_IDLE_MS = 6000; // écran géant : boutons masqués après 6 s sans geste      // au-delà, le tableau de bord considère la TV absente
+const TV_ONLINE_MS = 75000;      // au-delà, le tableau de bord considère la TV absente
+const DISPLAY_CHROME_IDLE_MS = 6000; // écran géant : boutons masqués après 6 s sans geste
+const EVENT_TITLE_MAX = 80;      // thème de la soirée (« Anniversaire de Jacques & Sandrine »…)
 
 const state = {
     /** Données partagées (copie locale du document Firestore). */
@@ -286,6 +287,7 @@ const state = {
         phase1Duration: DEFAULTS.phase1Duration,
         phase2Duration: DEFAULTS.phase2Duration,
         resultsPublished: false,
+        eventTitle: '',
         songVotes: {},
     },
     /** Interface. */
@@ -506,6 +508,7 @@ function applyRemote(data) {
         phase1Duration: data.phase1Duration || DEFAULTS.phase1Duration,
         phase2Duration: data.phase2Duration || DEFAULTS.phase2Duration,
         resultsPublished: data.resultsPublished === true,
+        eventTitle: typeof data.eventTitle === 'string' ? data.eventTitle : '',
         songVotes: data.songVotes || {},
     };
 
@@ -1184,6 +1187,14 @@ const actions = {
             });
     },
 
+    // ---- DJ : thème de la soirée (affiché partout : grand écran, téléphones, accueil du QR code) ----
+    async updateEventTitle() {
+        const title = (inputValue('newEventTitle') || '').replace(/\s+/g, ' ').trim().slice(0, EVENT_TITLE_MAX);
+        if (await updateShared({ eventTitle: title })) {
+            showToast(title ? `✨ Thème affiché : ${title}` : 'Thème de la soirée retiré');
+        }
+    },
+
     // ---- DJ : codes d'accès ----
     async updateGuestCode() {
         const code = normalizeCode(inputValue('newGuestCode'));
@@ -1545,6 +1556,7 @@ function tvStandbyView(animClass) {
             <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest leading-none" style="font-size: clamp(1.75rem, 5vw, 4.5rem);">
                 VOTRE PLAYLIST IDÉALE
             </h1>
+            ${eventBanner('hero')}
             <div class="flex items-center gap-3 neo-glass px-6 py-3 rounded-full">
                 <span class="w-3 h-3 rounded-full bg-green-400 animate-pulse"></span>
                 <span class="text-white/80 font-bold uppercase tracking-widest" style="font-size: clamp(1rem, 2vw, 1.6rem);">Écran TV prêt · en attente du DJ</span>
@@ -1553,13 +1565,36 @@ function tvStandbyView(animClass) {
         </div>`;
 }
 
+/**
+ * Thème de la soirée écrit par le DJ (« Anniversaire de Jacques & Sandrine »), en lettres dorées.
+ * size : 'display' (grand écran, proportionnel à l'écran) | 'phone' | 'small'. Rien si aucun thème.
+ */
+function eventBanner(size = 'phone', extraClass = '') {
+    const title = state.remote.eventTitle;
+    if (!title) return '';
+    const fontSize = {
+        display: 'clamp(1rem,min(2.6vw,4.6vh),2.75rem)',
+        strip: 'clamp(0.9rem,min(2vw,3.6vh),2.1rem)',
+        hero: 'clamp(1.4rem,min(4vw,7vh),4rem)',
+        phone: 'clamp(1.1rem,5vw,1.6rem)',
+        small: '0.95rem',
+    }[size] || '1.1rem';
+    return `
+        <p class="event-banner font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-gold via-white to-magical-gold leading-tight ${extraClass}" style="font-size:${fontSize}">
+            <span class="text-magical-gold" aria-hidden="true">✨</span> ${esc(title)} <span class="text-magical-gold" aria-hidden="true">✨</span>
+        </p>`;
+}
+
 function displayTitle() {
     return `
-        <div class="flex items-center gap-4 mb-4 shrink-0">
-            ${logo('h-10 md:h-14 object-contain drop-shadow-[0_0_20px_rgba(255,0,122,0.6)]')}
-            <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest leading-none" style="font-size: clamp(1.5rem, 4vw, 4rem);">
-                VOTRE PLAYLIST IDÉALE
-            </h1>
+        <div class="flex flex-col items-center gap-2 mb-4 shrink-0 text-center">
+            <div class="flex items-center gap-4">
+                ${logo('h-10 md:h-14 object-contain drop-shadow-[0_0_20px_rgba(255,0,122,0.6)]')}
+                <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest leading-none" style="font-size: clamp(1.5rem, min(4vw, 7vh), 4rem);">
+                    VOTRE PLAYLIST IDÉALE
+                </h1>
+            </div>
+            ${eventBanner('display')}
         </div>`;
 }
 
@@ -1576,7 +1611,7 @@ function bigCodeBadge(size = 'xl') {
 }
 
 function qrScreen(animClass) {
-    const qrSize = 'min(46vh, 30vw, 420px)';
+    const qrSize = state.remote.eventTitle ? 'min(38vh, 28vw, 400px)' : 'min(46vh, 30vw, 420px)';
     return `
         <div class="h-screen w-screen flex flex-col items-center justify-center p-4 md:p-6 relative ${animClass} overflow-hidden bg-[#050212]">
             ${displayCloseButton()}
@@ -1671,6 +1706,7 @@ function rankingScreen() {
                         </div>` : ''}
                 </div>
             </div>
+            ${state.remote.eventTitle ? `<div class="relative z-10 text-center px-2 min-w-0" style="margin-bottom:clamp(0.3rem,1.2vh,0.75rem)">${eventBanner('strip', 'truncate')}</div>` : ''}
             <div class="relative z-10 flex-1 min-h-0 w-full neo-glass rounded-[2rem] ranking-panel overflow-hidden">
                 ${top.length > 0 ? `
                     <div class="ranking-grid h-full w-full">
@@ -1716,6 +1752,7 @@ function loginView(isAdmin, animClass) {
                     ${isAdmin ? '<div class="absolute -bottom-2 -right-2 bg-magical-purple rounded-full p-3 shadow-[0_0_20px_rgba(112,0,255,0.8)]"><i class="ph-fill ph-lock-key text-white text-lg"></i></div>' : ''}
                 </div>
                 <h1 class="text-4xl font-black text-white mb-2 tracking-tight text-glow-white">${isAdmin ? 'Espace DJ' : 'Bienvenue'}</h1>
+                ${isAdmin ? '' : eventBanner('phone', 'mb-4')}
                 ${isAdmin ? '<p class="text-white/70 mb-10 font-medium text-lg">Entrez le code administrateur.</p>' : guestLoginHint()}
                 <form data-action="${isAdmin ? 'adminLogin' : 'guestLogin'}" class="space-y-6" autocomplete="off">
                     <input type="text" id="${isAdmin ? 'adminPass' : 'guestPass'}" placeholder="${isAdmin ? 'Code DJ secret' : 'Code de la soirée'}" value="${isAdmin ? '' : esc(prefillCode)}"
@@ -1863,6 +1900,7 @@ function guestCategoriesView() {
     return `
         <div class="pb-16 pt-24 sm:pt-28 max-w-5xl mx-auto px-4 w-full">
             <div class="text-center mb-5 sm:mb-8">
+                ${eventBanner('phone', 'mb-3')}
                 <h2 class="text-2xl sm:text-4xl font-black text-white tracking-tight text-glow-white">Choisis ton style 🎶</h2>
                 <p class="text-white/70 text-sm sm:text-lg mt-1 sm:mt-2">Touche une catégorie pour voir les titres et voter</p>
                 <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
@@ -1970,6 +2008,7 @@ function guestResultsView() {
                 </div>
                 <h1 class="text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-gold via-magical-pink to-magical-cyan mb-2 leading-tight">CLASSEMENT FINAL</h1>
                 <p class="text-white/70 text-sm sm:text-base font-light tracking-widest uppercase">Top ${top.length} de la soirée</p>
+                ${eventBanner('phone', 'mt-2')}
                 ${myInTop > 0 ? `
                 <div class="inline-block mt-4 px-5 py-2 rounded-full bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold text-sm tracking-widest">
                     🎯 ${myInTop} de tes votes dans le Top !
@@ -2055,12 +2094,28 @@ function adminView() {
     return `
         <div class="max-w-5xl mx-auto pb-24 pt-28 px-4 w-full">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-                <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
+                <div class="min-w-0">
+                    <h2 class="text-4xl font-black text-white tracking-tight text-glow-white">Tableau de bord</h2>
+                    ${eventBanner('small', 'mt-1')}
+                </div>
                 <div class="neo-glass px-4 py-2 rounded-full flex items-center gap-2 border-white/20">
                     <div class="w-2.5 h-2.5 rounded-full animate-pulse ${online ? 'bg-magical-cyan shadow-[0_0_8px_#00F0FF]' : 'bg-red-500 shadow-[0_0_8px_#EF4444]'}"></div>
                     <span class="text-xs font-bold uppercase tracking-widest ${online ? 'text-magical-cyan' : 'text-red-500'}">${online ? 'Cloud connecté' : 'Hors connexion'}</span>
                 </div>
             </div>
+
+            <section class="neo-glass rounded-[2.5rem] p-6 md:p-8 mb-8">
+                <label for="newEventTitle" class="block text-xl font-black text-white mb-1 flex items-center gap-3 text-glow-white">
+                    <i class="ph-fill ph-confetti text-magical-gold text-3xl"></i> Thème de la soirée
+                </label>
+                <p class="text-white/60 text-sm mb-4">Affiché sur le grand écran, la TV, l'accueil du QR code et les téléphones. Laisser vide pour ne rien afficher.</p>
+                <div class="flex flex-col sm:flex-row gap-3 items-stretch">
+                    <input id="newEventTitle" type="text" maxlength="${EVENT_TITLE_MAX}" value="${esc(state.remote.eventTitle)}" autocomplete="off"
+                        placeholder="Ex. : Anniversaire de Jacques & Sandrine"
+                        class="flex-1 min-w-0 bg-black/60 border border-magical-gold/30 rounded-2xl py-4 px-5 text-white font-bold text-lg focus:outline-none focus:border-magical-gold focus:ring-2 focus:ring-magical-gold/40 transition-all shadow-inner placeholder:text-white/30">
+                    <button data-action="updateEventTitle" class="bg-magical-gold/15 hover:bg-magical-gold/25 border border-magical-gold/40 hover:border-magical-gold text-magical-gold font-bold px-6 py-4 rounded-2xl transition-colors whitespace-nowrap uppercase tracking-widest text-sm">Afficher</button>
+                </div>
+            </section>
 
             <section class="neo-glass border-t-magical-pink/50 rounded-[2.5rem] p-6 md:p-10 mb-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                 <h3 class="text-3xl font-black text-white mb-2 flex items-center gap-4 tracking-tight text-glow-white">
@@ -2289,6 +2344,7 @@ document.addEventListener('input', event => {
 
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && state.modal && !['goodbye', 'progress'].includes(state.modal.type)) closeModal();
+    if (event.key === 'Enter' && event.target?.id === 'newEventTitle') actions.updateEventTitle();
 });
 
 // Opacifie la barre et le panneau quand on fait défiler la page.
