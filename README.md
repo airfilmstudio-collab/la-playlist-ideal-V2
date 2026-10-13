@@ -121,3 +121,7 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
   - l'annonce n'est faite qu'une fois par téléphone, même après rechargement ;
   - après les 30 votes, la page ne part plus vers le site : elle reste ouverte pour sonner aux résultats.
 - Limites des navigateurs : l'iPhone ne permet pas la vibration depuis une page web, et un téléphone verrouillé ne peut pas sonner (la page sonne dès qu'on le rallume).
+
+## Version 3.9.1 (13 octobre 2026)
+
+- Écran géant, classement final : même en-tête que sur les téléphones (trophée, « CLASSEMENT FINAL » en dégradé or → rose → cyan, « TOP N DE LA SOIRÉE »), avec « Les votes sont clôturés » et le total « 🎯 N votes · N titres dans le Top ».

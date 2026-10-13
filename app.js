@@ -1633,12 +1633,20 @@ function rankingScreen() {
         <div class="h-screen w-screen flex flex-col relative overflow-hidden" style="padding:clamp(0.6rem,2vh,1.5rem) clamp(0.75rem,2vw,1.5rem)">
             ${displayCloseButton(true)}
             <div class="relative z-10 flex justify-between items-center gap-4 px-2" style="margin-bottom:clamp(0.4rem,1.6vh,1rem)">
+                ${closed ? `
+                <div class="flex items-center min-w-0" style="gap:clamp(0.5rem,1.5vw,1.25rem)">
+                    <i class="ph-fill ph-trophy text-magical-gold shrink-0 animate-bounce drop-shadow-[0_0_30px_rgba(255,215,0,0.8)]" style="font-size:clamp(2.25rem,9vh,5rem)"></i>
+                    <div class="min-w-0">
+                        <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-gold via-magical-pink to-magical-cyan leading-none whitespace-nowrap" style="font-size:clamp(1.4rem,min(3.6vw,6.5vh),3.75rem)">CLASSEMENT FINAL</h1>
+                        <p class="text-white/70 font-light tracking-widest uppercase whitespace-nowrap" style="font-size:clamp(0.7rem,min(1.3vw,2.4vh),1.25rem);margin-top:clamp(0.15rem,0.8vh,0.5rem)">Top ${top.length} de la soirée</p>
+                    </div>
+                </div>` : `
                 <div class="flex items-center gap-4 min-w-0">
                     ${logo('rank-logo object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] shrink-0')}
-                    <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-wider text-glow-white leading-tight min-w-0 ${closed ? 'whitespace-nowrap' : ''}" style="font-size:${closed ? 'clamp(1.1rem,min(3vw,5.5vh),3rem)' : 'clamp(1rem,min(2.4vw,4.5vh),2.6rem)'}">
-                        ${closed ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
+                    <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-wider text-glow-white leading-tight min-w-0" style="font-size:clamp(1rem,min(2.4vw,4.5vh),2.6rem)">
+                        VOTRE PLAYLIST IDÉALE
                     </h1>
-                </div>
+                </div>`}
                 <div class="flex items-center gap-4 shrink-0">
                     ${state.phase === 2 ? `
                         <div class="neo-glass border-magical-cyan/40 px-5 py-2.5 rounded-2xl flex flex-col items-center whitespace-nowrap">
@@ -1653,8 +1661,13 @@ function rankingScreen() {
                             </div>
                         </div>` : ''}
                     ${closed ? `
-                        <div class="btn-liquid rounded-2xl pulse-magical" style="padding:clamp(0.4rem,1.4vh,0.75rem) clamp(1rem,2.5vw,2rem)">
-                            <span class="text-white font-black uppercase tracking-widest text-glow-white whitespace-nowrap" style="font-size:clamp(0.9rem,min(2vw,4vh),1.5rem)">Les votes sont clôturés</span>
+                        <div class="flex flex-col items-end" style="gap:clamp(0.3rem,1vh,0.6rem)">
+                            <div class="btn-liquid rounded-2xl pulse-magical" style="padding:clamp(0.3rem,1.1vh,0.6rem) clamp(1rem,2.5vw,2rem)">
+                                <span class="text-white font-black uppercase tracking-widest text-glow-white whitespace-nowrap" style="font-size:clamp(0.85rem,min(1.8vw,3.4vh),1.4rem)">Les votes sont clôturés</span>
+                            </div>
+                            <div class="rounded-full bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold tracking-widest whitespace-nowrap" style="font-size:clamp(0.7rem,min(1.3vw,2.4vh),1.15rem);padding:clamp(0.2rem,0.7vh,0.45rem) clamp(0.8rem,1.6vw,1.4rem)">
+                                🎯 ${totalVotes()} votes · ${top.length} titres dans le Top
+                            </div>
                         </div>` : ''}
                 </div>
             </div>
