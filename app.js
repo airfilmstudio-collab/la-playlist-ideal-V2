@@ -42,7 +42,6 @@ const FIREBASE = {
 
 const PUBLIC_URL = 'https://airfilmstudio-collab.github.io/la-playlist-ideal-V2/';
 const LOGO_URL = 'lOGO-style-App-UniversalDj-512p.png';
-const GOODBYE_URL = 'https://www.universal-dj.com/bar-a-vinyles-normandie/';
 
 const MAX_TOTAL_VOTES = 30;
 const MAX_VOTES_PER_SONG = 2;
@@ -244,6 +243,8 @@ const storage = {
         endHandledFor: 'dj_endHandledFor',    // fin de soirée déjà traitée (export auto) pour ce minuteur
         endPublishedFor: 'dj_endPublishedFor', // publication automatique déjà faite pour ce minuteur
         legacySongs: 'dj_songs',              // ancien format (v2), migré automatiquement
+        guestAuth: 'dj_guest_auth',           // invité déjà connecté (retour sur la page sans retaper le code)
+        resultsNotifiedFor: 'dj_results_notified_for', // résultats déjà annoncés sur ce téléphone
     },
     get(key, fallback = null) {
         try {
@@ -265,8 +266,15 @@ const storage = {
 
 const urlParams = new URLSearchParams(window.location.search);
 const DISPLAY_VIEWS = ['qrcode', 'monitor'];
-/** Fenêtre « écran géant » : seules ces deux vues sont autorisées via l'URL. */
-const displayMode = DISPLAY_VIEWS.includes(urlParams.get('public')) ? urlParams.get('public') : null;
+/**
+ * Fenêtre « écran géant » : seules ces vues sont autorisées via l'URL.
+ * « tv » = TV autonome (Fire TV…) : écran d'attente, puis s'allume quand le DJ appuie sur « Afficher sur la TV ».
+ */
+const publicParam = urlParams.get('public');
+const displayMode = DISPLAY_VIEWS.includes(publicParam) || publicParam === 'tv' ? publicParam : null;
+const TV_HEARTBEAT_MS = 30000;   // la TV signale sa présence toutes les 30 s
+const TV_ONLINE_MS = 75000;
+const DISPLAY_CHROME_IDLE_MS = 6000; // écran géant : boutons masqués après 6 s sans geste      // au-delà, le tableau de bord considère la TV absente
 
 const state = {
     /** Données partagées (copie locale du document Firestore). */
@@ -281,7 +289,7 @@ const state = {
         songVotes: {},
     },
     /** Interface. */
-    view: displayMode || 'login',          // login | adminLogin | user | admin | qrcode | monitor
+    view: displayMode === 'tv' ? 'tvStandby' : (displayMode || 'login'), // login | adminLogin | user | admin | qrcode | monitor | tvStandby
     guestScreen: 'categories',             // categories | songs
     selectedTheme: ALL_THEMES,
     searchQuery: '',
@@ -293,6 +301,8 @@ const state = {
     /** Synchronisation. */
     sync: { ready: false, lastOkAt: 0, pendingWrites: 0, lastWriteDoneAt: 0, online: false },
     resultsNotified: false,
+    /** TV autonome : « on » = affiche l'écran géant, « off » = écran d'attente. seenAt = dernier signal de la TV. */
+    tv: { screen: 'off', seenAt: 0, lastBeatLocal: 0 },
 };
 
 // =============================================================================
@@ -411,6 +421,13 @@ function tick() {
         render();
     }
 
+    // Tableau de bord : la pastille « TV prête » suit l'arrivée / le départ de la TV.
+    const tvNow = tvOnline();
+    if (tvNow !== lastTvOnline) {
+        lastTvOnline = tvNow;
+        if (state.view === 'admin') render();
+    }
+
     // Écran géant : passe automatiquement du QR code au classement dès la phase 2.
     if (displayMode && state.view === 'qrcode' && timer.phase >= 2) {
         state.view = 'monitor';
@@ -419,6 +436,8 @@ function tick() {
 
     handleEndOfEvent(timer.phase);
 }
+
+let lastTvOnline = false;
 
 function updateTextAll(selector, text) {
     document.querySelectorAll(selector).forEach(el => { if (el.textContent !== text) el.textContent = text; });
@@ -505,8 +524,32 @@ function applyRemote(data) {
     }
     if (votesIncreased && (state.view === 'qrcode' || state.view === 'monitor')) flashScreen();
 
-    if (changed) render();
+    // Invité qui revient sur la page (onglet rechargé par le téléphone, retour de veille…) : reconnecté d'office,
+    // pour qu'il soit prévenu des résultats sans devoir retaper le code.
+    if (state.view === 'login' && !displayMode) {
+        const auth = storage.get(storage.KEYS.guestAuth);
+        if (auth && auth.sessionId === next.sessionId && auth.code === normalizeCode(next.guestCode)) {
+            state.view = 'user';
+            state.guestScreen = 'categories';
+            loadUserVotesForSession();
+            cleanUrl();
+            render();
+        }
+    }
+
+    // TV autonome : champs à part, pour ne pas redessiner les téléphones invités à chaque signal de la TV.
+    const tvScreen = data.tvScreen === 'on' ? 'on' : 'off';
+    const tvSeenAt = Number.isFinite(data.tvSeenAt) ? data.tvSeenAt : 0;
+    const tvChanged = tvScreen !== state.tv.screen;
+    if (tvSeenAt !== state.tv.seenAt) {
+        if (state.tv.seenAt) state.tv.lastBeatLocal = Date.now(); // signal reçu pendant que la page est ouverte
+        state.tv.seenAt = tvSeenAt;
+    }
+    state.tv.screen = tvScreen;
+
+    if (changed || (tvChanged && state.view === 'admin')) render();
     tick();
+    applyTvScreen();
     checkResultsNotification();
 }
 
@@ -616,6 +659,8 @@ const notifier = (() => {
 
     return {
         get isUnlocked() { return audioCtx !== null; },
+        /** Le son peut-il sortir tout de suite ? (iOS bloque l'audio après une mise en veille, jusqu'au prochain toucher) */
+        get isRunning() { return audioCtx !== null && audioCtx.state === 'running'; },
 
         /** Doit être appelé lors d'un geste de l'utilisateur (exigence iOS). */
         unlock() {
@@ -681,6 +726,27 @@ function resultsAvailable() {
     return state.remote.resultsPublished || (!!state.remote.eventStartTime && state.phase === 3);
 }
 
+/** Identifie l'annonce des résultats (par tour de vote et par minuteur) pour ne sonner qu'une fois par téléphone. */
+function resultsKey() {
+    return `${state.remote.sessionId}|${state.remote.eventStartTime ?? 'manuel'}`;
+}
+
+/** Si le son est bloqué (iOS après veille), le bip part au premier toucher de l'écran. */
+let beepOnTouchArmed = false;
+function armBeepOnTouch() {
+    if (beepOnTouchArmed) return;
+    beepOnTouchArmed = true;
+    const play = () => {
+        document.removeEventListener('pointerdown', play, true);
+        beepOnTouchArmed = false;
+        notifier.unlock();
+        notifier.resume();
+        notifier.beep();
+        notifier.vibrate();
+    };
+    document.addEventListener('pointerdown', play, true);
+}
+
 function checkResultsNotification() {
     if (!resultsAvailable()) {
         state.resultsNotified = false;
@@ -688,6 +754,10 @@ function checkResultsNotification() {
     }
     if (state.view !== 'user' || state.resultsNotified) return;
     state.resultsNotified = true;
+    // Déjà annoncé sur ce téléphone (ex. page rechargée) : on affiche les résultats sans re-sonner.
+    if (storage.get(storage.KEYS.resultsNotifiedFor) === resultsKey()) { render(); return; }
+    storage.set(storage.KEYS.resultsNotifiedFor, resultsKey());
+    if (!notifier.isRunning) armBeepOnTouch();
 
     // Plusieurs tentatives : sur iOS, la reprise de l'audio peut prendre 1 à 2 secondes.
     notifier.beep();
@@ -782,6 +852,39 @@ function stopCast() {
     render();
 }
 
+// ---- TV autonome (Fire TV, Smart TV…) pilotée depuis le tableau de bord, sur Mac comme sur PC ----
+
+/** La TV a-t-elle donné signe de vie récemment ? (deux horloges : celle de la TV et celle de cet ordinateur) */
+function tvOnline() {
+    const now = Date.now();
+    return (state.tv.lastBeatLocal > 0 && now - state.tv.lastBeatLocal < TV_ONLINE_MS)
+        || (state.tv.seenAt > 0 && Math.abs(now - state.tv.seenAt) < TV_ONLINE_MS);
+}
+
+/** Sur la TV : écran d'attente ou écran géant, selon le bouton du DJ. */
+function applyTvScreen() {
+    if (displayMode !== 'tv') return;
+    let wanted = 'tvStandby';
+    if (state.tv.screen === 'on') wanted = (state.view === 'monitor' || state.phase >= 2) ? 'monitor' : 'qrcode';
+    if (wanted !== state.view) {
+        state.view = wanted;
+        render();
+    }
+}
+
+/** Côté DJ : allume (« on ») ou met en attente (« off ») la TV. */
+function setTvScreen(screen) {
+    state.tv.screen = screen;
+    render();
+    return writeRemote({ tvScreen: screen });
+}
+
+/** Sur la TV : signale sa présence au tableau de bord. */
+function tvHeartbeat() {
+    // Écriture directe : ce signal ne doit pas faire ignorer la lecture du serveur en cours.
+    firestore.update({ tvSeenAt: Date.now() }).catch(err => console.warn('Signal TV non envoyé :', err.message));
+}
+
 function openDisplayWindow(type) {
     if (castConnection) return; // l'écran géant est déjà diffusé sur le Chromecast (il change d'écran tout seul)
     const url = displayUrl(type);
@@ -862,6 +965,7 @@ const actions = {
         render();
     },
     logout() {
+        storage.remove(storage.KEYS.guestAuth);
         state.view = 'login';
         state.loginError = '';
         state.guestScreen = 'categories';
@@ -896,7 +1000,9 @@ const actions = {
         state.view = 'user';
         state.guestScreen = 'categories';
         state.loginError = '';
+        storage.set(storage.KEYS.guestAuth, { sessionId: state.remote.sessionId, code: normalizeCode(state.remote.guestCode) });
         state.resultsNotified = resultsAvailable(); // pas de bip pour des résultats déjà affichés avant la connexion
+        if (state.resultsNotified) storage.set(storage.KEYS.resultsNotifiedFor, resultsKey());
         loadUserVotesForSession();
         cleanUrl();
         render();
@@ -982,11 +1088,10 @@ const actions = {
             state.sync.lastWriteDoneAt = Date.now();
         }
 
-        // 3. Tous les crédits utilisés : remerciement puis redirection.
+        // 3. Tous les crédits utilisés : remerciement. La page reste ouverte pour sonner à l'annonce des résultats.
         if (userVoteTotal() >= MAX_TOTAL_VOTES) {
-            showModal('goodbye', 'Merci pour votre participation !',
-                `Vos ${MAX_TOTAL_VOTES} votes ont été enregistrés avec succès.<br><br>L'application va se fermer pour laisser place à la musique !`);
-            setTimeout(() => { window.location.href = GOODBYE_URL; }, 3000);
+            showModal('alert', 'Merci pour votre participation !',
+                `Vos ${MAX_TOTAL_VOTES} votes ont été enregistrés avec succès.<br><br>🔔 <strong>Laissez cette page ouverte</strong> : elle sonnera à l'annonce des résultats.`);
         }
     },
     async replayNotification() {
@@ -1013,7 +1118,8 @@ const actions = {
                         eventStartTime: Date.now(),
                         resultsPublished: false,
                     });
-                    openDisplayWindow('qrcode');
+                    // TV prête : elle s'allume toute seule, pas de fenêtre à déplacer.
+                    if (tvOnline()) setTvScreen('on'); else openDisplayWindow('qrcode');
                 },
             });
     },
@@ -1032,7 +1138,7 @@ const actions = {
                     storage.set(storage.KEYS.endHandledFor, String(eventStartTime)); // évite un double export
                     updateShared({ eventStartTime, resultsPublished: true, resultsPublishedAt: Date.now() });
                     actions.downloadM3U();
-                    openDisplayWindow('monitor');
+                    if (tvOnline()) setTvScreen('on'); else openDisplayWindow('monitor');
                 },
             });
     },
@@ -1104,6 +1210,16 @@ const actions = {
         if (DISPLAY_VIEWS.includes(type)) startCast(type);
     },
     fireTvHelp: showFireTvHelp,
+    async tvOn() {
+        const ok = await setTvScreen('on');
+        if (!ok) return;
+        if (tvOnline()) showToast('📺 Écran géant affiché sur la TV');
+        else showModal('alert', '📺 La TV va s\'allumer…',
+            `Aucune TV n'est en attente pour l'instant.<br><br>Sur la TV, ouvrez le favori <strong>Playlist</strong> dans Silk :<br>
+             <span class="font-mono font-black text-white">${esc(tvAddress().replace(/^https?:\/\//, ''))}</span><br><br>
+             L'écran géant s'affichera tout de suite.`);
+    },
+    tvOff() { setTvScreen('off'); },
     enterFullscreen() {
         document.documentElement.requestFullscreen?.().catch(() => {});
         keepDisplayAwake();
@@ -1341,6 +1457,28 @@ function rankStyles(index) {
     return { rank: 'text-white/40 text-xl font-bold', box: 'bg-white/[0.01]' };
 }
 
+// ---------- Tableau de bord : bloc TV (un seul bouton) ----------
+
+function tvPanel() {
+    const online = tvOnline();
+    const on = state.tv.screen === 'on';
+    const status = online
+        ? '<span class="flex items-center gap-2 text-green-300 font-bold text-xs uppercase tracking-widest"><span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span> TV prête</span>'
+        : '<span class="flex items-center gap-2 text-white/50 font-bold text-xs uppercase tracking-widest"><span class="w-2.5 h-2.5 rounded-full bg-white/30"></span> Aucune TV en attente</span>';
+    const main = on
+        ? `<button data-action="tvOff" class="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-black px-4 py-5 rounded-2xl transition-colors flex items-center justify-center gap-3 text-sm md:text-base uppercase tracking-widest"><i class="ph-bold ph-television-simple text-2xl text-orange-300"></i> TV allumée · Mettre en attente</button>`
+        : `<button data-action="tvOn" class="w-full bg-orange-500 hover:bg-orange-400 text-white font-black px-4 py-5 rounded-2xl transition-colors flex items-center justify-center gap-3 text-sm md:text-base uppercase tracking-widest shadow-[0_0_25px_rgba(249,115,22,0.45)]"><i class="ph-bold ph-television-simple text-2xl"></i> Afficher sur la TV</button>`;
+    return `
+        <div class="rounded-2xl border border-orange-400/40 bg-orange-500/10 p-4 flex flex-col gap-3">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+                <span class="font-black text-orange-200 text-sm uppercase tracking-widest flex items-center gap-2"><i class="ph-bold ph-fire text-lg"></i> TV · Fire TV</span>
+                ${status}
+            </div>
+            ${main}
+            <button data-action="fireTvHelp" class="self-center text-orange-200/80 hover:text-orange-100 underline underline-offset-4 text-xs font-bold uppercase tracking-widest">Comment préparer la TV ?</button>
+        </div>`;
+}
+
 // ---------- Écran géant ----------
 
 function displayCloseButton(subtle = false) {
@@ -1349,9 +1487,9 @@ function displayCloseButton(subtle = false) {
         ? 'text-white/0 hover:text-white/50 p-3 hover:bg-white/10'
         : 'text-white/50 hover:text-white neo-glass p-2 hover:bg-white/10';
     const canFullscreen = document.fullscreenEnabled && !document.fullscreenElement;
-    return `${canFullscreen ? `<button data-action="enterFullscreen" title="Plein écran" class="absolute top-3 left-3 md:top-6 md:left-6 z-50 rounded-full neo-glass px-4 py-2 text-white/80 hover:text-white focus:ring-4 focus:ring-magical-cyan/60 outline-none text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+    return `${canFullscreen ? `<button data-action="enterFullscreen" title="Plein écran" class="display-chrome absolute top-3 left-3 md:top-6 md:left-6 z-50 rounded-full neo-glass px-4 py-2 text-white/80 hover:text-white focus:ring-4 focus:ring-magical-cyan/60 outline-none text-sm font-bold uppercase tracking-widest flex items-center gap-2">
                 <i class="ph-bold ph-arrows-out text-xl"></i> Plein écran</button>` : ''}
-            <button data-action="closeDisplay" title="Fermer la fenêtre" class="absolute top-3 right-3 md:top-6 md:right-6 z-50 rounded-full transition-all ${look}">
+            <button data-action="closeDisplay" title="Fermer la fenêtre" class="display-chrome absolute top-3 right-3 md:top-6 md:right-6 z-50 rounded-full transition-all ${look}">
                 <i class="ph-bold ph-x text-2xl"></i></button>`;
 }
 
@@ -1372,30 +1510,47 @@ function tvAddress() {
 
 function showFireTvHelp() {
     const address = tvAddress().replace(/^https?:\/\//, '');
-    showModal('alert', '🔥 Fire TV Amazon', `
+    showModal('alert', '📺 TV · Fire TV Amazon', `
         <div class="text-left text-base space-y-4">
             <div class="rounded-2xl border border-magical-cyan/40 bg-magical-cyan/10 p-4">
-                <p class="font-black text-magical-cyan uppercase tracking-widest text-sm mb-2">Méthode 1 · Fire TV autonome (recommandée)</p>
+                <p class="font-black text-magical-cyan uppercase tracking-widest text-sm mb-2">À faire une seule fois sur le Fire TV</p>
                 <ol class="list-decimal pl-5 space-y-1 text-white/90">
-                    <li>Sur le Fire TV, ouvrez l'application <strong>Silk</strong> (navigateur Amazon, gratuit dans l'Appstore).</li>
+                    <li>Ouvrez l'application <strong>Silk</strong> (navigateur Amazon, gratuit dans l'Appstore).</li>
                     <li>Tapez cette adresse avec la télécommande :</li>
                 </ol>
                 <p class="my-3 text-center font-mono font-black text-white text-lg break-all bg-black/50 rounded-xl px-3 py-2">${esc(address)}</p>
                 <ol class="list-decimal pl-5 space-y-1 text-white/90" start="3">
-                    <li>Ajoutez-la aux <strong>favoris</strong> de Silk : les fois suivantes, un seul clic.</li>
-                    <li>Sélectionnez le bouton <strong>« Plein écran »</strong> en haut à gauche.</li>
-                </ol>
-                <p class="mt-3 text-sm text-white/60">L'écran géant fonctionne seul (QR code → Top 40 → classement final), même si le PC est éteint. Conseil : Paramètres Fire TV → Affichage et sons → <strong>Économiseur d'écran → Jamais</strong>.</p>
-            </div>
-            <div class="rounded-2xl border border-white/15 bg-white/5 p-4">
-                <p class="font-black text-white/80 uppercase tracking-widest text-sm mb-2">Méthode 2 · Depuis le PC Windows (miroir)</p>
-                <ol class="list-decimal pl-5 space-y-1 text-white/80">
-                    <li>Sur le Fire TV : maintenez le bouton <strong>Accueil</strong> de la télécommande → <strong>Mise en miroir</strong>.</li>
-                    <li>Sur le PC : touches <strong>Windows + K</strong> → choisissez le Fire TV.</li>
-                    <li>Puis <strong>Windows + P</strong> → <strong>Étendre</strong>, ouvrez « Fenêtre QR Code », glissez-la sur la TV et appuyez sur <strong>F11</strong>.</li>
+                    <li>Ajoutez-la aux <strong>favoris</strong> de Silk.</li>
+                    <li>Paramètres Fire TV → Affichage et sons → <strong>Économiseur d'écran → Jamais</strong>.</li>
                 </ol>
             </div>
+            <div class="rounded-2xl border border-orange-400/40 bg-orange-500/10 p-4">
+                <p class="font-black text-orange-200 uppercase tracking-widest text-sm mb-2">À chaque soirée</p>
+                <ol class="list-decimal pl-5 space-y-1 text-white/90">
+                    <li>Sur la TV : Silk → favori. L'écran affiche <strong>« en attente du DJ »</strong>, puis « Plein écran ».</li>
+                    <li>Sur le Mac ou le PC : bouton <strong>« Afficher sur la TV »</strong>. C'est tout.</li>
+                </ol>
+                <p class="mt-3 text-sm text-white/60">En lançant le minuteur, la TV s'allume aussi toute seule. Elle passe ensuite seule du QR code au Top 40 puis au classement final, même si l'ordinateur est fermé.</p>
+            </div>
+            <p class="text-sm text-white/50">Autre possibilité, PC Windows uniquement : mise en miroir du Fire TV (bouton Accueil maintenu) puis <strong>Windows + K</strong>.</p>
         </div>`);
+}
+
+/** TV autonome en attente du DJ. */
+function tvStandbyView(animClass) {
+    return `
+        <div class="h-screen w-screen flex flex-col items-center justify-center gap-8 p-6 relative ${animClass} overflow-hidden bg-[#050212] text-center">
+            ${displayCloseButton()}
+            ${logo('h-28 md:h-40 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)]')}
+            <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-widest leading-none" style="font-size: clamp(1.75rem, 5vw, 4.5rem);">
+                VOTRE PLAYLIST IDÉALE
+            </h1>
+            <div class="flex items-center gap-3 neo-glass px-6 py-3 rounded-full">
+                <span class="w-3 h-3 rounded-full bg-green-400 animate-pulse"></span>
+                <span class="text-white/80 font-bold uppercase tracking-widest" style="font-size: clamp(1rem, 2vw, 1.6rem);">Écran TV prêt · en attente du DJ</span>
+            </div>
+            <p class="text-white/50 font-light" style="font-size: clamp(0.9rem, 1.5vw, 1.3rem);">Tableau de bord DJ (Mac ou PC) → « Afficher sur la TV »</p>
+        </div>`;
 }
 
 function displayTitle() {
@@ -1462,25 +1617,25 @@ function rankingScreen() {
     const card = (song, index) => {
         const style = rankStyles(index);
         return `
-            <div class="flex items-center neo-card ${style.box} rounded-2xl px-3 sm:px-4 overflow-hidden h-full">
-                <div class="w-8 sm:w-10 text-center font-black shrink-0 ${style.rank}">${index + 1}</div>
-                <div class="flex-1 min-w-0 px-2 sm:px-4 border-l border-white/10 ml-2 sm:ml-3 py-1">
-                    <div class="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">${esc(song.title)}</div>
-                    <div class="text-[10px] sm:text-xs font-light text-white/70 truncate leading-tight mt-0.5 tracking-wide">${esc(song.artist)}</div>
+            <div class="rank-card flex items-center neo-card ${style.box} overflow-hidden min-w-0 min-h-0">
+                <div class="rank-num text-center font-black shrink-0 ${style.rank}">${index + 1}</div>
+                <div class="flex-1 min-w-0 border-l border-white/10">
+                    <div class="rank-title font-bold text-white truncate">${esc(song.title)}</div>
+                    <div class="rank-artist font-light text-white/70 truncate tracking-wide">${esc(song.artist)}</div>
                 </div>
-                <div class="shrink-0 flex items-center justify-center bg-black/50 rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 border border-white/10 shadow-inner">
-                    <span class="text-lg sm:text-xl md:text-2xl font-black ${index < 3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
+                <div class="rank-votes shrink-0 flex items-center justify-center bg-black/50 border border-white/10 shadow-inner">
+                    <span class="font-black ${index < 3 ? 'text-white' : 'text-magical-cyan'}">${song.votes}</span>
                 </div>
             </div>`;
     };
 
     return `
-        <div class="h-screen w-screen flex flex-col p-4 md:p-6 relative overflow-hidden">
+        <div class="h-screen w-screen flex flex-col relative overflow-hidden" style="padding:clamp(0.6rem,2vh,1.5rem) clamp(0.75rem,2vw,1.5rem)">
             ${displayCloseButton(true)}
-            <div class="relative z-10 flex justify-between items-center gap-4 mb-4 px-2">
+            <div class="relative z-10 flex justify-between items-center gap-4 px-2" style="margin-bottom:clamp(0.4rem,1.6vh,1rem)">
                 <div class="flex items-center gap-4 min-w-0">
-                    ${logo('h-14 md:h-20 object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] shrink-0')}
-                    <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-wider text-glow-white leading-tight" style="font-size:clamp(1.5rem,3.2vw,3rem)">
+                    ${logo('rank-logo object-contain drop-shadow-[0_0_30px_rgba(255,0,122,0.6)] shrink-0')}
+                    <h1 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-magical-cyan via-white to-magical-pink uppercase tracking-wider text-glow-white leading-tight min-w-0 ${closed ? 'whitespace-nowrap' : ''}" style="font-size:${closed ? 'clamp(1.1rem,min(3vw,5.5vh),3rem)' : 'clamp(1rem,min(2.4vw,4.5vh),2.6rem)'}">
                         ${closed ? 'LE CLASSEMENT FINAL' : 'VOTRE PLAYLIST IDÉALE'}
                     </h1>
                 </div>
@@ -1498,14 +1653,14 @@ function rankingScreen() {
                             </div>
                         </div>` : ''}
                     ${closed ? `
-                        <div class="btn-liquid px-8 py-3 rounded-2xl pulse-magical">
-                            <span class="text-white font-black text-2xl uppercase tracking-widest text-glow-white">Les votes sont clôturés</span>
+                        <div class="btn-liquid rounded-2xl pulse-magical" style="padding:clamp(0.4rem,1.4vh,0.75rem) clamp(1rem,2.5vw,2rem)">
+                            <span class="text-white font-black uppercase tracking-widest text-glow-white whitespace-nowrap" style="font-size:clamp(0.9rem,min(2vw,4vh),1.5rem)">Les votes sont clôturés</span>
                         </div>` : ''}
                 </div>
             </div>
-            <div class="relative z-10 flex-1 w-full neo-glass rounded-[2.5rem] p-4 overflow-y-auto">
+            <div class="relative z-10 flex-1 min-h-0 w-full neo-glass rounded-[2rem] ranking-panel overflow-hidden">
                 ${top.length > 0 ? `
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 h-full w-full" style="grid-template-rows: repeat(10, minmax(0, 1fr)); grid-auto-flow: column;">
+                    <div class="ranking-grid h-full w-full">
                         ${top.map(card).join('')}
                     </div>` : `
                     <div class="flex flex-col items-center justify-center h-full text-center">
@@ -1934,6 +2089,7 @@ function adminView() {
                             ${toolButton('exportSongList', 'ph-code', 'Exporter la liste des titres (songs.js) pour GitHub', 'border-magical-gold/30 hover:bg-magical-gold/20')}
                             ${toolButton('addSong', 'ph-music-notes-plus', 'Ajouter un titre manuellement', 'border-magical-cyan/30 hover:bg-magical-cyan/20')}
                         </div>
+                        ${tvPanel()}
                         ${castConnection ? `
                         <div class="flex items-center justify-between gap-3 rounded-2xl border border-magical-cyan/50 bg-magical-cyan/10 px-4 py-3">
                             <span class="text-magical-cyan font-bold text-sm flex items-center gap-2"><i class="ph-fill ph-broadcast text-xl animate-pulse"></i> Diffusion en cours sur le Chromecast</span>
@@ -1942,7 +2098,6 @@ function adminView() {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button data-action="castDisplay" data-arg="qrcode" class="w-full bg-magical-cyan/10 hover:bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-television-simple text-lg"></i> Chromecast QR Code</button>
                             <button data-action="castDisplay" data-arg="monitor" class="w-full bg-magical-cyan/10 hover:bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-television-simple text-lg"></i> Chromecast classement</button>
-                            <button data-action="fireTvHelp" class="sm:col-span-2 w-full bg-orange-500/10 hover:bg-orange-500/20 border border-orange-400/40 text-orange-300 font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-fire text-lg"></i> Fire TV Amazon</button>
                         </div>`}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button data-action="openDisplay" data-arg="monitor" class="w-full bg-white/5 hover:bg-white/10 border border-white/20 text-white font-bold px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-widest"><i class="ph-bold ph-screencast text-lg"></i> Fenêtre classement</button>
@@ -2053,6 +2208,7 @@ function renderNow() {
     switch (state.view) {
         case 'qrcode':
         case 'monitor':    html = displayView(animClass); break;
+        case 'tvStandby':  html = tvStandbyView(animClass); break;
         case 'adminLogin': html = loginView(true, animClass); break;
         case 'user':       html = headerNav(isScrolled) + guestView(isScrolled); break;
         case 'admin':      html = headerNav(isScrolled) + adminView(); break;
@@ -2131,6 +2287,10 @@ window.addEventListener('scroll', () => {
 
 // Retour de veille : plusieurs signaux, car aucun n'est fiable seul sur iOS.
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') handleAppResume(); });
+// Tout toucher de l'écran débloque le son (exigence iOS), pas seulement le bouton « Rejoindre ».
+document.addEventListener('pointerdown', () => {
+    if (['user', 'login'].includes(state.view)) { notifier.unlock(); notifier.resume(); }
+}, true);
 window.addEventListener('pageshow', handleAppResume);
 window.addEventListener('focus', handleAppResume);
 
@@ -2146,6 +2306,22 @@ function start() {
         keepDisplayAwake();
         document.addEventListener('visibilitychange', keepDisplayAwake);
         document.addEventListener('fullscreenchange', render); // masque/affiche le bouton « Plein écran »
+    }
+    if (displayMode) {
+        // Boutons « Plein écran » / « Fermer » : masqués après quelques secondes sans geste (ne cachent plus le titre),
+        // réaffichés au moindre mouvement de souris ou appui sur la télécommande.
+        let idleTimer = null;
+        const wake = () => {
+            document.body.classList.remove('ui-idle');
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => document.body.classList.add('ui-idle'), DISPLAY_CHROME_IDLE_MS);
+        };
+        ['pointermove', 'pointerdown', 'keydown'].forEach(type => document.addEventListener(type, wake, true));
+        wake();
+    }
+    if (displayMode === 'tv') {
+        tvHeartbeat();
+        setInterval(tvHeartbeat, TV_HEARTBEAT_MS);
     }
     render();
     pollLoop();

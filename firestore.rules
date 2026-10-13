@@ -29,7 +29,7 @@ service cloud.firestore {
     function isValidPlaylist(d) {
       return d.keys().hasOnly(['sessionId', 'guestCode', 'adminCode', 'eventStartTime',
                                'phase1Duration', 'phase2Duration', 'resultsPublished',
-                               'resultsPublishedAt', 'songVotes'])
+                               'resultsPublishedAt', 'songVotes', 'tvScreen', 'tvSeenAt'])
         && (!('guestCode' in d) || (d.guestCode is string && d.guestCode.size() <= 40))
         && (!('adminCode' in d) || (d.adminCode is string && d.adminCode.size() <= 40))
         && (!('sessionId' in d) || d.sessionId is string)
@@ -38,7 +38,9 @@ service cloud.firestore {
         && (!('phase2Duration' in d) || d.phase2Duration is int)
         && (!('resultsPublished' in d) || d.resultsPublished is bool)
         && (!('resultsPublishedAt' in d) || d.resultsPublishedAt is int)
-        && (!('songVotes' in d) || d.songVotes is map);
+        && (!('songVotes' in d) || d.songVotes is map)
+        && (!('tvScreen' in d) || d.tvScreen in ['on', 'off'])
+        && (!('tvSeenAt' in d) || d.tvSeenAt is int);
     }
   }
 }

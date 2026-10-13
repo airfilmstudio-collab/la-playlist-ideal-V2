@@ -106,3 +106,18 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
   - Méthode 1 (autonome) : sur le Fire TV, navigateur Silk → adresse courte `…/la-playlist-ideal-V2/tv` (dossier `tv/`, redirige vers l'écran géant) → favori → « Plein écran ». L'écran géant fonctionne seul, même PC éteint.
   - Méthode 2 (PC Windows) : mise en miroir du Fire TV + Windows + K, puis Windows + P → Étendre.
 - Écran géant : bouton « Plein écran » (utilisable à la télécommande), demande à l'appareil de garder l'écran allumé.
+
+## Version 3.9 (12 octobre 2026) — TV pilotée en un bouton, depuis Mac ou PC
+
+- Adresse `…/tv` : la TV (Fire TV via Silk, Smart TV) affiche « Écran TV prêt · en attente du DJ » et signale sa présence toutes les 30 s.
+- Tableau de bord DJ : bloc « TV · Fire TV » avec pastille « TV prête » et un seul bouton « Afficher sur la TV » / « Mettre en attente ». Fonctionne depuis n'importe quel navigateur (Mac, PC, tablette).
+- Lancer le minuteur ou « Clôturer & Résultats » allume aussi la TV si elle est prête (plus de fenêtre à déplacer).
+- Firestore : 2 champs ajoutés (`tvScreen` = on/off, `tvSeenAt`), autorisés dans `firestore.rules`.
+- Classement sur TV (Fire TV / Silk, qui annonce ~960 px de large) : la grille passait en 2 colonnes et écrasait les places 1 à 20, textes coupés. Désormais toujours 4 × 10, tailles proportionnelles à l'écran (vérifié en 960×540, 1280×720, 1920×1080, Top 40 et classement final).
+- Écran géant : boutons « Plein écran » et « Fermer » masqués après 6 s sans geste (ils cachaient le titre), réaffichés à la télécommande ou à la souris.
+- Bip de fin sur les téléphones :
+  - l'invité revenant sur la page (onglet rechargé par le téléphone après veille) est reconnecté d'office ; avant, il retombait sur l'écran du code et n'était pas prévenu ;
+  - si le son est bloqué (iPhone après veille), le bip part au premier toucher de l'écran ; tout toucher débloque le son ;
+  - l'annonce n'est faite qu'une fois par téléphone, même après rechargement ;
+  - après les 30 votes, la page ne part plus vers le site : elle reste ouverte pour sonner aux résultats.
+- Limites des navigateurs : l'iPhone ne permet pas la vibration depuis une page web, et un téléphone verrouillé ne peut pas sonner (la page sonne dès qu'on le rallume).
