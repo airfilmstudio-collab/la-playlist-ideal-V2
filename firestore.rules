@@ -21,6 +21,16 @@ service cloud.firestore {
       allow create, update: if isValidPlaylist(request.resource.data);
     }
 
+    // Catalogue partagé : titres importés / ajoutés par le DJ (texte JSON, < 900 000 caractères).
+    match /artifacts/{appId}/public/data/playlist/catalog {
+      allow read: if true;
+      allow delete: if false;
+      allow create, update: if request.resource.data.keys().hasOnly(['json', 'updatedAt'])
+        && request.resource.data.json is string
+        && request.resource.data.json.size() < 900000
+        && request.resource.data.updatedAt is int;
+    }
+
     // Tout le reste est fermé.
     match /{document=**} {
       allow read, write: if false;
@@ -30,7 +40,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['sessionId', 'guestCode', 'adminCode', 'eventStartTime',
                                'phase1Duration', 'phase2Duration', 'resultsPublished',
                                'resultsPublishedAt', 'songVotes', 'tvScreen', 'tvSeenAt',
-                               'eventTitle'])
+                               'eventTitle', 'catalogVersion'])
         && (!('guestCode' in d) || (d.guestCode is string && d.guestCode.size() <= 40))
         && (!('adminCode' in d) || (d.adminCode is string && d.adminCode.size() <= 40))
         && (!('sessionId' in d) || d.sessionId is string)
@@ -42,7 +52,8 @@ service cloud.firestore {
         && (!('songVotes' in d) || d.songVotes is map)
         && (!('tvScreen' in d) || d.tvScreen in ['on', 'off'])
         && (!('tvSeenAt' in d) || d.tvSeenAt is int)
-        && (!('eventTitle' in d) || (d.eventTitle is string && d.eventTitle.size() <= 80));
+        && (!('eventTitle' in d) || (d.eventTitle is string && d.eventTitle.size() <= 80))
+        && (!('catalogVersion' in d) || d.catalogVersion is int);
     }
   }
 }

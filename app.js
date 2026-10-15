@@ -91,6 +91,16 @@ const FALLBACK_VISUALS = [
     { emoji: '🎶', from: '#7000FF', to: '#FF007A' },
     { emoji: '🎼', from: '#00F0FF', to: '#7000FF' },
 ];
+/** Nouvelles catégories (créées à l'import) : visuel deviné d'après le nom. */
+const KEYWORD_VISUALS = [
+    [/ibiza|balear|beach|plage|summer|été|tropical/i, { emoji: '🏝️', from: '#00C9A7', to: '#FF8A00' }],
+    [/mariage|wedding|love|amour|slow/i, { emoji: '💍', from: '#FF5E99', to: '#FFD36E' }],
+    [/house|club|techno|electro|dance/i, { emoji: '🎧', from: '#7000FF', to: '#00F0FF' }],
+    [/latino|latin|salsa|reggaeton|bachata/i, { emoji: '💃', from: '#FF3D00', to: '#FFC400' }],
+    [/rock/i, { emoji: '🎸', from: '#B71C1C', to: '#424242' }],
+    [/kids|enfant/i, { emoji: '🎈', from: '#29B6F6', to: '#FFEB3B' }],
+    [/disco|funk|soul/i, { emoji: '🪩', from: '#FF6F00', to: '#E040FB' }],
+];
 const ALL_THEMES = 'Tous';
 
 // =============================================================================
@@ -161,6 +171,8 @@ const firestore = (() => {
     const ROOT = `projects/${FIREBASE.projectId}/databases/(default)/documents`;
     const API = 'https://firestore.googleapis.com/v1';
     const DOC_URL = `${API}/${ROOT}/${DOC_PATH}`;
+    // Catalogue partagé des titres ajoutés par le DJ (lu une fois, puis seulement quand il change).
+    const CATALOG_URL = `${API}/${ROOT}/artifacts/${FIREBASE.appId}/public/data/playlist/catalog`;
 
     function toValue(v) {
         if (v === null || v === undefined) return { nullValue: null };
@@ -211,6 +223,23 @@ const firestore = (() => {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
+            }));
+        },
+
+        /** Catalogue partagé : renvoie la chaîne JSON, ou null s'il n'existe pas encore. */
+        async readCatalog() {
+            const resp = await fetch(CATALOG_URL, { cache: 'no-store' });
+            if (resp.status === 404) return null;
+            await ensureOk(resp);
+            const doc = await resp.json();
+            return fromValue(doc.fields?.json) ?? null;
+        },
+
+        async writeCatalog(json) {
+            await ensureOk(await fetch(`${CATALOG_URL}?updateMask.fieldPaths=json&updateMask.fieldPaths=updatedAt`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fields: { json: toValue(json), updatedAt: toValue(Date.now()) } }),
             }));
         },
 
@@ -339,23 +368,115 @@ function migrateLegacySongs() {
     storage.remove(storage.KEYS.legacySongs);
 }
 
+/*
+ * Titres ajoutés par le DJ (import M3U8 / ajout manuel) : stockés dans un document Firestore partagé
+ * (« catalog »), donc visibles tout de suite sur tous les téléphones, le grand écran et tous les ordinateurs.
+ *  - customSongs  : nouveaux titres [id, titre, artiste, catégorie, chemin]
+ *  - catalogLinks : [id, catégorie] = titre déjà présent, ajouté AUSSI à une autre catégorie
+ *    (une playlist importée apparaît complète dans sa catégorie, sans doublon ni votes partagés en deux).
+ */
 let customSongs = [];
+let catalogLinks = [];
 const lastVoteAt = new Map();
 let allSongs = BASE_SONGS;
+const catalog = { version: null, loaded: false, synced: false };
 
-function loadCustomSongs() {
-    const saved = storage.get(storage.KEYS.customSongs, []);
-    customSongs = Array.isArray(saved) ? saved.filter(s => s && !BASE_IDS.has(s.id)) : [];
-    allSongs = BASE_SONGS.concat(customSongs);
+function rebuildAllSongs() {
+    const extra = new Map();
+    for (const [id, theme] of catalogLinks) {
+        if (!extra.has(id)) extra.set(id, []);
+        if (!extra.get(id).includes(theme)) extra.get(id).push(theme);
+    }
+    allSongs = BASE_SONGS.concat(customSongs).map(s => (extra.has(s.id) ? { ...s, alsoIn: extra.get(s.id) } : s));
 }
 
-function addCustomSongs(songs) {
+function songInTheme(song, theme) {
+    return song.theme === theme || (song.alsoIn ? song.alsoIn.includes(theme) : false);
+}
+
+function catalogJson() {
+    return JSON.stringify({
+        v: 1,
+        songs: customSongs.map(s => [s.id, s.title, s.artist, s.theme, s.filepath || '']),
+        links: catalogLinks,
+    });
+}
+
+function applyCatalogJson(json) {
+    let data = {};
+    try { data = json ? JSON.parse(json) : {}; } catch { data = {}; }
+    customSongs = (Array.isArray(data.songs) ? data.songs : [])
+        .filter(r => Array.isArray(r) && Number.isFinite(r[0]) && !BASE_IDS.has(r[0]) && r[1] && r[3])
+        .map(([id, title, artist, theme, filepath]) => ({ id, title: String(title), artist: String(artist || 'Inconnu'), theme: String(theme), filepath: String(filepath || '') }));
+    const ids = new Set(BASE_SONGS.map(s => s.id).concat(customSongs.map(s => s.id)));
+    catalogLinks = (Array.isArray(data.links) ? data.links : [])
+        .filter(l => Array.isArray(l) && ids.has(l[0]) && typeof l[1] === 'string' && l[1]);
+    rebuildAllSongs();
+}
+
+/** Lit le catalogue partagé (au démarrage, puis chaque fois que le DJ le modifie). */
+async function loadCatalog() {
+    try {
+        applyCatalogJson(await firestore.readCatalog());
+        catalog.loaded = true;
+        render();
+        if (state.view === 'admin') offerLocalSongsPublish();
+    } catch (err) {
+        console.warn('Catalogue partagé illisible :', err.message);
+    }
+}
+
+/** Enregistre le catalogue pour tout le monde, puis prévient les autres écrans. */
+async function publishCatalog() {
+    try {
+        await firestore.writeCatalog(catalogJson());
+        const version = Date.now();
+        catalog.version = version;
+        await writeRemote({ catalogVersion: version });
+        return true;
+    } catch (err) {
+        showModal('alert', '⚠️ Titres non publiés',
+            `Les titres n'ont pas pu être envoyés au serveur : les invités ne les voient pas encore.<br><br>
+             <span class="text-sm text-magical-pink">${esc(err.message)}</span><br><br>Vérifie la connexion internet et recommence.`);
+        return false;
+    }
+}
+
+/** Ajoute des titres (nouveaux) et des liens de catégorie (titres existants) au catalogue local. */
+function addCustomSongs(songs, links = []) {
     let nextId = Math.max(0, ...allSongs.map(s => s.id)) + 1;
     const added = songs.map(s => ({ ...s, id: nextId++ }));
     customSongs = customSongs.concat(added);
-    allSongs = BASE_SONGS.concat(customSongs);
-    storage.set(storage.KEYS.customSongs, customSongs);
+    catalogLinks = catalogLinks.concat(links);
+    rebuildAllSongs();
     return added;
+}
+
+/**
+ * Anciennes versions : les titres importés restaient dans le navigateur du DJ (invisibles pour les invités).
+ * À l'ouverture du tableau de bord, on propose de les publier.
+ */
+let localSongsOffered = false;
+function offerLocalSongsPublish() {
+    if (localSongsOffered || !catalog.loaded || state.modal) return;
+    const saved = storage.get(storage.KEYS.customSongs, []);
+    const pending = (Array.isArray(saved) ? saved : []).filter(s => s && s.title && s.theme && !allSongs.some(x => sameSong(x, s)));
+    localSongsOffered = true;
+    if (!pending.length) { storage.remove(storage.KEYS.customSongs); return; }
+    const themes = [...new Set(pending.map(s => s.theme))].map(esc).join(', ');
+    showModal('confirm', '📂 Titres importés sur cet ordinateur',
+        `<strong>${pending.length}</strong> titres importés auparavant sur cet ordinateur ne sont pas encore visibles par les invités
+         (catégories : <strong>${themes}</strong>).<br><br>Les publier maintenant pour tout le monde ?`,
+        {
+            confirmLabel: 'Publier',
+            onConfirm: async () => {
+                addCustomSongs(pending.map(({ title, artist, theme, filepath }) => ({ title, artist, theme, filepath: filepath || '' })));
+                if (await publishCatalog()) {
+                    storage.remove(storage.KEYS.customSongs);
+                    showToast(`✅ ${pending.length} titres publiés`);
+                }
+            },
+        });
 }
 
 function votesOf(song) {
@@ -383,7 +504,11 @@ const THEMES_LAST = ['Urbain Français'];
 
 function themesWithCounts() {
     const counts = new Map();
+    // Catégories d'origine d'abord, puis celles créées à l'import (playlists).
     for (const song of allSongs) counts.set(song.theme, (counts.get(song.theme) || 0) + 1);
+    for (const song of allSongs) {
+        for (const theme of song.alsoIn || []) counts.set(theme, (counts.get(theme) || 0) + 1);
+    }
     const rank = name => THEMES_LAST.indexOf(name); // -1 = ordre normal
     return [...counts.entries()]
         .map(([name, count]) => ({ name, count }))
@@ -391,7 +516,9 @@ function themesWithCounts() {
 }
 
 function themeVisual(name, index = 0) {
-    return THEME_VISUALS[name] || FALLBACK_VISUALS[index % FALLBACK_VISUALS.length];
+    return THEME_VISUALS[name]
+        || KEYWORD_VISUALS.find(([re]) => re.test(name))?.[1]
+        || FALLBACK_VISUALS[index % FALLBACK_VISUALS.length];
 }
 
 function userVoteTotal() {
@@ -557,6 +684,18 @@ function applyRemote(data) {
             cleanUrl();
             render();
         }
+    }
+
+    // Catalogue modifié par le DJ (import, ajout de titre) : relu une seule fois.
+    // (Au tout premier passage, le catalogue vient d'être lu au démarrage : pas besoin de le relire.)
+    const remoteCatalog = Number.isFinite(data.catalogVersion) ? data.catalogVersion : 0;
+    if (!catalog.synced) {
+        catalog.synced = true;
+        catalog.version = remoteCatalog;
+        if (!catalog.loaded) loadCatalog();
+    } else if (remoteCatalog !== catalog.version) {
+        catalog.version = remoteCatalog;
+        loadCatalog();
     }
 
     // TV autonome : champs à part, pour ne pas redessiner les téléphones invités à chaque signal de la TV.
@@ -1044,6 +1183,7 @@ const actions = {
         state.loginError = '';
         render();
         tick();
+        offerLocalSongsPublish();
     },
 
     // ---- Invités : navigation dans les catégories ----
@@ -1293,6 +1433,36 @@ const actions = {
         });
         input.click();
     },
+    /** Catégories créées par import : liste avec nombre de titres, suppression possible. */
+    manageImports() {
+        const baseThemes = new Set(BASE_SONGS.map(s => s.theme));
+        const imported = themesWithCounts().filter(t => !baseThemes.has(t.name));
+        if (!imported.length) {
+            return showModal('alert', '📁 Catégories importées', 'Aucune catégorie importée pour l\'instant.<br><br>Bouton <strong>Importer</strong> (flèche vers le haut) → choisissez votre playlist M3U / M3U8 et tapez le nom de la nouvelle catégorie.');
+        }
+        showModal('alert', '📁 Catégories importées', `
+            <div class="flex flex-col gap-2 text-left">
+                ${imported.map(t => `
+                    <div class="flex items-center justify-between gap-3 bg-black/40 rounded-xl px-4 py-3 border border-white/10">
+                        <span class="font-bold text-white min-w-0 truncate">${esc(t.name)} <span class="text-white/50 font-normal text-sm">· ${t.count} titres</span></span>
+                        <button data-action="deleteImportedTheme" data-arg="${esc(t.name)}" class="shrink-0 text-red-400 hover:text-red-300 border border-red-500/40 hover:bg-red-500/20 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-widest">Supprimer</button>
+                    </div>`).join('')}
+                <p class="text-xs text-white/40 mt-2">Supprimer retire la catégorie des téléphones ; les titres qui existaient déjà dans d'autres catégories y restent.</p>
+            </div>`);
+    },
+    deleteImportedTheme(theme) {
+        showModal('confirm', 'Supprimer la catégorie ?', `La catégorie « <strong>${esc(theme)}</strong> » va disparaître des téléphones des invités.`, {
+            confirmLabel: 'Supprimer',
+            onConfirm: async () => {
+                customSongs = customSongs.filter(s => s.theme !== theme);
+                const ids = new Set(BASE_SONGS.map(s => s.id).concat(customSongs.map(s => s.id)));
+                catalogLinks = catalogLinks.filter(([id, t]) => t !== theme && ids.has(id));
+                rebuildAllSongs();
+                render();
+                if (await publishCatalog()) showToast(`Catégorie « ${theme} » supprimée`);
+            },
+        });
+    },
     addSong() {
         showModal('custom', '🎵 Ajouter un titre', `
             <div class="flex flex-col gap-4 text-left">
@@ -1322,9 +1492,10 @@ const actions = {
                     return showModal('alert', 'Doublon', `<strong>${esc(song.artist)} - ${esc(song.title)}</strong> existe déjà dans la playlist.`);
                 }
                 addCustomSongs([song]);
-                showModal('alert', 'Titre ajouté !',
+                render();
+                publishCatalog().then(ok => ok && showModal('alert', 'Titre ajouté !',
                     `<strong>${esc(song.artist)} - ${esc(song.title)}</strong><br>ajouté à la catégorie « <strong>${esc(song.theme)}</strong> ».<br><br>
-                     <span class="text-sm text-white/60">Pour que les invités le voient, exporte la liste (bouton &lt;/&gt;) et remplace <strong>songs.js</strong> sur GitHub.</span>`);
+                     <span class="text-sm text-white/60">Visible tout de suite sur les téléphones des invités.</span>`));
             },
         });
     },
@@ -1411,12 +1582,26 @@ async function exportBestVersionsFrom(file) {
          </div>`);
 }
 
+/** Clé de comparaison souple : titre sans version/remix/feat. + artiste principal (accents et casse ignorés). */
+function looseKey(song) {
+    const id = rekordbox.cleanIdentity(song.title, song.artist);
+    return `${rekordbox.baseTitle(id.title)}|${rekordbox.mainArtist(id.artist)}`;
+}
+
 function showImportModal(parsed, fileNames) {
-    // Doublons exclus : déjà présents dans la playlist ou répétés dans le fichier importé.
+    // Titres déjà au catalogue : ils ne sont pas recréés, mais seront AUSSI rangés dans la catégorie choisie.
+    const byKey = new Map(allSongs.map(s => [looseKey(s), s]));
     const fresh = [];
+    const existing = [];
+    const seen = new Set();
     for (const song of parsed) {
-        if (!allSongs.some(s => sameSong(s, song)) && !fresh.some(s => sameSong(s, song))) fresh.push(song);
+        const key = looseKey(song);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const match = byKey.get(key);
+        if (match) existing.push(match); else fresh.push(song);
     }
+    const usable = fresh.length + existing.length;
 
     const preview = fresh.slice(0, 50).map(s => `<div>${esc(s.artist)} — ${esc(s.title)}</div>`).join('');
     const body = `
@@ -1424,14 +1609,15 @@ function showImportModal(parsed, fileNames) {
             <div class="bg-black/40 rounded-xl p-4 border border-white/10">
                 <p class="text-white/60 text-sm mb-1">Fichier(s) : <strong class="text-white">${esc(fileNames)}</strong></p>
                 <p class="text-white/60 text-sm">Titres trouvés : <strong class="text-magical-cyan text-lg">${parsed.length}</strong></p>
-                <p class="text-white/60 text-sm">Nouveaux (hors doublons) : <strong class="text-magical-pink text-lg">${fresh.length}</strong></p>
+                <p class="text-white/60 text-sm">Nouveaux titres : <strong class="text-magical-pink text-lg">${fresh.length}</strong></p>
+                <p class="text-white/60 text-sm">Déjà au catalogue (rangés aussi dans la catégorie choisie) : <strong class="text-magical-gold text-lg">${existing.length}</strong></p>
             </div>
-            ${fresh.length === 0 ? '<p class="text-magical-pink font-bold text-center">Aucun nouveau titre à importer (tous déjà présents).</p>' : `
+            ${usable === 0 ? '<p class="text-magical-pink font-bold text-center">Aucun titre lisible dans ce fichier.</p>' : `
             <div><label class="${LABEL_CLASS}" for="import-theme">Ajouter à la catégorie :</label>${themeSelectHtml('import-theme')}</div>
             <div><label class="${LABEL_CLASS}" for="import-theme-new">Ou créer une nouvelle catégorie :</label>
                 <input id="import-theme-new" type="text" placeholder="Laisser vide pour utiliser la catégorie ci-dessus…" class="${INPUT_CLASS} text-magical-cyan"></div>
             <details class="bg-black/30 rounded-xl border border-white/10">
-                <summary class="p-3 cursor-pointer text-sm text-white/50 hover:text-white/80 transition-colors">Aperçu des titres (${fresh.length})</summary>
+                <summary class="p-3 cursor-pointer text-sm text-white/50 hover:text-white/80 transition-colors">Aperçu des nouveaux titres (${fresh.length})</summary>
                 <div class="max-h-40 overflow-y-auto p-3 pt-0 text-xs text-white/60 space-y-1">
                     ${preview}
                     ${fresh.length > 50 ? `<div class="text-magical-pink font-bold mt-2">… et ${fresh.length - 50} autres</div>` : ''}
@@ -1439,18 +1625,22 @@ function showImportModal(parsed, fileNames) {
             </details>`}
         </div>`;
 
-    if (fresh.length === 0) return showModal('alert', '📂 Import M3U8', body);
+    if (usable === 0) return showModal('alert', '📂 Import M3U8', body);
 
     showModal('custom', '📂 Import M3U8', body, {
-        confirmLabel: 'Importer',
-        onConfirm: () => {
-            const theme = inputValue('import-theme-new') || inputValue('import-theme');
+        confirmLabel: 'Importer et publier',
+        onConfirm: async () => {
+            const theme = (inputValue('import-theme-new') || inputValue('import-theme')).replace(/\s+/g, ' ').trim().slice(0, 60);
             if (!theme) return;
-            const added = addCustomSongs(fresh.map(s => ({ ...s, theme })));
-            const inTheme = allSongs.filter(s => s.theme === theme).length;
-            showModal('alert', 'Import réussi !',
-                `<strong>${added.length}</strong> titres ajoutés à la catégorie « <strong>${esc(theme)}</strong> ».<br><br>Total : <strong>${inTheme}</strong> titres dans cette catégorie.<br><br>
-                 <span class="text-sm text-white/60">Pour que les invités les voient, exporte la liste (bouton &lt;/&gt;) et remplace <strong>songs.js</strong> sur GitHub.</span>`);
+            const links = existing.filter(s => !songInTheme(s, theme)).map(s => [s.id, theme]);
+            const added = addCustomSongs(fresh.map(s => ({ ...s, theme })), links);
+            const inTheme = allSongs.filter(s => songInTheme(s, theme)).length;
+            render();
+            if (!(await publishCatalog())) return;
+            showModal('alert', '✅ Import publié !',
+                `Catégorie « <strong>${esc(theme)}</strong> » : <strong>${inTheme}</strong> titres
+                 (<strong>${added.length}</strong> nouveaux, <strong>${links.length}</strong> déjà au catalogue).<br><br>
+                 <span class="text-sm text-white/60">Visible tout de suite sur les téléphones des invités.</span>`);
         },
     });
 }
@@ -1966,7 +2156,7 @@ function appendPendingCards() {
 /** Liste des titres d'une catégorie, avec retour aux catégories bien visible. */
 function guestSongsView(isScrolled) {
     const theme = state.selectedTheme;
-    const songs = theme === ALL_THEMES ? allSongs : allSongs.filter(s => s.theme === theme);
+    const songs = theme === ALL_THEMES ? allSongs : allSongs.filter(s => songInTheme(s, theme));
     const query = state.searchQuery;
     const matches = song => `${song.title} ${song.artist}`.toLowerCase().includes(query);
     const totalUsed = userVoteTotal();
@@ -2176,7 +2366,7 @@ function adminView() {
                         <button data-action="exportBestVersions" class="w-full bg-magical-gold/10 hover:bg-magical-gold/20 border border-magical-gold/40 hover:border-magical-gold text-magical-gold font-black px-4 py-4 rounded-2xl transition-colors flex items-center justify-center gap-3 text-xs md:text-sm uppercase tracking-widest">
                             <i class="ph-bold ph-crown text-xl"></i> Top 40 avec mes versions les plus jouées
                         </button>
-                        <div class="grid grid-cols-5 gap-3">
+                        <div class="grid grid-cols-6 gap-3">
                             ${state.remote.resultsPublished
                                 ? toolButton('unpublishResults', 'ph-bell-ringing', 'Retirer la publication des résultats', 'bg-magical-cyan/20 border-magical-cyan/60 hover:bg-magical-cyan/30 animate-pulse')
                                 : toolButton('publishResults', 'ph-bell', 'Publier les résultats sur les téléphones invités', 'border-magical-gold/40 hover:bg-magical-gold/30')}
@@ -2184,6 +2374,7 @@ function adminView() {
                             ${toolButton('importM3U', 'ph-upload-simple', 'Importer une playlist M3U8', 'border-magical-purple/30 hover:bg-magical-purple/20')}
                             ${toolButton('exportSongList', 'ph-code', 'Exporter la liste des titres (songs.js) pour GitHub', 'border-magical-gold/30 hover:bg-magical-gold/20')}
                             ${toolButton('addSong', 'ph-music-notes-plus', 'Ajouter un titre manuellement', 'border-magical-cyan/30 hover:bg-magical-cyan/20')}
+                            ${toolButton('manageImports', 'ph-folders', 'Catégories importées (voir / supprimer)', 'border-magical-gold/30 hover:bg-magical-gold/20')}
                         </div>
                         ${tvPanel()}
                         ${castConnection ? `
@@ -2391,14 +2582,10 @@ document.addEventListener('pointerdown', () => {
 window.addEventListener('pageshow', handleAppResume);
 window.addEventListener('focus', handleAppResume);
 
-// Titres ajoutés depuis un autre onglet (ex. : fenêtre écran géant ouverte par le DJ).
-window.addEventListener('storage', event => {
-    if (event.key === storage.KEYS.customSongs) { loadCustomSongs(); render(); }
-});
 
 function start() {
     migrateLegacySongs();
-    loadCustomSongs();
+    loadCatalog();
     if (displayMode) {
         keepDisplayAwake();
         document.addEventListener('visibilitychange', keepDisplayAwake);

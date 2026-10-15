@@ -18,9 +18,7 @@ Application de vote musical en soirée : les invités scannent le QR code, chois
 
 ## Ajouter des titres
 
-1. Tableau de bord DJ → bouton **Importer** (M3U8) ou **Ajouter un titre**.
-2. Bouton **</>** → télécharge un nouveau `songs.js`.
-3. Remplacer `songs.js` sur GitHub. Les invités voient les nouveaux titres dès la mise en ligne.
+Tableau de bord DJ → bouton **Importer** (playlist M3U / M3U8) ou **Ajouter un titre**. Les titres sont publiés tout de suite pour tous (téléphones, grand écran, autres ordinateurs), via le document Firestore `catalog`. Bouton **dossiers** : voir / supprimer les catégories importées. Le bouton **</>** (export `songs.js`) reste disponible pour figer le catalogue dans GitHub.
 
 ## Écran géant
 
@@ -139,3 +137,12 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
   - nouveau bouton « Retour au QR code » : arrête, retire la publication des résultats (les téléphones ne restent plus bloqués sur le classement) et remet le QR code ; les votes sont conservés ;
   - le grand écran (fenêtre QR code ou TV) revient de lui-même au QR code quand le minuteur est arrêté ou relancé.
 - Reconnexion automatique de l'invité limitée au même onglet : l'ordinateur du DJ qui a testé en invité retrouve l'accueil avec « Accès DJ (Admin) » en ouvrant un nouvel onglet.
+
+## Version 3.11 (15 octobre 2026) — playlists importées visibles tout de suite
+
+- Avant : un import M3U restait dans le navigateur de l'ordinateur du DJ ; les invités ne le voyaient qu'après export de `songs.js` et dépôt sur GitHub. Désormais l'import (et « Ajouter un titre ») est publié immédiatement pour tout le monde (nouveau document Firestore `catalog`, lu une fois puis seulement quand il change : pas de surcoût pendant la soirée).
+- Une playlist importée apparaît complète dans sa catégorie : les titres déjà au catalogue (comparaison souple : remix / extended / feat. ignorés) y sont rangés aussi, sans doublon et avec un seul compteur de votes.
+- Nouvelles catégories : visuel deviné d'après le nom (🏝️ Ibiza / plage, 💍 mariage, 🎧 house, 💃 latino…), placées après les catégories d'origine.
+- Bouton « Catégories importées » : liste et suppression.
+- Titres importés avec une ancienne version sur un ordinateur : à l'ouverture du tableau de bord, publication proposée.
+- Firestore : document `catalog` (champs `json`, `updatedAt`) et champ `catalogVersion` ajoutés aux règles.
