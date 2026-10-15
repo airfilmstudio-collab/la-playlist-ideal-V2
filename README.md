@@ -131,3 +131,11 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
 - Tableau de bord DJ : champ « Thème de la soirée » (ex. « Anniversaire de Jacques & Sandrine », « Mariage de… », « Soirée d'entreprise… »), bouton « Afficher » ou touche Entrée ; laisser vide pour ne rien afficher. 80 caractères maximum.
 - Affiché en lettres dorées ✨ sur : l'accueil du QR code (téléphone), l'écran des catégories, le classement final sur téléphone, le grand écran (QR code, Top 40 en cours, classement final), la TV en attente et le tableau de bord. Mise à jour en direct partout.
 - Firestore : champ `eventTitle` (texte ≤ 80) ajouté aux règles.
+
+## Version 3.10.1 (15 octobre 2026) — minuteurs toujours accessibles
+
+- Après la clôture (« Clôturé définitivement »), les minuteurs restaient cachés derrière « Arrêter / Annuler » (comportement hérité de la v2) : le DJ croyait qu'ils avaient disparu, et le grand écran restait sur le classement final sans QR code. Désormais :
+  - les minuteurs 3H, **2H** (nouveau), 1H, 30 Min et Test 2M sont proposés aussi après la clôture ; en relancer un remet tout en route (QR code sur le grand écran et la TV, téléphones sur l'écran de vote) ;
+  - nouveau bouton « Retour au QR code » : arrête, retire la publication des résultats (les téléphones ne restent plus bloqués sur le classement) et remet le QR code ; les votes sont conservés ;
+  - le grand écran (fenêtre QR code ou TV) revient de lui-même au QR code quand le minuteur est arrêté ou relancé.
+- Reconnexion automatique de l'invité limitée au même onglet : l'ordinateur du DJ qui a testé en invité retrouve l'accueil avec « Accès DJ (Admin) » en ouvrant un nouvel onglet.

@@ -57,6 +57,7 @@ const DEFAULTS = Object.freeze({
 /** Formules de minuteur proposées au DJ (durées en minutes). */
 const TIMER_PRESETS = {
     '3H':  { label: '3H',      p1: 120, p2: 60 },
+    '2H':  { label: '2H',      p1: 80,  p2: 40 },
     '1H':  { label: '1H',      p1: 40,  p2: 20 },
     '30M': { label: '30 Min',  p1: 20,  p2: 10 },
     '2M':  { label: 'Test 2M', p1: 1,   p2: 1, isTest: true },
@@ -243,7 +244,6 @@ const storage = {
         endHandledFor: 'dj_endHandledFor',    // fin de soirée déjà traitée (export auto) pour ce minuteur
         endPublishedFor: 'dj_endPublishedFor', // publication automatique déjà faite pour ce minuteur
         legacySongs: 'dj_songs',              // ancien format (v2), migré automatiquement
-        guestAuth: 'dj_guest_auth',           // invité déjà connecté (retour sur la page sans retaper le code)
         resultsNotifiedFor: 'dj_results_notified_for', // résultats déjà annoncés sur ce téléphone
     },
     get(key, fallback = null) {
@@ -258,6 +258,18 @@ const storage = {
     remove(key) {
         try { localStorage.removeItem(key); } catch { /* idem */ }
     },
+};
+
+/**
+ * Invité déjà connecté DANS CET ONGLET (sessionStorage) : si le téléphone recharge la page (veille, iPhone),
+ * il est reconnecté sans retaper le code. Un nouvel onglet (ex. l'ordinateur du DJ) repart de l'accueil,
+ * avec l'accès DJ visible.
+ */
+const guestAuth = {
+    KEY: 'dj_guest_auth',
+    get() { try { return JSON.parse(sessionStorage.getItem(this.KEY)); } catch { return null; } },
+    set(value) { try { sessionStorage.setItem(this.KEY, JSON.stringify(value)); } catch { /* indisponible */ } },
+    clear() { try { sessionStorage.removeItem(this.KEY); } catch { /* indisponible */ } },
 };
 
 // =============================================================================
@@ -430,6 +442,13 @@ function tick() {
         if (state.view === 'admin') render();
     }
 
+    // Écran géant (QR code / TV) : retour au QR code quand le DJ arrête ou relance le minuteur.
+    if ((displayMode === 'qrcode' || (displayMode === 'tv' && state.tv.screen === 'on'))
+        && state.view === 'monitor' && timer.phase < 2 && !state.remote.resultsPublished) {
+        state.view = 'qrcode';
+        render();
+    }
+
     // Écran géant : passe automatiquement du QR code au classement dès la phase 2.
     if (displayMode && state.view === 'qrcode' && timer.phase >= 2) {
         state.view = 'monitor';
@@ -530,7 +549,7 @@ function applyRemote(data) {
     // Invité qui revient sur la page (onglet rechargé par le téléphone, retour de veille…) : reconnecté d'office,
     // pour qu'il soit prévenu des résultats sans devoir retaper le code.
     if (state.view === 'login' && !displayMode) {
-        const auth = storage.get(storage.KEYS.guestAuth);
+        const auth = guestAuth.get();
         if (auth && auth.sessionId === next.sessionId && auth.code === normalizeCode(next.guestCode)) {
             state.view = 'user';
             state.guestScreen = 'categories';
@@ -868,7 +887,7 @@ function tvOnline() {
 function applyTvScreen() {
     if (displayMode !== 'tv') return;
     let wanted = 'tvStandby';
-    if (state.tv.screen === 'on') wanted = (state.view === 'monitor' || state.phase >= 2) ? 'monitor' : 'qrcode';
+    if (state.tv.screen === 'on') wanted = (state.phase >= 2 || state.remote.resultsPublished) ? 'monitor' : 'qrcode';
     if (wanted !== state.view) {
         state.view = wanted;
         render();
@@ -968,7 +987,7 @@ const actions = {
         render();
     },
     logout() {
-        storage.remove(storage.KEYS.guestAuth);
+        guestAuth.clear();
         state.view = 'login';
         state.loginError = '';
         state.guestScreen = 'categories';
@@ -1003,7 +1022,7 @@ const actions = {
         state.view = 'user';
         state.guestScreen = 'categories';
         state.loginError = '';
-        storage.set(storage.KEYS.guestAuth, { sessionId: state.remote.sessionId, code: normalizeCode(state.remote.guestCode) });
+        guestAuth.set({ sessionId: state.remote.sessionId, code: normalizeCode(state.remote.guestCode) });
         state.resultsNotified = resultsAvailable(); // pas de bip pour des résultats déjà affichés avant la connexion
         if (state.resultsNotified) storage.set(storage.KEYS.resultsNotifiedFor, resultsKey());
         loadUserVotesForSession();
@@ -1127,9 +1146,13 @@ const actions = {
             });
     },
     stopTimer() {
-        showModal('confirm', 'Arrêter le minuteur',
-            '⚠️ Voulez-vous vraiment arrêter le minuteur et stopper l\'affichage public ?',
-            { onConfirm: () => updateShared({ eventStartTime: null }) });
+        const closed = state.phase === 3;
+        showModal('confirm', closed ? 'Retour au QR code' : 'Arrêter le minuteur',
+            closed
+                ? 'Le grand écran revient au QR code et les téléphones repassent à l\'écran de vote.<br><br><span class="text-sm text-white/60">Les votes sont conservés. Pour tout effacer : « Remise à zéro ».</span>'
+                : '⚠️ Voulez-vous vraiment arrêter le minuteur ? Le grand écran revient au QR code.',
+            // Les résultats publiés sont retirés : sinon les téléphones restaient bloqués sur le classement final.
+            { onConfirm: () => updateShared({ eventStartTime: null, resultsPublished: false }) });
     },
     forceEnd() {
         showModal('confirm', 'Clôturer et résultats',
@@ -2128,9 +2151,14 @@ function adminView() {
                         ${phaseLabel}
                     </div>
                     <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3 flex-wrap justify-end">
-                        ${state.phase === 0
+                        ${state.phase === 0 || state.phase === 3
                             ? Object.keys(TIMER_PRESETS).map(presetButton).join('')
-                            : `<button data-action="stopTimer" class="w-full md:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-10 rounded-2xl transition-all flex items-center justify-center gap-3 text-xl tracking-widest uppercase"><i class="ph-bold ph-stop"></i> Arrêter / Annuler</button>`}
+                            : ''}
+                        ${state.phase === 3
+                            ? `<button data-action="stopTimer" class="w-full sm:w-auto bg-white/5 hover:bg-white/15 border border-white/20 text-white/80 font-bold py-3 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm tracking-widest uppercase"><i class="ph-bold ph-arrow-counter-clockwise text-xl"></i> Retour au QR code</button>`
+                            : state.phase !== 0
+                            ? `<button data-action="stopTimer" class="w-full md:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-4 px-10 rounded-2xl transition-all flex items-center justify-center gap-3 text-xl tracking-widest uppercase"><i class="ph-bold ph-stop"></i> Arrêter / Annuler</button>`
+                            : ''}
                     </div>
                 </div>
             </section>
