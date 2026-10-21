@@ -27,7 +27,7 @@
    ============================================================================= */
 
 import { SONGS } from './songs.js?v=3.3.0';
-import * as rekordbox from './rekordbox.js?v=3.1.0';
+import * as rekordbox from './rekordbox.js?v=3.12.0';
 
 // =============================================================================
 // 1. CONFIGURATION
@@ -1401,26 +1401,31 @@ const actions = {
     stopCast,
 
     // ---- DJ : fichiers ----
-    downloadM3U() {
+    /** Top 40 en M3U8. Si la bibliothèque Rekordbox est mémorisée sur cet ordinateur : versions les plus jouées. */
+    async downloadM3U() {
         const top = topSongs();
         if (top.length === 0) {
             return showModal('alert', 'Aucun vote', 'Il n\'y a pas encore de votes pour générer la playlist.');
         }
+        const library = await rekordboxLibrary.load();
+        if (library) return exportWithLibrary(library);
         downloadM3UFile(`Universal_DJ_Top40_${todayStamp()}.m3u8`, top.map(song => ({ ...song, path: song.filepath })));
     },
-    exportBestVersions() {
+    async exportBestVersions() {
         if (topSongs().length === 0) {
             return showModal('alert', 'Aucun vote', 'Il n\'y a pas encore de votes pour générer la playlist.');
         }
-        const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.xml', hidden: true });
-        document.body.appendChild(input);
-        input.addEventListener('change', () => {
-            const file = input.files[0];
-            input.remove();
-            if (file) exportBestVersionsFrom(file);
-        });
-        input.click();
+        const library = await rekordboxLibrary.load();
+        if (!library) return pickRekordboxXml();
+        showModal('confirm', '🎧 Bibliothèque Rekordbox',
+            `Bibliothèque mémorisée sur cet ordinateur : <strong>${library.tracks.length.toLocaleString('fr-FR')}</strong> morceaux
+             (fichier <strong>${esc(library.fileName)}</strong>, chargé le ${esc(new Date(library.savedAt).toLocaleString('fr-FR'))}).<br><br>
+             <span class="text-sm text-white/60">Après de nouvelles soirées, chargez un XML récent pour que les nombres de lectures soient à jour.</span>`,
+            { confirmLabel: 'Utiliser cette bibliothèque', onConfirm: () => exportWithLibrary(library) });
+        state.modal.extraButton = { action: 'pickRekordboxXml', label: 'Charger un nouveau XML' };
+        render();
     },
+    pickRekordboxXml() { pickRekordboxXml(); },
     importM3U() {
         const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.m3u8,.m3u', multiple: true, hidden: true });
         document.body.appendChild(input);
@@ -1529,6 +1534,60 @@ function downloadM3UFile(filename, entries) {
  * Top 40 avec, pour chaque titre voté, la version de l'interprète la plus jouée dans Rekordbox.
  * Le XML est lu sur place par le navigateur : il n'est envoyé nulle part.
  */
+function pickRekordboxXml() {
+    const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.xml', hidden: true });
+    document.body.appendChild(input);
+    input.addEventListener('change', () => {
+        const file = input.files[0];
+        input.remove();
+        if (file) exportBestVersionsFrom(file);
+    });
+    input.click();
+}
+
+/**
+ * Bibliothèque Rekordbox mémorisée dans le navigateur (IndexedDB) après une première lecture du XML :
+ * l'export automatique de fin de soirée utilise alors aussi les versions les plus jouées.
+ * Rien n'est envoyé sur internet.
+ */
+const rekordboxLibrary = (() => {
+    const DB = 'playlist-ideale', STORE = 'rekordbox', KEY = 'library';
+    let cache = null;
+    const open = () => new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+    const run = (mode, fn) => open().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, mode);
+        const req = fn(tx.objectStore(STORE));
+        tx.oncomplete = () => { db.close(); resolve(req?.result); };
+        tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+    }));
+    return {
+        async save(tracks, fileName) {
+            const record = {
+                savedAt: Date.now(), fileName,
+                rows: tracks.map(t => [t.title, t.artist, t.playCount, t.rating, t.path]),
+            };
+            cache = { savedAt: record.savedAt, fileName, tracks, index: rekordbox.buildIndex(tracks) };
+            try { await run('readwrite', store => store.put(record, KEY)); } catch (err) { console.warn('Bibliothèque non mémorisée :', err); }
+            return cache;
+        },
+        async load() {
+            if (cache) return cache;
+            try {
+                const record = await run('readonly', store => store.get(KEY));
+                if (!record?.rows?.length) return null;
+                const tracks = record.rows.map(([title, artist, playCount, rating, path]) => ({ title, artist, playCount, rating, path }));
+                cache = { savedAt: record.savedAt, fileName: record.fileName, tracks, index: rekordbox.buildIndex(tracks) };
+                return cache;
+            } catch { return null; }
+        },
+    };
+})();
+
 async function exportBestVersionsFrom(file) {
     showModal('progress', '🎧 Lecture de ta bibliothèque Rekordbox',
         `<p>${esc(file.name)}</p><p class="mt-4 text-4xl font-black text-magical-cyan" id="rb-progress">0 %</p>
@@ -1549,7 +1608,12 @@ async function exportBestVersionsFrom(file) {
             'Aucun morceau trouvé. Exporte la collection depuis Rekordbox : <strong>Fichier → Exporter la collection au format xml</strong>.');
     }
 
-    const index = rekordbox.buildIndex(tracks);
+    exportWithLibrary(await rekordboxLibrary.save(tracks, file.name));
+}
+
+/** Top 40 avec la version la plus jouée de chaque titre voté, d'après la bibliothèque Rekordbox. */
+function exportWithLibrary(library) {
+    const { tracks, index } = library;
     const report = topSongs().map((song, i) => {
         const { best, versions } = rekordbox.findBestVersion(song, index);
         const chosen = best || { path: song.filepath, playCount: null };
@@ -2451,6 +2515,7 @@ function modalView() {
         buttons = '<i class="ph-duotone ph-spinner-gap animate-spin text-5xl text-magical-cyan mx-auto mt-2 block"></i>';
     } else if (modal.type === 'confirm' || modal.type === 'custom') {
         buttons = `<button data-action="closeModal" class="${secondary}">Annuler</button>
+                   ${modal.extraButton ? `<button data-action="${esc(modal.extraButton.action)}" class="${secondary}">${esc(modal.extraButton.label)}</button>` : ''}
                    <button data-action="confirmModal" class="${primary}">${esc(modal.confirmLabel)}</button>`;
     } else {
         buttons = `<button data-action="closeModal" class="w-full sm:w-2/3 mx-auto ${primary}">Compris</button>`;

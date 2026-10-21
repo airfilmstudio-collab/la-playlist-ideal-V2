@@ -136,18 +136,111 @@ export function cleanIdentity(title, artist) {
     return { title: t, artist: a };
 }
 
-/** Index de la collection : clé « titre|interprète » → versions, et chemin → morceau. */
+// ---- Recherche souple (fiches mal remplies : « Various Artists », « 03-Soprano - En feu »,
+//      artiste vide et « 042 - Coldplay - Viva La Vida », « Party Rock Anthem Featuring. L »…) ----
+
+/** Mots ignorés quand on vérifie qu'une fiche parle bien du même morceau. */
+const STOP_WORDS = new Set(('feat ft featuring various artists artist va mp3 wav flac m4a aiff www com fr net org pl '
+    + 'mix edit remix rmx version remaster remastered extended radio club dub instrumental intro outro clean dirty '
+    + 'original live acapella bootleg rework vip reedit re anniversary single album cut long short '
+    + 'and the le la les l de du des d a et x vs y el los las').split(' '));
+
+function stripNoise(text) {
+    return String(text || '')
+        .replace(/(?:https?:\/\/|www\.)\S+/gi, ' ')                    // adresses de sites
+        .replace(/-\+[^+]*\+-/g, ' ')                                    // « -+www.site.pl+- »
+        .replace(/\.(mp3|wav|flac|m4a|aiff?)\b/gi, ' ');
+}
+
+function words(text) {
+    return normalize(text).split(' ').filter(Boolean);
+}
+
+/** Texte complet d'une fiche (artiste + titre + nom du fichier) pour la recherche par mots. */
+function trackBlob(track) {
+    return ` ${normalize(stripNoise(`${track.artist} ${track.title} ${fileName(track.path)}`))} `;
+}
+
+/** Mots de version (« remix », « edit », « extended »…) qui annoncent une mention de remixeur. */
+const VERSION_TOKEN = /^(mix|edit|remix|rmx|version|remaster|remastered|extended|radio|club|dub|instrumental|intro|outro|clean|dirty|original|live|acapella|bootleg|rework|vip|reedit|maxi|longue|long|cut)$/;
+
+/**
+ * Le titre d'une fiche désigne-t-il bien le morceau voté ?
+ * On garde le texte hors parenthèses (sans numéro de piste ni « feat. … ») et on exige :
+ *  - le titre voté en entier ;
+ *  - avant lui, seulement l'interprète, des numéros ou des mots neutres ;
+ *  - après lui, seulement des mots neutres, ou une mention de version (« Uni edit », « Garraud Club Mix »,
+ *    « Version 2021 Dj Oliv ») : « Bella Ciao » n'est donc pas « Bella », ni « Comme les rois mages » « Les rois mages ».
+ */
+function titleMatches(track, title, allowed) {
+    const raw = stripNoise(String(track.title || '').trim() || fileName(track.path).replace(/\.[a-z0-9]+$/i, ''));
+    // 1er essai : texte hors parenthèses. 2e essai (titre lui-même entre parenthèses :
+    // « Wake Me Up (Before You Go Go) ») : parenthèses gardées.
+    const outside = raw.replace(/\([^)]*\)|\[[^\]]*\]|\{[^}]*\}/g, ' ').replace(/[([{].*$/, ' ');
+    return matchTokens(outside, title, allowed, 2) ?? matchTokens(raw.replace(/[()[\]{}]/g, ' '), title, allowed, 3) ?? false;
+}
+
+/** null = titre voté absent du texte ; sinon true / false. */
+function matchTokens(text, title, allowed, maxCredit) {
+    const tokens = normalize(text.replace(/^\s*\d{1,3}\s*[-._)]?\s*/, ' '))
+        .replace(/\b(feat|ft|featuring)\b.*$/, ' ').split(' ').filter(Boolean);
+    const target = title.split(' ');
+    let at = -1;
+    for (let i = 0; i + target.length <= tokens.length && at < 0; i++) {
+        if (target.every((w, j) => tokens[i + j] === w)) at = i;
+    }
+    if (at < 0) return null;
+    const neutral = w => STOP_WORDS.has(w) || /^\d+(st|nd|rd|th|e|eme)?$/.test(w) || allowed.has(w);
+    if (!tokens.slice(0, at).every(neutral)) return false;
+    let pending = 0;
+    for (const w of tokens.slice(at + target.length)) {
+        if (VERSION_TOKEN.test(w)) return pending <= maxCredit;   // la suite est le nom du remixeur
+        if (!neutral(w)) pending++;
+    }
+    return pending === 0;
+}
+
+/** Index de la collection : clé « titre|interprète » → versions, chemin → morceau, mot → morceaux. */
 export function buildIndex(tracks) {
     const byKey = new Map();
     const byPath = new Map();
+    const byWord = new Map();
     for (const track of tracks) {
         byPath.set(pathKey(track.path), track);
         const key = indexKey(track.title, track.artist);
-        if (!key) continue;
-        if (!byKey.has(key)) byKey.set(key, []);
-        byKey.get(key).push(track);
+        if (key) {
+            if (!byKey.has(key)) byKey.set(key, []);
+            byKey.get(key).push(track);
+        }
+        for (const w of new Set(trackBlob(track).split(' '))) {
+            if (w.length < 3 || STOP_WORDS.has(w) || /^\d+$/.test(w)) continue;
+            if (!byWord.has(w)) byWord.set(w, []);
+            byWord.get(w).push(track);
+        }
     }
-    return { byKey, byPath, size: tracks.length };
+    return { byKey, byPath, byWord, size: tracks.length };
+}
+
+/** Autres fiches du même morceau, retrouvées par les mots (titre + interprète principal). */
+function fuzzyVersions(song, index) {
+    if (!index.byWord) return [];
+    const id = cleanIdentity(song.title, song.artist);
+    const title = baseTitle(id.title);
+    const artist = mainArtist(id.artist);
+    if (!title || !artist) return [];
+    const allowed = new Set([...words(title), ...words(id.artist), ...words(artist)]);
+    // On part du mot le plus rare (artiste ou titre) pour ne parcourir que quelques fiches.
+    const candidates = [...new Set([...words(artist), ...words(title)])]
+        .filter(w => w.length >= 3 && !STOP_WORDS.has(w) && index.byWord.has(w))
+        .sort((a, b) => index.byWord.get(a).length - index.byWord.get(b).length);
+    if (!candidates.length) return [];
+    const pool = index.byWord.get(candidates[0]);
+    return pool.filter(track => {
+        const blob = trackBlob(track);
+        if (!blob.includes(` ${title} `) || !blob.includes(` ${artist} `)) return false;
+        if (/ (cover|karaoke|tribute|reprise) /.test(blob) && !/ (cover|karaoke|tribute|reprise) /.test(` ${title} `)) return false;
+        return titleMatches(track, title, allowed);
+    });
 }
 
 /**
@@ -171,6 +264,10 @@ export function findBestVersion(song, index) {
             const id = pathKey(track.path);
             if (!seen.has(id)) { seen.add(id); versions.push(track); }
         }
+    }
+    for (const track of fuzzyVersions(song, index)) {
+        const id = pathKey(track.path);
+        if (!seen.has(id)) { seen.add(id); versions.push(track); }
     }
     if (current && !seen.has(pathKey(current.path))) versions.push(current);
 

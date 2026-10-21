@@ -146,3 +146,10 @@ Mesuré sur téléphone moyen simulé (processeur ralenti ×6) :
 - Bouton « Catégories importées » : liste et suppression.
 - Titres importés avec une ancienne version sur un ordinateur : à l'ouverture du tableau de bord, publication proposée.
 - Firestore : document `catalog` (champs `json`, `updatedAt`) et champ `catalogVersion` ajoutés aux règles.
+
+## Version 3.12 (21 octobre 2026) — versions les plus jouées : contrôle complet et correction
+
+Audit sur la bibliothèque complète (165 920 morceaux) pour les 1 789 titres du catalogue :
+- la recherche ne trouvait que les fiches bien remplies (même titre + même artiste). Les fiches mal remplies, très fréquentes chez toi, étaient ignorées : « Various Artists | 03-Soprano - En feu » (38 lectures, choisie : 3), « 042 - Coldplay - Viva La Vida » sans artiste, « Party Rock Anthem Featuring. L » (53 lectures, choisie : 8), « Earth Wind and Fire - September (Extended Ve » (33, choisie : 6)…
+- nouvelle recherche souple dans `rekordbox.js` (artiste + titre + nom de fichier, numéros de piste, « Various Artists », sites web, « feat. », parenthèses coupées), avec garde-fous : « Bella Ciao » n'est pas « Bella », « Comme les rois mages » n'est pas « Les rois mages », les reprises / karaoké / covers sont écartées. Résultat : 105 titres prennent désormais une version plus jouée ; il reste 12 cas « suspects » à l'audit, tous vérifiés comme de vrais autres morceaux (medleys, autres titres).
+- la bibliothèque est **mémorisée sur l'ordinateur** après la première lecture du XML (rien n'est envoyé sur internet). Ensuite l'export M3U8 normal ET l'export automatique de fin de soirée prennent les versions les plus jouées. Le bouton doré propose « Utiliser cette bibliothèque » ou « Charger un nouveau XML » (à faire de temps en temps pour mettre à jour les nombres de lectures).
