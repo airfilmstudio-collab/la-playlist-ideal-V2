@@ -79,6 +79,7 @@ function normalize(text) {
         .toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/&/g, ' and ')
+        .replace(/(\w)[«»](\w)/g, '$1$2')          // apostrophe mal encodée (« New Year«s Day »)
         .replace(/[’'`´]/g, '')
         .replace(/[^a-z0-9]+/g, ' ')
         .trim();
@@ -120,8 +121,9 @@ function indexKey(title, artist) {
  *  - artiste qui contient aussi le titre (« LOUISE ATTAQUE J'T'EMMENE AU VENT »).
  */
 export function cleanIdentity(title, artist) {
-    let t = String(title || '').trim();
-    let a = String(artist || '').trim();
+    // Numéros de piste en tête (« 01 - Positive Force », « 040 - Coldplay - … »).
+    let t = String(title || '').trim().replace(/^\d{1,3}\s*[-._]\s+/, '');
+    let a = String(artist || '').trim().replace(/^\d{1,3}\s*[-._]\s+/, '');
     if (!a && t.includes(' - ')) {
         const i = t.indexOf(' - ');
         a = t.slice(0, i); t = t.slice(i + 3);
@@ -143,7 +145,8 @@ export function cleanIdentity(title, artist) {
 const STOP_WORDS = new Set(('feat ft featuring various artists artist va mp3 wav flac m4a aiff www com fr net org pl '
     + 'mix edit remix rmx version remaster remastered extended radio club dub instrumental intro outro clean dirty '
     + 'original live acapella bootleg rework vip reedit re anniversary single album cut long short '
-    + 'and the le la les l de du des d a et x vs y el los las').split(' '));
+    + 'and the le la les l de du des d a et x vs y el los las '
+    + 'bpm hd hq 720p 1080p 4k official officiel video clip audio lyrics paroles recut').split(' '));
 
 function stripNoise(text) {
     return String(text || '')
@@ -182,8 +185,9 @@ function titleMatches(track, title, allowed) {
 
 /** null = titre voté absent du texte ; sinon true / false. */
 function matchTokens(text, title, allowed, maxCredit) {
-    const tokens = normalize(text.replace(/^\s*\d{1,3}\s*[-._)]?\s*/, ' '))
-        .replace(/\b(feat|ft|featuring)\b.*$/, ' ').split(' ').filter(Boolean);
+    // « feat. Untel » retiré jusqu'au séparateur suivant (« Alliance Ethnik feat Vinia Mojica - Respect »).
+    const tokens = normalize(text.replace(/^\s*\d{1,3}\s*[-._)]?\s*/, ' ').replace(/(^|\s)(feat\.?|ft\.?|featuring)\s[^-–()[\]{}]*/gi, ' '))
+        .split(' ').filter(Boolean);
     const target = title.split(' ');
     let at = -1;
     for (let i = 0; i + target.length <= tokens.length && at < 0; i++) {
@@ -225,21 +229,24 @@ export function buildIndex(tracks) {
 function fuzzyVersions(song, index) {
     if (!index.byWord) return [];
     const id = cleanIdentity(song.title, song.artist);
-    const title = baseTitle(id.title);
     const artist = mainArtist(id.artist);
-    if (!title || !artist) return [];
-    const allowed = new Set([...words(title), ...words(id.artist), ...words(artist)]);
+    // Titre de base, et titre avec ses parenthèses « de sens » (« Chacun fait (c'qui lui plaît) »).
+    const full = normalize(String(id.title).replace(/\(([^)]*)\)|\[([^\]]*)\]/g, (m, x, y) => (VERSION_WORDS.test(normalize(x ?? y)) ? ' ' : ` ${x ?? y} `))
+        .replace(/(^|\s)(feat\.?|ft\.?|featuring)\s.*$/i, ' '));
+    const titles = [...new Set([baseTitle(id.title), full].filter(Boolean))];
+    if (!titles.length || !artist) return [];
+    const allowed = new Set([...titles.flatMap(words), ...words(id.artist), ...words(artist)]);
     // On part du mot le plus rare (artiste ou titre) pour ne parcourir que quelques fiches.
-    const candidates = [...new Set([...words(artist), ...words(title)])]
+    const candidates = [...new Set([...words(artist), ...words(titles[0])])]
         .filter(w => w.length >= 3 && !STOP_WORDS.has(w) && index.byWord.has(w))
         .sort((a, b) => index.byWord.get(a).length - index.byWord.get(b).length);
     if (!candidates.length) return [];
     const pool = index.byWord.get(candidates[0]);
     return pool.filter(track => {
         const blob = trackBlob(track);
-        if (!blob.includes(` ${title} `) || !blob.includes(` ${artist} `)) return false;
-        if (/ (cover|karaoke|tribute|reprise) /.test(blob) && !/ (cover|karaoke|tribute|reprise) /.test(` ${title} `)) return false;
-        return titleMatches(track, title, allowed);
+        if (!blob.includes(` ${artist} `)) return false;
+        if (/ (cover|karaoke|tribute|reprise) /.test(blob) && !titles.some(t => / (cover|karaoke|tribute|reprise) /.test(` ${t} `))) return false;
+        return titles.some(title => blob.includes(` ${title} `) && titleMatches(track, title, allowed));
     });
 }
 

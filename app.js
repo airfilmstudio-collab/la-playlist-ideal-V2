@@ -27,7 +27,7 @@
    ============================================================================= */
 
 import { SONGS } from './songs.js?v=3.3.0';
-import * as rekordbox from './rekordbox.js?v=3.12.0';
+import * as rekordbox from './rekordbox.js?v=3.12.2';
 
 // =============================================================================
 // 1. CONFIGURATION
