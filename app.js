@@ -27,7 +27,7 @@
    ============================================================================= */
 
 import { SONGS } from './songs.js?v=3.3.0';
-import * as rekordbox from './rekordbox.js?v=3.12.2';
+import * as rekordbox from './rekordbox.js?v=3.13.0';
 
 // =============================================================================
 // 1. CONFIGURATION
@@ -1418,7 +1418,8 @@ const actions = {
             showModal('alert', '🎧 Bibliothèque Rekordbox',
                 `Bibliothèque mémorisée sur cet ordinateur : <strong>${library.tracks.length.toLocaleString('fr-FR')}</strong> morceaux
                  (fichier <strong>${esc(library.fileName)}</strong>, chargé le ${esc(new Date(library.savedAt).toLocaleString('fr-FR'))}).<br><br>
-                 Pas encore de votes : le Top 40 avec vos versions les plus jouées sera créé à la fin de la soirée.`);
+                 Pas encore de votes : le Top 40 avec vos versions les plus jouées sera créé à la fin de la soirée.
+                 ${auditLinkHtml()}`);
             state.modal.extraButton = { action: 'pickRekordboxXml', label: 'Charger un nouveau XML' };
             state.modal.type = 'confirm';
             state.modal.confirmLabel = 'Compris';
@@ -1428,12 +1429,17 @@ const actions = {
         showModal('confirm', '🎧 Bibliothèque Rekordbox',
             `Bibliothèque mémorisée sur cet ordinateur : <strong>${library.tracks.length.toLocaleString('fr-FR')}</strong> morceaux
              (fichier <strong>${esc(library.fileName)}</strong>, chargé le ${esc(new Date(library.savedAt).toLocaleString('fr-FR'))}).<br><br>
-             <span class="text-sm text-white/60">Après de nouvelles soirées, chargez un XML récent pour que les nombres de lectures soient à jour.</span>`,
+             <span class="text-sm text-white/60">Après de nouvelles soirées, chargez un XML récent pour que les nombres de lectures soient à jour.</span>
+             ${auditLinkHtml()}`,
             { confirmLabel: 'Utiliser cette bibliothèque', onConfirm: () => exportWithLibrary(library) });
         state.modal.extraButton = { action: 'pickRekordboxXml', label: 'Charger un nouveau XML' };
         render();
     },
     pickRekordboxXml() { pickRekordboxXml(); },
+    async auditLibrary() {
+        const library = await rekordboxLibrary.load();
+        if (library) auditLibrary(library);
+    },
     importM3U() {
         const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.m3u8,.m3u', multiple: true, hidden: true });
         document.body.appendChild(input);
@@ -1542,6 +1548,45 @@ function downloadM3UFile(filename, entries) {
  * Top 40 avec, pour chaque titre voté, la version de l'interprète la plus jouée dans Rekordbox.
  * Le XML est lu sur place par le navigateur : il n'est envoyé nulle part.
  */
+function auditLinkHtml() {
+    return `<div class="mt-5"><button data-action="auditLibrary" class="w-full bg-magical-cyan/10 hover:bg-magical-cyan/20 border border-magical-cyan/40 text-magical-cyan font-bold px-4 py-3 rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2"><i class="ph-bold ph-list-checks text-lg"></i> Contrôle complet de tous les titres</button></div>`;
+}
+
+/**
+ * Contrôle complet : pour CHAQUE titre de l'application, la version choisie et son nombre de lectures,
+ * comparée à une recherche plus large. Rapport téléchargé (CSV, s'ouvre dans Excel) + résumé à l'écran.
+ */
+async function auditLibrary(library) {
+    showModal('progress', '🔎 Contrôle complet', `<p>${allSongs.length} titres vérifiés dans ${library.tracks.length.toLocaleString('fr-FR')} morceaux…</p>`);
+    await wait(50);
+    const rows = [];
+    const counts = { ok: 0, check: 0, missing: 0, better: 0 };
+    for (const song of allSongs) {
+        const { best, versions, current } = rekordbox.findBestVersion(song, library.index);
+        const wide = rekordbox.widestCandidate(song, library.index);
+        const flag = !best ? 'NON TROUVÉ' : (wide && wide.playCount > best.playCount ? 'À VÉRIFIER' : 'OK');
+        if (flag === 'OK') counts.ok++; else if (flag === 'À VÉRIFIER') counts.check++; else counts.missing++;
+        if (best && current && best.playCount > current.playCount) counts.better++;
+        rows.push([song.theme, song.artist, song.title, best ? best.playCount : '', best ? rekordbox.fileName(best.path) : '',
+            versions.length, current ? current.playCount : '', flag,
+            flag === 'À VÉRIFIER' ? `${wide.playCount} : ${wide.artist} | ${wide.title}` : '', best ? best.path : song.filepath]);
+    }
+    const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const csv = '\uFEFF' + [['Catégorie', 'Artiste', 'Titre', 'Lectures (version choisie)', 'Fichier choisi', 'Versions trouvées',
+        'Lectures (version du catalogue)', 'Contrôle', 'Fiche plus jouée trouvée par la recherche large', 'Chemin complet'], ...rows]
+        .map(r => r.map(cell).join(';')).join('\r\n');
+    downloadFile(`Controle_versions_Rekordbox_${todayStamp()}.csv`, csv, 'text/csv;charset=utf-8');
+    showModal('alert', '✅ Contrôle complet terminé',
+        `<div class="text-left text-base space-y-1">
+            <p>Titres contrôlés : <strong>${allSongs.length}</strong></p>
+            <p>Version trouvée dans Rekordbox : <strong class="text-magical-cyan">${counts.ok + counts.check}</strong></p>
+            <p>Remplacés par une version plus jouée : <strong class="text-magical-gold">${counts.better}</strong></p>
+            <p>À vérifier : <strong>${counts.check}</strong> <span class="text-sm text-white/50">(une fiche plus jouée contient le même titre ; souvent un autre morceau : medley, reprise…)</span></p>
+            <p>Non trouvés dans ce XML : <strong class="text-magical-pink">${counts.missing}</strong> <span class="text-sm text-white/50">(version du catalogue utilisée)</span></p>
+            <p class="text-sm text-white/60 pt-3">Le détail titre par titre vient d'être téléchargé (fichier « Controle_versions_Rekordbox », à ouvrir avec Excel).</p>
+         </div>`);
+}
+
 function pickRekordboxXml() {
     const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.xml', hidden: true });
     document.body.appendChild(input);
@@ -1620,7 +1665,8 @@ async function exportBestVersionsFrom(file) {
     if (topSongs().length === 0) {
         return showModal('alert', '✅ Bibliothèque Rekordbox mémorisée',
             `<strong>${tracks.length.toLocaleString('fr-FR')}</strong> morceaux lus et mémorisés sur cet ordinateur (rien n'est envoyé sur internet).<br><br>
-             À la fin de la soirée, le Top 40 sera téléchargé automatiquement avec vos versions les plus jouées.`);
+             À la fin de la soirée, le Top 40 sera téléchargé automatiquement avec vos versions les plus jouées.
+             ${auditLinkHtml()}`);
     }
     exportWithLibrary(library);
 }

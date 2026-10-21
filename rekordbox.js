@@ -288,6 +288,28 @@ export function findBestVersion(song, index) {
     return { best: versions[0] || null, versions, current };
 }
 
+/**
+ * Contrôle indépendant (plus large) : la fiche la plus jouée qui contient le titre ET l'interprète principal,
+ * sans les garde-fous. Sert à repérer d'éventuels oublis ; souvent un autre morceau (medley, reprise…).
+ */
+export function widestCandidate(song, index) {
+    if (!index.byWord) return null;
+    const id = cleanIdentity(song.title, song.artist);
+    const title = baseTitle(id.title);
+    const artist = mainArtist(id.artist);
+    if (!title || !artist) return null;
+    const keys = [...new Set([...words(artist), ...words(title)])]
+        .filter(w => w.length >= 3 && !STOP_WORDS.has(w) && index.byWord.has(w))
+        .sort((a, b) => index.byWord.get(a).length - index.byWord.get(b).length);
+    if (!keys.length) return null;
+    let best = null;
+    for (const track of index.byWord.get(keys[0])) {
+        const blob = trackBlob(track);
+        if (blob.includes(` ${title} `) && blob.includes(` ${artist} `) && (!best || track.playCount > best.playCount)) best = track;
+    }
+    return best;
+}
+
 /** Nom de fichier lisible depuis un chemin complet. */
 export function fileName(path) {
     return String(path || '').split(/[\\/]/).pop();
