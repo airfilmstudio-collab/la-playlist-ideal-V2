@@ -1412,11 +1412,19 @@ const actions = {
         downloadM3UFile(`Universal_DJ_Top40_${todayStamp()}.m3u8`, top.map(song => ({ ...song, path: song.filepath })));
     },
     async exportBestVersions() {
-        if (topSongs().length === 0) {
-            return showModal('alert', 'Aucun vote', 'Il n\'y a pas encore de votes pour générer la playlist.');
-        }
         const library = await rekordboxLibrary.load();
         if (!library) return pickRekordboxXml();
+        if (topSongs().length === 0) {
+            showModal('alert', '🎧 Bibliothèque Rekordbox',
+                `Bibliothèque mémorisée sur cet ordinateur : <strong>${library.tracks.length.toLocaleString('fr-FR')}</strong> morceaux
+                 (fichier <strong>${esc(library.fileName)}</strong>, chargé le ${esc(new Date(library.savedAt).toLocaleString('fr-FR'))}).<br><br>
+                 Pas encore de votes : le Top 40 avec vos versions les plus jouées sera créé à la fin de la soirée.`);
+            state.modal.extraButton = { action: 'pickRekordboxXml', label: 'Charger un nouveau XML' };
+            state.modal.type = 'confirm';
+            state.modal.confirmLabel = 'Compris';
+            state.modal.onConfirm = null;
+            return render();
+        }
         showModal('confirm', '🎧 Bibliothèque Rekordbox',
             `Bibliothèque mémorisée sur cet ordinateur : <strong>${library.tracks.length.toLocaleString('fr-FR')}</strong> morceaux
              (fichier <strong>${esc(library.fileName)}</strong>, chargé le ${esc(new Date(library.savedAt).toLocaleString('fr-FR'))}).<br><br>
@@ -1608,7 +1616,13 @@ async function exportBestVersionsFrom(file) {
             'Aucun morceau trouvé. Exporte la collection depuis Rekordbox : <strong>Fichier → Exporter la collection au format xml</strong>.');
     }
 
-    exportWithLibrary(await rekordboxLibrary.save(tracks, file.name));
+    const library = await rekordboxLibrary.save(tracks, file.name);
+    if (topSongs().length === 0) {
+        return showModal('alert', '✅ Bibliothèque Rekordbox mémorisée',
+            `<strong>${tracks.length.toLocaleString('fr-FR')}</strong> morceaux lus et mémorisés sur cet ordinateur (rien n'est envoyé sur internet).<br><br>
+             À la fin de la soirée, le Top 40 sera téléchargé automatiquement avec vos versions les plus jouées.`);
+    }
+    exportWithLibrary(library);
 }
 
 /** Top 40 avec la version la plus jouée de chaque titre voté, d'après la bibliothèque Rekordbox. */
